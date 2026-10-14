@@ -20,7 +20,9 @@ const gameConfig = {
       debug: false                      // auf true setzen, um Hitboxen zu sehen
     }
   },
-  scene: [BootScene, IntroScene, MenuScene, GameScene, PauseScene, VictoryScene, FinaleScene, CreditsScene, EndScene]
+  scene: [BootScene, IntroScene, GameSelectScene, MenuScene, GameScene, VictoryScene, FinaleScene, CreditsScene, EndScene,
+    SspMenuScene, PedaloScene, WasserScene, GrillScene, RundkursScene, BrennesselScene, SspScoreScene, SspAwardScene,
+    PauseScene]   // zuletzt: wird über der pausierten Szene gezeichnet
 };
 
 const game = new Phaser.Game(gameConfig);

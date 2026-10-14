@@ -1,8 +1,9 @@
 /* =====================================================================
- * MenuScene – Startbildschirm & Passwort-Eingabe
+ * MenuScene – Startbildschirm von Albishorn Climbers & Passwort-Eingabe
  *
  * Bedienung (beide Spieler, Tastatur oder Controller):
  *   Hoch/Runter  Menüpunkt wählen        Sprung / Start  bestätigen
+ *   ESC / Controller-B                   zurück zur Spielauswahl
  * Passwort-Modus (wie bei Aladdin auf dem SNES):
  *   Links/Rechts Stelle wechseln         Hoch/Runter     Ziffer ändern
  *   Ziffern 0–9  direkt tippen           Sprung          Code prüfen
@@ -62,7 +63,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   createMainMenu() {
-    this.menuItems = ['SPIEL STARTEN', 'PASSWORT'].map((label, i) =>
+    this.menuItems = ['SPIEL STARTEN', 'PASSWORT', 'HAUPTMENÜ'].map((label, i) =>
       this.add.text(GAME_WIDTH / 2, 260 + i * 50, label, {
         fontFamily: FONT, fontSize: '18px', color: '#ffffff', stroke: '#000000', strokeThickness: 5
       }).setOrigin(0.5));
@@ -152,14 +153,18 @@ class MenuScene extends Phaser.Scene {
 
   updateMain() {
     if (this.anyPressed('up') || this.anyPressed('down')) {
-      this.selected = 1 - this.selected;
+      const n = this.menuItems.length;
+      this.selected = (this.selected + (this.anyPressed('down') ? 1 : n - 1)) % n;
       Sfx.play(this, 'select');
       this.refresh();
     }
     if (this.anyPressed('jump') || this.anyPressed('start')) {
       Sfx.play(this, 'select');
       if (this.selected === 0) this.startScene('IntroScene', { mode: 'story' });   // Story, dann Level 1
-      else this.openPassword();
+      else if (this.selected === 1) this.openPassword();
+      else this.startScene('GameSelectScene');
+    } else if (this.anyPressed('back')) {
+      this.startScene('GameSelectScene');
     }
   }
 
@@ -184,6 +189,8 @@ class MenuScene extends Phaser.Scene {
       this.refresh();
     } else if (event.key === 'Escape' && this.mode === 'password') {
       this.closePassword();
+    } else if (event.key === 'Escape') {
+      this.startScene('GameSelectScene');
     } else if (event.key === 'm' || event.key === 'M') {
       Sfx.toggleMute();
       this.refresh();

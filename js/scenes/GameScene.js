@@ -48,9 +48,9 @@ class GameScene extends Phaser.Scene {
     this.hud.setFlowers(this.collected, this.totalEdelweiss);
     this.hud.showLevelIntro();
 
-    // Globale Tasten: ESC = Menü, R = Level neu starten, M = Ton an/aus, P = Pause
+    // Globale Tasten: ESC / P = Pause, R = Level neu starten, M = Ton an/aus
     // (am Controller: START öffnet das Pausenmenü mit denselben Funktionen)
-    this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
+    this.input.keyboard.on('keydown-ESC', () => this.openPause());
     this.input.keyboard.on('keydown-P', () => this.openPause());
     this.input.keyboard.on('keydown-R', () => this.scene.restart({ levelIndex: this.levelIndex }));
     this.input.keyboard.on('keydown-M', () => this.toast(Sfx.toggleMute() ? 'Ton aus' : 'Ton an', '#ffffff'));
@@ -97,12 +97,12 @@ class GameScene extends Phaser.Scene {
   // EREIGNISSE (von den Modulen aufgerufen)
   // =====================================================================
 
-  /** Pausenmenü öffnen (START am Controller, P auf der Tastatur). */
+  /** Pausenmenü öffnen (START am Controller, ESC / P auf der Tastatur). */
   openPause() {
     if (this.completed || this.scene.isPaused()) return;
     Sfx.play(this, 'select');
     this.scene.pause();
-    this.scene.launch('PauseScene', { levelIndex: this.levelIndex });
+    this.scene.launch('PauseScene', { parent: this.scene.key, restart: { levelIndex: this.levelIndex } });
   }
 
   /** Von der PauseScene aufgerufen. */

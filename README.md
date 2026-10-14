@@ -2,6 +2,8 @@
 
 Ein Koop-Plattformer für 2 Spieler im Stil der SNES-Klassiker (Phaser 3): Zwei Geschwister wandern von Ebertswil hinauf aufs Albishorn – ein Geburtstagsgeschenk zum 30.
 
+Dazu gibt es die **Super Sempach Party**: Jessica gegen Simon in 5 Camping-Minispielen am Sempachersee (Pedalo-Power, Wasser-Marsch!, Grill-Meister, Camping-Rundkurs, Brennessel-Alarm!) mit Siegerehrung.
+
 ## Starten
 - Einfach `index.html` per Doppelklick im Browser öffnen. Es braucht keinen Build, keinen Server und **kein Internet**: Phaser 3.80.1 (`js/lib/`) und die Schrift „Press Start 2P“ (`assets/fonts/`) liegen lokal im Projekt.
 - Alternativ mit lokalem Server: `python -m http.server` und dann http://localhost:8000 öffnen.
@@ -38,17 +40,25 @@ Alle Namen und Texte stehen zentral in `js/config.js`:
 In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{AUNT}`, `{UNCLE}` und `{PARENTS}` automatisch durch die Namen ersetzt.
 
 ## Ablauf
-KES-Startlogo → Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 → Gipfel: Sven wartet am Aussichtsturm → Geburtstagsfeier → Abspann → „Danke fürs Spielen!“ (EndScene) → Menü
+KES-Startlogo → **Spielauswahl** (Albishorn Climbers oder Super Sempach Party)
+
+**Albishorn Climbers:** Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 → Gipfel: Sven wartet am Aussichtsturm → Geburtstagsfeier → Abspann → „Danke fürs Spielen!“ (EndScene) → Menü
+
+**Super Sempach Party:** SSP-Menü → *Party* (alle 5 Minispiele, dazwischen Zwischenstand) oder *Minispiel wählen* → Siegerehrung mit Podest, Pokal und Konfetti → SSP-Menü. Jedes Minispiel beginnt mit einer Karte, die Ziel und Steuerung erklärt, danach kommt der Countdown.
+
+Aus **jedem** Spiel und Minispiel führt die Pause (`START` bzw. `ESC`) über „HAUPTMENÜ“ zurück zur Spielauswahl.
 
 ## Steuerung
-| | Bewegen | Springen | Hebel |
-|---|---|---|---|
-| Jessica (Spielerin 1) | A / D | Leertaste | W |
-| Simon (Spieler 2) | ← / → | Enter | ↑ |
-| Controller 1 / 2 | Linker Stick / D-Pad | A / Kreuz | Stick / D-Pad hoch |
+| | Bewegen | Springen / A | Hebel | Aktion / B |
+|---|---|---|---|---|
+| Jessica (Spielerin 1) | A / D | Leertaste | W | E |
+| Simon (Spieler 2) | ← / → | Enter | ↑ | Shift |
+| Controller 1 / 2 | Linker Stick / D-Pad | A / Kreuz | Stick / D-Pad hoch | B / Kreis |
 
-Tastatur: `P` = Pause, `ESC` = Menü, `R` = Level neu starten, `M` = Ton an/aus.
-Controller: `START` / `OPTIONS` = Pausenmenü (Weiter, Level neu starten, Ton, Hauptmenü), `B` / `Kreis` = zurück. Tastatur und Controller funktionieren gleichzeitig. Das Spiel ist komplett ohne Tastatur bedienbar.
+Der Aktions-Knopf (B) wird in den Sempach-Minispielen gebraucht (A/B-Wechseln beim Pedalo, Schild bei Brennessel-Alarm!). In Menüs bedeutet B „zurück“.
+
+Tastatur: `ESC` / `P` = Pause, `R` = Level neu starten, `M` = Ton an/aus.
+Controller: `START` / `OPTIONS` = Pausenmenü (Weiter, Neu starten, Ton, Hauptmenü). Tastatur und Controller funktionieren gleichzeitig. Das Spiel ist komplett ohne Tastatur bedienbar.
 
 Spieler 1 bekommt den ersten verbundenen Controller, Spieler 2 den zweiten, egal in welchem Browser-Slot sie stecken. Controller werden erst nach dem ersten Tastendruck auf dem Pad erkannt (Browser-Regel).
 
@@ -80,7 +90,8 @@ js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte,
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
 js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe
 js/scenes/GameScene.js     Gameplay-Szene: erzeugt die Module aus js/game/ und taktet sie
-js/scenes/PauseScene.js    Pausenmenü (START/P): Weiter, Neustart, Ton, Hauptmenü
+js/scenes/PauseScene.js    Pausenmenü für alle Spiele (START/ESC/P): Weiter, Neustart, Ton, Hauptmenü
+js/scenes/GameSelectScene.js  Hauptmenü: Wahl zwischen Albishorn Climbers und Super Sempach Party
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
 js/scenes/CreditsScene.js  Abspann
@@ -96,6 +107,13 @@ js/game/Unstuck.js         Feststecken erkennen & freischieben
 js/game/CoopRules.js       Kamera, Spielerabstand, Checkpoints, Ziel
 js/game/Hud.js, Fx.js      Anzeigen und visuelle Effekte
 js/game/constants.js       Darstellungsebenen (DEPTH), Farbtasten-Farben
+js/ssp/SspConfig.js        Super Sempach Party: Spieleliste, Party-Ablauf (SspParty), Sounds
+js/ssp/sspArt.js           Code-Grafiken der Minispiele (Pedalo, Ente, Grill, Pokal …)
+js/ssp/MinigameScene.js    Basisklasse: Intro-Karte, Countdown, HUD, Timer, Pause, Ergebnis
+js/ssp/minigames/          Die 5 Minispiele (je eine Szene)
+js/ssp/SspMenuScene.js     SSP-Menü (Party / Minispiel wählen)
+js/ssp/SspScoreScene.js    Zwischenstand im Party-Modus
+js/ssp/SspAwardScene.js    Siegerehrung mit Podest, Pokal und Konfetti
 tools/                     Automatische Tests (nur für Entwickler, siehe unten)
 ```
 
@@ -122,7 +140,13 @@ Für Entwickler (das Spiel selbst braucht weiterhin nur den Browser):
 node tools/run-tests.js
 ```
 
-Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an, und simulierte Controller prüfen die Eingabe (Zuordnung, Bewegung, Sprung, Pausenmenü, Menü, Tastatur parallel). Der Testbrowser hat kein Netzwerk: Lädt das Spiel etwas von aussen nach oder fehlt die Schrift, schlägt der Test fehl. Vorab prüft `tools/test-levels.js` die Leveldaten. JS-Fehler, fehlende Texturen und Level-Probleme lassen den Test scheitern.
+Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an, und simulierte Controller prüfen die Eingabe (Zuordnung, Bewegung, Sprung, Pausenmenü, Menü, Tastatur parallel). Für die Super Sempach Party spielen einfache Bots jedes Minispiel gegen einen untätigen Gegner (der Bot muss gewinnen, auf beiden Seiten), dazu ein kompletter Party-Durchlauf bis zur Siegerehrung, der freie Modus und die Pause im Minispiel. Der Testbrowser hat kein Netzwerk: Lädt das Spiel etwas von aussen nach oder fehlt die Schrift, schlägt der Test fehl. Vorab prüft `tools/test-levels.js` die Leveldaten. JS-Fehler, fehlende Texturen und Level-Probleme lassen den Test scheitern.
 
 - Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
+
+## Neues Sempach-Minispiel bauen
+1. In `js/ssp/minigames/` eine Szene anlegen, die von `MinigameScene` erbt: `constructor() { super('SspMeinSpiel'); this.duration = 45; }`, dazu `setup()` (Aufbau) und `tick(dt)` (Logik). Am Ende `this.finish(1 | 2 | 0)` aufrufen. Ohne `duration` (Rennen) gewinnt, wer zuerst ankommt; mit `duration` gewinnt nach Ablauf der Zeit, wer mehr Punkte (`this.score`) hat.
+2. In `SSP.minigames` (`js/ssp/SspConfig.js`) mit Name, Beschreibung und Steuerung eintragen. Damit erscheint es im Menü und in der Party.
+3. Die Szene in `index.html` und `js/main.js` eintragen (vor `PauseScene`), Grafiken in `js/ssp/sspArt.js` anlegen.
+4. Einen Bot in `tools/harness.js` (`SSP_BOTS`) ergänzen, damit der Test das Spiel automatisch durchspielt.

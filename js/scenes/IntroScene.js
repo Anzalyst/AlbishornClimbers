@@ -1,7 +1,7 @@
 /* =====================================================================
  * IntroScene – zwei Modi:
  *
- *   { mode: 'logo' }   Konsole einschalten → KES-Startlogo → Menü
+ *   { mode: 'logo' }   Konsole einschalten → KES-Startlogo → Spielauswahl
  *                      (Der Tastendruck zum Einschalten erlaubt dem
  *                       Browser auch gleich, Ton abzuspielen.)
  *   { mode: 'story' }  Ebertswil: Tante Edith & Onkel Kurt schicken
@@ -32,7 +32,7 @@ class IntroScene extends Phaser.Scene {
 
     if (this.mode === 'logo') {
       if (this.phase === 'off' && pressed) this.powerOn();
-      else if (this.phase === 'logo' && pressed && this.time.now > this.skippableAt) this.leave('MenuScene');
+      else if (this.phase === 'logo' && pressed && this.time.now > this.skippableAt) this.leave('GameSelectScene');
     } else {
       if (this.backdrop) this.backdrop.update(this.cameras.main, GAME_HEIGHT, delta);
       if (this.dialog) this.dialog.update(this.inputs);
@@ -128,7 +128,7 @@ class IntroScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: license, alpha: 1, duration: 600, delay: 1800 });
 
-    this.time.delayedCall(4800, () => this.leave('MenuScene'));
+    this.time.delayedCall(4800, () => this.leave('GameSelectScene'));
   }
 
   // =====================================================================

@@ -107,6 +107,8 @@ if (result.errors.length) {
 }
 Object.entries(result.scenes).forEach(([key, status]) => console.log(`  Szene ${key.padEnd(18)} ${status}`));
 Object.entries(result.input || {}).forEach(([name, ok]) => console.log(`  Eingabe ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
+(result.sspStats || []).forEach(l => console.log(`  SSP-Statistik  ${l}`));
+Object.entries(result.ssp || {}).forEach(([name, ok]) => console.log(`  SSP     ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 
 if (update) {
   const golden = { levels: result.levels.map(l => ({ index: l.index, hashes: l.hashes, next: l.next })) };

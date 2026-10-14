@@ -21,7 +21,9 @@
 
 const PAD_DEADZONE = 0.35;
 const PAD_BUTTON = { A: 0, B: 1, START: 9, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
-const INPUT_ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'start', 'back'];
+// action = zweiter Knopf (Controller B / Kreis, Tastatur E bzw. Shift) – z. B. für
+// A/B-Wechseln oder den Schild in den Sempach-Minispielen
+const INPUT_ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'action', 'start', 'back'];
 
 class PlayerInput {
   /**
@@ -67,10 +69,10 @@ class PlayerInput {
     INPUT_ACTIONS.forEach(a => { this.prev[a] = this.state[a]; });
 
     const k = this.keys;
-    const held = action => k[action].isDown || !!this.tapped[action];
+    const held = action => !!k[action] && (k[action].isDown || !!this.tapped[action]);
     let left = held('left'), right = held('right');
     let up = held('up'), down = held('down');
-    let jump = held('jump');
+    let jump = held('jump'), action = held('action');
     this.tapped = {};
     let start = false, back = false;   // nur per Gamepad (Tastatur: ESC in den Szenen)
 
@@ -84,11 +86,12 @@ class PlayerInput {
       up = up || ay < -PAD_DEADZONE || btn(PAD_BUTTON.UP);
       down = down || ay > PAD_DEADZONE || btn(PAD_BUTTON.DOWN);
       jump = jump || btn(PAD_BUTTON.A);
+      action = action || btn(PAD_BUTTON.B);
       start = btn(PAD_BUTTON.START);
       back = btn(PAD_BUTTON.B);
     }
 
-    Object.assign(this.state, { left, right, up, down, jump, start, back });
+    Object.assign(this.state, { left, right, up, down, jump, action, start, back });
   }
 
   get left() { return this.state.left; }
@@ -96,6 +99,7 @@ class PlayerInput {
   get up() { return this.state.up; }
   get down() { return this.state.down; }
   get jump() { return this.state.jump; }
+  get action() { return this.state.action; }
 
   /** true nur im ersten Frame, in dem die Aktion gedrückt wird. */
   justPressed(action) { return this.state[action] && !this.prev[action]; }

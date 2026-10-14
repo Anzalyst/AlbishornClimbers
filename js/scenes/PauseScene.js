@@ -1,13 +1,18 @@
 /* =====================================================================
- * PauseScene – Pausenmenü über dem laufenden Level
+ * PauseScene – Pausenmenü über jeder Spielszene
  *
- * Öffnen:  START (Controller) oder P (Tastatur) im Level
+ * Wird von Albishorn-Leveln (GameScene) und allen Sempach-Minispielen
+ * benutzt:
+ *   this.scene.pause();
+ *   this.scene.launch('PauseScene', { parent: this.scene.key, restart: { … } });
+ * Die pausierte Szene braucht eine Methode resumeFromPause().
+ *
+ * Öffnen:  START (Controller), ESC oder P (Tastatur)
  * Bedienung (beide Spieler, Controller oder Tastatur):
  *   Hoch/Runter  Menüpunkt wählen        Sprung       bestätigen
  *   START / B / ESC / P                  weiterspielen
  *
- * Damit ist das Spiel auch ganz ohne Tastatur bedienbar (Konsolen-Betrieb):
- * Neustart, Ton und Hauptmenü gibt es sonst nur über R, M und ESC.
+ * "HAUPTMENÜ" führt zur Spielauswahl (GameSelectScene).
  * ===================================================================== */
 
 class PauseScene extends Phaser.Scene {
@@ -16,7 +21,8 @@ class PauseScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.levelIndex = data.levelIndex || 0;
+    this.parentKey = data.parent || 'GameScene';
+    this.restartData = data.restart || {};
     this.selected = 0;
     this.closing = false;
   }
@@ -31,9 +37,9 @@ class PauseScene extends Phaser.Scene {
 
     this.items = [
       { label: () => 'WEITER', action: () => this.resume() },
-      { label: () => 'LEVEL NEU STARTEN', action: () => this.restart() },
+      { label: () => 'NEU STARTEN', action: () => this.restart() },
       { label: () => (Sfx.muted ? 'TON: AUS' : 'TON: AN'), action: () => { Sfx.toggleMute(); this.refresh(); } },
-      { label: () => 'HAUPTMENÜ', action: () => this.toMenu() }
+      { label: () => 'HAUPTMENÜ', action: () => this.toMainMenu() }
     ];
     this.texts = this.items.map((item, i) => this.add.text(cx, cy - 40 + i * 38, '', {
       fontFamily: FONT, fontSize: '14px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
@@ -79,18 +85,18 @@ class PauseScene extends Phaser.Scene {
     if (this.closing) return;
     this.closing = true;
     this.scene.stop();
-    this.scene.get('GameScene').resumeFromPause();
+    this.scene.get(this.parentKey).resumeFromPause();
   }
 
   restart() {
     this.closing = true;
     this.scene.stop();
-    this.scene.get('GameScene').scene.restart({ levelIndex: this.levelIndex });
+    this.scene.get(this.parentKey).scene.restart(this.restartData);
   }
 
-  toMenu() {
+  toMainMenu() {
     this.closing = true;
-    this.scene.stop('GameScene');
-    this.scene.start('MenuScene');
+    this.scene.stop(this.parentKey);
+    this.scene.start('GameSelectScene');
   }
 }

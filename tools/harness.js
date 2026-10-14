@@ -30,11 +30,12 @@
   // --- Eingaben: Drehbuch statt Tastatur/Gamepad -------------------------
   const scripted = [{}, {}];
   const realInputUpdate = PlayerInput.prototype.update;   // für den Gamepad-Test
-  PlayerInput.prototype.update = function () {
+  const scriptedInputUpdate = function () {
     INPUT_ACTIONS.forEach(a => { this.prev[a] = this.state[a]; });
     const s = scripted[this.padIndex] || {};
     INPUT_ACTIONS.forEach(a => { this.state[a] = !!s[a]; });
   };
+  PlayerInput.prototype.update = scriptedInputUpdate;
   const setInput = (i, actions) => { scripted[i] = actions || {}; };
 
   // --- Spiel manuell takten ------------------------------------------------
@@ -315,7 +316,11 @@
     check('Pause → Ton umschalten', Sfx.muted !== mutedBefore);
     tap(padA, 0); if (Sfx.muted !== mutedBefore) Sfx.toggleMute();   // Zustand zurücksetzen
     tap(padA, 13); tap(padA, 0); step(3);
-    check('Pause → Hauptmenü', active('MenuScene') && !active('GameScene') && !active('PauseScene'));
+    check('Pause → Hauptmenü (Spielauswahl)', active('GameSelectScene') && !active('GameScene') && !active('PauseScene'));
+
+    // Spielauswahl: A auf der ersten Karte → Albishorn-Menü
+    step(20); tap(padA, 0); step(30);
+    check('Spielauswahl → Albishorn Climbers', active('MenuScene'));
 
     // 9) Menü per Controller: runter, A → Passwort-Eingabe, B → zurück
     step(30);
@@ -324,6 +329,8 @@
     check('Menü: Passwort per Controller öffnen', menu.mode === 'password');
     tap(padA, 1);
     check('Menü: B geht zurück', menu.mode === 'main');
+    tap(padA, 1); step(30);
+    check('Albishorn-Menü: B → Spielauswahl', active('GameSelectScene'));
 
     // 10) Tastatur: P öffnet die Pause, ESC schliesst sie (statt ins Menü zu springen)
     startLevel();
@@ -358,6 +365,193 @@
     check('Startbildschirm: A schaltet ein', game.scene.getScene('IntroScene').phase !== 'off');
 
     Object.defineProperty(navigator, 'getGamepads', { value: () => [], configurable: true });
+  }
+
+  // --- Super Sempach Party: Bots spielen die Minispiele ------------------
+  // Jeder Bot liefert pro Frame die Aktionen für eine Spielfigur (id 1/2).
+  // f = Frame-Zähler, mem = Gedächtnis des Bots. Kurze Tipper entstehen,
+  // indem eine Aktion nur in einzelnen Frames gesetzt ist.
+  const SSP_BOTS = {
+    SspPedalo(sc, id, f, mem) {
+      const b = sc.boats[id - 1];
+      const a = {};
+      if (f % 8 === 0) a.jump = true;
+      if (f % 8 === 4) a.action = true;
+      const duck = sc.ducks.find(d => d.id === id && !d.hit && d.track === b.track && d.x - (b.x + 66) > -4 && d.x - (b.x + 66) < 60);
+      if (duck && f % 2 === 0) a[b.track ? 'up' : 'down'] = true;
+      return a;
+    },
+    SspWasser(sc, id, f, mem) {
+      const s = sc.sides[id - 1];
+      const t = s.targets.find(x => !x.down);
+      if (!t) return {};
+      const need = (WASSER.groundY - 40 - t.y) / WASSER.reach;
+      const a = {};
+      if (Math.abs(s.aimX - t.x) > 4) a[s.aimX < t.x ? 'right' : 'left'] = true;
+      mem.mode = mem.mode || 'pump';
+      if (mem.mode === 'pump' && s.pressure >= need + 5) mem.mode = 'spray';
+      if (mem.mode === 'spray' && s.pressure < need - 5) mem.mode = 'pump';
+      if (mem.mode === 'pump') { if (f % 4 === 0) a.up = true; if (f % 4 === 2) a.down = true; }
+      else if (Math.abs(s.aimX - t.x) <= 6) a.jump = true;
+      return a;
+    },
+    SspGrill(sc, id, f, mem) {
+      const gr = sc.grills[id - 1];
+      const ready = gr.sausages.map((s, i) => ({ s, i })).filter(({ s }) => !s.gone && s.cook[s.down] >= 0.8 && s.cook[s.down] <= 0.97)
+        .sort((x, y) => y.s.cook[y.s.down] - x.s.cook[x.s.down])[0];
+      if (!ready || f % 2) return {};
+      if (ready.i < gr.cursor) return { left: true };
+      if (ready.i > gr.cursor) return { right: true };
+      return { jump: true };
+    },
+    SspRundkurs(sc, id, f, mem) {
+      const l = sc.lanes[id - 1];
+      const a = {};
+      if (f % 24 === 0) { mem.side = !mem.side; a[mem.side ? 'left' : 'right'] = true; }
+      const next = l.obstacles.find(o => !o.hit && o.d - l.pos > 0);
+      if (next && next.d - l.pos < 70 && next.d - l.pos > 20 && l.y === 0 && f % 2 === 0) a.jump = true;
+      return a;
+    },
+    SspBrennessel(sc, id, f, mem) {
+      const me = sc.runner(id), other = sc.runner(3 - id);
+      const dx = other.sprite.x - me.sprite.x, dy = other.sprite.y - me.sprite.y;
+      const a = {};
+      if (sc.it === id) {
+        a[dx > 0 ? 'right' : 'left'] = Math.abs(dx) > 4;
+        if (dy < -40 && f % 20 === 0) a.jump = true;
+      } else {
+        a[dx > 0 ? 'left' : 'right'] = true;
+        if ((me.sprite.x < 60 || me.sprite.x > GAME_WIDTH - 60) && f % 20 === 0) a.jump = true;
+        if (Math.abs(dx) < 70 && Math.abs(dy) < 50 && me.cooldown <= 0 && f % 2 === 0) a.action = true;
+      }
+      return a;
+    }
+  };
+  const MINIGAMES = Object.keys(SSP_BOTS);
+
+  function runSspTests() {
+    syncClock(LEVELS.length + 40);
+    PlayerInput.prototype.update = scriptedInputUpdate;
+    out.ssp = {};
+    const check = (name, ok, detail = '') => {
+      out.ssp[name] = !!ok;
+      if (!ok) out.errors.push(`SSP-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+    const active = k => game.scene.isActive(k);
+    const missing = sc => sc.children.list.filter(o => o.texture && o.texture.key === '__MISSING').length;
+
+    /** Ein Minispiel mit Bots für die angegebenen Spieler spielen; liefert die Szene am Ende. */
+    function play(key, botIds, maxFrames = 6000) {
+      SspParty.state = null;
+      setInput(0); setInput(1);
+      startScene(key);
+      const sc = game.scene.getScene(key);
+      sc.startCountdown();
+      const mem = { 1: {}, 2: {} };
+      let frames = 0;
+      for (let f = 0; f < maxFrames && !sc.finished; f++) {
+        [1, 2].forEach(id => setInput(id - 1, sc.started && botIds.includes(id) ? SSP_BOTS[key](sc, id, f, mem[id]) : {}));
+        step();
+        if (sc.started) frames++;
+      }
+      setInput(0); setInput(1);
+      out.sspStats = out.sspStats || [];
+      out.sspStats.push(`${key} Bots [${botIds}]: ${(frames / 60).toFixed(1)} s Spielzeit, Punkte ${sc.score[1]}:${sc.score[2]}, Sieger ${sc.winner}`);
+      return sc;
+    }
+
+    // 1) Jedes Minispiel: Bot gegen untätigen Gegner – der Bot muss gewinnen (beide Seiten)
+    MINIGAMES.forEach(key => {
+      [1, 2].forEach(id => {
+        if (key === 'SspBrennessel' && id === 2) return;   // Jessica beginnt mit dem Strauch – ein untätiger Fänger trifft nie
+        reseed(500 + id);
+        const sc = play(key, [id]);
+        check(`${SSP.byKey(key).name}: ${sspPlayer(id).name}-Bot gewinnt`, sc.finished && sc.winner === id,
+          `(beendet=${sc.finished}, Sieger=${sc.winner}, Punkte ${sc.score[1]}:${sc.score[2]})`);
+        if (missing(sc)) check(`${key}: Texturen`, false, `${missing(sc)} fehlende Texturen`);
+      });
+    });
+
+    // 2) Brennessel: Bot gegen Bot – der Strauch wechselt in beide Richtungen
+    reseed(77);
+    let sc = play('SspBrennessel', [1, 2]);
+    check('BRENNESSEL-ALARM!: Rollentausch in beide Richtungen', sc.finished && sc.score[1] > 0 && sc.score[2] > 0, `(Punkte ${sc.score[1]}:${sc.score[2]})`);
+
+    // 3) Brennessel: Schild wehrt einen Treffer ab
+    startScene('SspBrennessel');
+    sc = game.scene.getScene('SspBrennessel');
+    sc.startCountdown(); step(180);
+    sc.runner(1).sprite.body.reset(400, 470); sc.runner(2).sprite.body.reset(420, 470);
+    sc.runner(2).shield = 0.5;
+    step();
+    check('BRENNESSEL-ALARM!: Schild wehrt Treffer ab', sc.score[1] === 0 && sc.it === 1 && sc.runner(1).stun > 0);
+
+    // 4) Pause im Minispiel: START → Pause, "Neu starten", ESC → Pause, "Hauptmenü"
+    startScene('SspGrill');
+    sc = game.scene.getScene('SspGrill');
+    sc.startCountdown(); step(200);
+    const tapIn = (i, action) => { setInput(i, { [action]: true }); step(); setInput(i); step(); };
+    tapIn(0, 'start'); step(2);
+    check('Minispiel: START öffnet die Pause', active('PauseScene') && game.scene.isPaused('SspGrill'));
+    tapIn(1, 'down'); tapIn(1, 'jump'); step(3);
+    check('Minispiel: Pause → Neu starten', active('SspGrill') && game.scene.getScene('SspGrill').introActive);
+    const esc = new KeyboardEvent('keydown', { bubbles: true });
+    Object.defineProperty(esc, 'keyCode', { value: 27 });
+    window.dispatchEvent(esc); step(); window.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true })); step(2);
+    check('Minispiel: ESC öffnet die Pause', active('PauseScene'));
+    tapIn(0, 'down'); tapIn(0, 'down'); tapIn(0, 'down'); tapIn(0, 'jump'); step(3);
+    check('Minispiel: Pause → Hauptmenü', active('GameSelectScene') && !active('SspGrill') && !active('PauseScene'));
+
+    // 5) Spielauswahl → SSP-Menü → Party: alle 5 Spiele mit Jessica-Bot, Zwischenstände, Siegerehrung
+    reseed(900);
+    setInput(0); setInput(1);
+    startScene('GameSelectScene'); step(20);
+    tapIn(0, 'right'); tapIn(0, 'jump'); step(30);
+    check('Spielauswahl → Super Sempach Party', active('SspMenuScene'));
+    tapIn(0, 'jump'); step(30);   // PARTY: ALLE 5 SPIELE
+    const seen = [], scoreScreens = [];
+    const mem = { 1: {} };
+    for (let f = 0; f < 40000 && !active('SspAwardScene'); f++) {
+      const key = MINIGAMES.find(k => active(k));
+      let a = {};
+      if (key) {
+        const g = game.scene.getScene(key);
+        if (!seen.includes(key)) { seen.push(key); mem[1] = {}; }
+        if (g.introActive) a = f % 4 === 0 ? { jump: true } : {};
+        else if (g.started && !g.finished) a = SSP_BOTS[key](g, 1, f, mem[1]);
+      } else if (active('SspScoreScene')) {
+        const s = game.scene.getScene('SspScoreScene');
+        if (!scoreScreens.includes(SspParty.state.index)) scoreScreens.push(SspParty.state.index);
+        if (s.ready && f % 4 === 0) a = { jump: true };
+      }
+      setInput(0, a);
+      step();
+    }
+    setInput(0);
+    check('Party: alle 5 Minispiele gespielt', seen.join() === MINIGAMES.join(), `(${seen})`);
+    check('Party: Zwischenstand nach Spiel 1–4', scoreScreens.length === 4);
+    check('Party: Siegerehrung für Jessica', active('SspAwardScene') && SspParty.champion() === 1 && SspParty.state.wins[1] === 5,
+      `(Siege ${SspParty.state && SspParty.state.wins[1]}:${SspParty.state && SspParty.state.wins[2]})`);
+    step(150);
+    const award = game.scene.getScene('SspAwardScene');
+    check('Siegerehrung: Pokal und Konfetti', award.children.list.some(o => o.texture && o.texture.key === 'ssp_trophy') &&
+      award.children.list.some(o => o.type === 'ParticleEmitter'));
+    tapIn(0, 'jump'); step(40);
+    check('Siegerehrung → SSP-Menü', active('SspMenuScene'));
+
+    // 6) Freier Modus: ein Minispiel wählen → danach direkt Siegerehrung
+    tapIn(0, 'down'); tapIn(0, 'jump'); step(5);   // MINISPIEL WÄHLEN
+    tapIn(0, 'down'); tapIn(0, 'jump'); step(40);  // WASSER-MARSCH!
+    check('Freier Modus: Minispiel startet', active('SspWasser'));
+    const w = game.scene.getScene('SspWasser');
+    w.startCountdown();
+    const wm = {};
+    for (let f = 0; f < 6000 && !active('SspAwardScene'); f++) {
+      setInput(1, w.started && !w.finished ? SSP_BOTS.SspWasser(w, 2, f, wm) : {});
+      step();
+    }
+    setInput(1);
+    check('Freier Modus: Siegerehrung für Simon', active('SspAwardScene') && SspParty.state.mode === 'single' && SspParty.champion() === 2);
   }
 
   /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
@@ -404,6 +598,7 @@
       for (let i = 0; i < LEVELS.length; i++) runLevel(i);
       runScenes();
       runInputTests();
+      runSspTests();
     } catch (e) {
       out.errors.push(`harness: ${e.stack || e}`);
     }

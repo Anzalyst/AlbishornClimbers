@@ -74,7 +74,7 @@ const PLAYER_DEFS = [
     color: 0x1b6ee8,       // blau – wie Jessicas Rucksack
     colorCss: '#5aa2ff',
     texture: 'hiker1',
-    keys: { left: 'A', right: 'D', up: 'W', down: 'S', jump: 'SPACE' },
+    keys: { left: 'A', right: 'D', up: 'W', down: 'S', jump: 'SPACE', action: 'E' },
     padIndex: 0
   },
   {
@@ -83,7 +83,7 @@ const PLAYER_DEFS = [
     color: 0xd7263d,       // rot – wie Simons Rucksack
     colorCss: '#ff5a6e',
     texture: 'hiker2',
-    keys: { left: 'LEFT', right: 'RIGHT', up: 'UP', down: 'DOWN', jump: 'ENTER' },
+    keys: { left: 'LEFT', right: 'RIGHT', up: 'UP', down: 'DOWN', jump: 'ENTER', action: 'SHIFT' },
     padIndex: 1
   }
 ];
