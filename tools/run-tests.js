@@ -81,6 +81,15 @@ if (dump) {
 }
 
 console.log(`Spielstand: ${root}`);
+
+// Leveldaten ohne Browser prüfen (ab Refactoring-Stufe 5 vorhanden)
+if (fs.existsSync(path.join(root, 'js/game/LevelParser.js'))) {
+  const { count, problems } = require('./test-levels').checkLevels(root);
+  console.log(`  Leveldaten: ${problems.length ? `${problems.length} Probleme` : `ok (${count} Level)`}`);
+  problems.forEach(p => console.log(`    ${p}`));
+  if (problems.length) failed = true;
+}
+
 result.warnings.forEach(w => console.log(`  Warnung: ${w}`));
 if (result.errors.length) {
   failed = true;

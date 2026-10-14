@@ -11,7 +11,7 @@
  * GameScene bleiben unverändert.
  *
  * Ablauf:
- *   beim Kartenaufbau  isTrigger/isBoard/isTarget → addTrigger/addSequenceBoard/addTargetCell
+ *   beim Kartenaufbau  addTrigger / addSequenceBoard / addTargetCell (LevelBuilder)
  *   danach             finish()      Ziele fertig bauen, Startzustand setzen
  *   jeden Frame        update(delta) Förderbänder → Auslöser → Ziele → Aufzüge
  *                      render()      rein optische Nachführung (z. B. Ketten)
@@ -28,7 +28,6 @@ class MechanicsSystem {
     this.targetCfg = {};
     Object.entries(level.targets || {}).forEach(([ch, t]) => {
       this.targetCfg[ch] = typeof t === 'string' ? { kind: t } : Object.assign({}, t);
-      if (!TARGET_TYPES[this.targetCfg[ch].kind]) console.warn(`Unbekannter Ziel-Typ "${this.targetCfg[ch].kind}" (Zeichen "${ch}")`);
     });
 
     // Farbtasten-Sequenzen wirken wie ein Auslöser mit Zielen
@@ -44,18 +43,6 @@ class MechanicsSystem {
       if (cfg.board) this.boardChars[cfg.board] = id;
     });
   }
-
-  // ---------------------------------------------------------------------
-  // Fragen für den Kartenaufbau
-  // ---------------------------------------------------------------------
-  isTrigger(ch) { return !!this.triggerCfg[ch]; }
-  isBoard(ch) { return !!this.boardChars[ch]; }
-  isTarget(ch) { return !!this.targetCfg[ch]; }
-  typeOf(ch) { return this.targetCfg[ch] ? TARGET_TYPES[this.targetCfg[ch].kind] || {} : null; }
-  /** Zählt dieses Ziel-Zeichen als festes Gelände (z. B. Förderband)? */
-  isTerrain(ch) { const t = this.typeOf(ch); return !!(t && t.terrain); }
-  /** Zählt dieses Ziel-Zeichen als Wasser (für Wellen & Gras-Erkennung)? */
-  isWater(ch) { const t = this.typeOf(ch); return !!(t && t.water); }
 
   // ---------------------------------------------------------------------
   // Aufbau

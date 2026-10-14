@@ -68,7 +68,7 @@ const TARGET_TYPES = {
   // wieder an. Wer dann noch auf einem Stein im Bach steht, wird nass.
   water: {
     water: true,
-    cell: (sys, group, c, r, surface) => sys.scene.createWaterTile(c * TILE + TILE / 2, r * TILE + TILE / 2, surface, c),
+    cell: (sys, group, c, r, surface) => addWaterTile(sys.scene, c * TILE + TILE / 2, r * TILE + TILE / 2, surface, c),
     apply(sys, group, drained, instant) {
       const scene = sys.scene;
       const ROW_DELAY = 260;
