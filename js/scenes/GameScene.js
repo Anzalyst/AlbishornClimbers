@@ -11,9 +11,8 @@
  * Die Spieler kollidieren NICHT miteinander und können nicht
  * aufeinander stehen. Koop entsteht nur über Mechaniken.
  *
- * Darstellung: Jeder Spieler hat einen unsichtbaren Physik-Körper
- * (p.sprite) und eine sichtbare Figur (p.view), die gestaucht/gestreckt
- * werden kann, ohne die Physik zu beeinflussen.
+ * Die Spielfiguren selbst stehen in js/game/Player.js, Effekte in Fx.js,
+ * Anzeigen in Hud.js.
  * ===================================================================== */
 
 class GameScene extends Phaser.Scene {
@@ -482,27 +481,7 @@ class GameScene extends Phaser.Scene {
   createPlayers() {
     this.players = PLAYER_DEFS.map((def, i) => {
       const spawn = this.spawns[def.id] || { x: 64 + i * 48, y: this.worldHeight - 3 * TILE };
-      // Unsichtbarer Physik-Körper …
-      const sprite = this.physics.add.sprite(spawn.x, spawn.y, def.texture, 0).setVisible(false);
-      sprite.body.setSize(14, 28).setOffset(5, 4);
-      sprite.body.setMaxVelocityY(PHYSICS.MAX_FALL);
-      sprite.setCollideWorldBounds(true);
-      // … und die sichtbare Figur (Ursprung an den Füssen für Stauchen/Strecken)
-      const view = this.add.sprite(spawn.x, spawn.y + 16, def.texture, 0).setOrigin(0.5, 1).setDepth(DEPTH.PLAYER);
-      const shadow = this.add.image(spawn.x, spawn.y + 17, 'shadow').setDepth(DEPTH.SHADOW).setAlpha(0.35);
-
-      return {
-        def,
-        input: this.inputs[i],
-        sprite, view, shadow,
-        coyote: 0,           // verbleibende "Coyote Time" in ms
-        jumpBuffer: 0,       // gemerkter Sprungwunsch in ms
-        checkpoint: { x: spawn.x, y: spawn.y },
-        atGoal: false,
-        respawning: false,
-        sx: 1, sy: 1,        // Stauchen/Strecken der sichtbaren Figur
-        onGround: true, wasOnGround: true, prevVy: 0, nextDust: 0, stuckFrames: 0
-      };
+      return new Player(this, def, this.inputs[i], spawn);
     });
   }
 
@@ -523,7 +502,7 @@ class GameScene extends Phaser.Scene {
     // Wasser = zurück zum Checkpoint
     this.physics.add.overlap(sprites, this.water, sprite => {
       const player = this.players.find(p => p.sprite === sprite);
-      this.respawn(player, 'water');
+      if (player) player.respawn('water');
     });
 
     // Schiebbare Blöcke: liegen auf Gelände, Spieler stehen auf ihnen
@@ -567,7 +546,7 @@ class GameScene extends Phaser.Scene {
     this.inputs.forEach(i => i.update());
 
     if (!this.completed) {
-      this.players.forEach(p => this.updatePlayer(p, time, delta));
+      this.players.forEach(p => p.update(time, delta));
       this.limitPlayerSpread();
       this.updateBlocks(time);
       this.updateConveyors(delta);
@@ -580,91 +559,15 @@ class GameScene extends Phaser.Scene {
     }
 
     this.players.forEach(p => {
-      if (p.sprite.y > this.worldHeight + 48) this.respawn(p); // aus der Welt gefallen
+      if (p.sprite.y > this.worldHeight + 48) p.respawn(); // aus der Welt gefallen
     });
 
     this.updateDrawbridgeChains();
-    this.updateViews(time, delta);
+    this.players.forEach(p => p.updateView(time, delta));
     this.hud.updateInfoSigns(this.infoSigns, this.players);
     this.hud.update(this.players);
     this.updateCameraTarget();
     this.backdrop.update(this.cameras.main, this.worldHeight, delta);
-  }
-
-  /** Bewegung, Sprung & Animation eines Spielers. */
-  updatePlayer(p, time, delta) {
-    const { sprite, input, view } = p;
-    const body = sprite.body;
-    if (p.respawning) return;
-
-    const onGround = body.blocked.down || body.touching.down;
-    p.onGround = onGround;
-
-    // Coyote Time & Jump Buffer → Sprünge fühlen sich fair an
-    p.coyote = onGround ? PHYSICS.COYOTE_MS : p.coyote - delta;
-    p.jumpBuffer = input.justPressed('jump') ? PHYSICS.JUMP_BUFFER_MS : p.jumpBuffer - delta;
-
-    // Horizontal: sanft auf Zielgeschwindigkeit beschleunigen
-    const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-    const accel = (onGround ? PHYSICS.ACCEL_GROUND : PHYSICS.ACCEL_AIR) * delta / 1000;
-    const diff = dir * PHYSICS.RUN_SPEED - body.velocity.x;
-    body.setVelocityX(body.velocity.x + Phaser.Math.Clamp(diff, -accel, accel));
-
-    // Springen (mit Strecken der Figur)
-    if (p.jumpBuffer > 0 && p.coyote > 0) {
-      body.setVelocityY(-PHYSICS.JUMP_VELOCITY);
-      p.jumpBuffer = 0;
-      p.coyote = 0;
-      p.sx = 0.8; p.sy = 1.22;
-      this.fx.dust(sprite.x, body.bottom, 4);
-      Sfx.play(this, 'jump');
-    }
-    // Sprungtaste früh losgelassen → niedriger springen
-    if (input.justReleased('jump') && body.velocity.y < 0) {
-      body.setVelocityY(body.velocity.y * PHYSICS.JUMP_CUT);
-    }
-
-    // Landung: kurz stauchen + Staub
-    if (onGround && !p.wasOnGround && p.prevVy > 220) {
-      p.sx = 1.25; p.sy = 0.8;
-      this.fx.dust(sprite.x, body.bottom, 6);
-      Sfx.play(this, 'land');
-    }
-    // Laufstaub
-    if (onGround && Math.abs(body.velocity.x) > 150 && time > p.nextDust) {
-      this.fx.dust(sprite.x - Math.sign(body.velocity.x) * 6, body.bottom, 2);
-      p.nextDust = time + 170;
-    }
-    p.wasOnGround = onGround;
-    p.prevVy = body.velocity.y;
-
-    // Blickrichtung & Animation (auf der sichtbaren Figur)
-    if (dir !== 0) view.setFlipX(dir < 0);
-    if (!onGround) {
-      view.anims.stop();
-      view.setFrame(charFrame(p.def.texture, body.velocity.y < 0 ? 'jump' : 'fall'));
-    } else if (Math.abs(body.velocity.x) > 20) {
-      view.anims.play(`${p.def.texture}-walk`, true);
-    } else {
-      view.anims.stop();
-      view.setFrame(charFrame(p.def.texture, 'idle'));
-    }
-  }
-
-  /** Sichtbare Figuren, Schatten und Stauchen/Strecken nachführen. */
-  updateViews(time, delta) {
-    const relax = 1 - Math.pow(0.8, delta / 16.67);
-    this.players.forEach(p => {
-      const b = p.sprite.body;
-      p.sx += (1 - p.sx) * relax;
-      p.sy += (1 - p.sy) * relax;
-      let sy = p.sy;
-      if (p.onGround && Math.abs(b.velocity.x) < 20) sy *= 1 + Math.sin(time / 420) * 0.015;   // ruhiges Atmen
-      p.view.setPosition(p.sprite.x, p.sprite.y + 16).setScale(p.sx, sy);
-      p.shadow.setPosition(p.sprite.x, b.bottom + 1)
-        .setAlpha(p.respawning ? 0 : (p.onGround ? 0.35 : 0.12))
-        .setScale(p.onGround ? 1 : 0.7, 1);
-    });
   }
 
   /** Beide Spieler müssen gemeinsam im Bild bleiben. */
@@ -1096,7 +999,7 @@ class GameScene extends Phaser.Scene {
   }
 
   // =====================================================================
-  // CHECKPOINTS, SAMMELOBJEKTE, RESPAWN
+  // CHECKPOINTS & SAMMELOBJEKTE
   // =====================================================================
   updateCheckpoints() {
     this.checkpoints.forEach(cp => {
@@ -1127,35 +1030,6 @@ class GameScene extends Phaser.Scene {
     Sfx.play(this, 'collect');
   }
 
-  respawn(player, reason = 'fall') {
-    if (!player || player.respawning || this.completed) return;
-    player.respawning = true;
-    const s = player.sprite;
-    s.body.setVelocity(0, 0);
-    s.body.enable = false;
-    if (reason === 'water') {
-      Sfx.play(this, 'splash');
-      this.fx.splash(s.x, s.y);
-    } else {
-      Sfx.play(this, 'respawn');
-    }
-    this.cameras.main.shake(150, 0.006);
-
-    this.tweens.add({
-      targets: player.view, alpha: 0, duration: 250,
-      onComplete: () => {
-        s.setPosition(player.checkpoint.x, player.checkpoint.y);
-        s.body.enable = true;
-        s.body.reset(player.checkpoint.x, player.checkpoint.y);
-        player.respawning = false;
-        player.sx = 0.7; player.sy = 1.3;
-        // kurz blinken
-        this.tweens.add({ targets: player.view, alpha: { from: 0.2, to: 1 }, duration: 120, repeat: 4, yoyo: true,
-          onComplete: () => player.view.setAlpha(1) });
-      }
-    });
-  }
-
   // =====================================================================
   // ZIEL
   // =====================================================================
@@ -1176,13 +1050,7 @@ class GameScene extends Phaser.Scene {
 
   completeLevel() {
     this.completed = true;
-    this.players.forEach(p => {
-      p.sprite.body.setVelocityX(0);
-      p.view.anims.stop();
-      p.view.setFrame(charFrame(p.def.texture, 'jump'));
-      p.sx = 0.8; p.sy = 1.25;
-      this.tweens.add({ targets: p.sprite, y: p.sprite.y - 20, duration: 220, yoyo: true, repeat: 2, ease: 'Quad.out' });
-    });
+    this.players.forEach(p => p.celebrate());
     Sfx.play(this, 'win');
     this.toast('GESCHAFFT!', '#7dff9a');
     this.fx.confetti();
