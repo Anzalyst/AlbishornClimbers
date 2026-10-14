@@ -62,8 +62,9 @@
     const rows = [];
     const visit = o => {
       if (o.type === 'ParticleEmitter') return;
-      // Texte haben eine zufällige interne Textur-ID → nur Inhalt vergleichen
-      const key = o.texture && o.type !== 'Text' ? o.texture.key : '';
+      // Texte und TileSprites haben eine zufällige interne Textur-ID →
+      // bei TileSprites die Quelltextur nehmen, bei Texten nur den Inhalt
+      const key = o.displayTexture ? o.displayTexture.key : (o.texture && o.type !== 'Text' ? o.texture.key : '');
       if (SKIP_TEXTURES.has(key)) return;
       if (key === '__MISSING') out.errors.push(`Fehlende Textur (${o.type} bei ${o.x},${o.y})`);
       let s = [o.type, key, o.frame ? o.frame.name : '', r1(o.x), r1(o.y), o.visible ? 1 : 0, r1(o.alpha),
