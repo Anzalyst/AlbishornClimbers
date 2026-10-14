@@ -49,10 +49,12 @@ function buildPage() {
   const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const base = pathToFileURL(root + path.sep).href;
   const harness = pathToFileURL(path.join(__dirname, 'harness.js')).href;
+  const puzzles = pathToFileURL(path.join(__dirname, 'harness-puzzles.js')).href;
   return index
     .replace(/<head>/i, `<head>\n<base href="${base}">`)
     .replace(/<script/i, `<script>window.TEST_OPTS = ${JSON.stringify({ dump })};</script>\n<script`)
-    .replace(/<\/body>/i, `<pre id="result" style="display:none"></pre>\n<script src="${harness}"></script>\n</body>`);
+    .replace(/<\/body>/i, `<pre id="result" style="display:none"></pre>\n<script src="${puzzles}"></script>
+<script src="${harness}"></script>\n</body>`);
 }
 
 function run() {
@@ -113,6 +115,7 @@ Object.entries(result.input || {}).forEach(([name, ok]) => console.log(`  Eingab
 if (result.family) console.log(`  Familie  Gipfel: ${(result.family.finale || []).length}/8 da, ${result.family.partyHats} Partyhütchen | Abspann: ${(result.family.credits || []).join(', ')}`);
 (result.sspStats || []).forEach(l => console.log(`  SSP-Statistik  ${l}`));
 Object.entries(result.ssp || {}).forEach(([name, ok]) => console.log(`  SSP     ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
+Object.entries(result.puzzles || {}).forEach(([name, ok]) => console.log(`  Rätsel  ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 
 if (update) {
   const golden = { levels: result.levels.map(l => ({ index: l.index, hashes: l.hashes, gameplay: l.gameplay, next: l.next })) };

@@ -3,6 +3,7 @@
  *
  * Bedienung (beide Spieler, Tastatur oder Controller):
  *   Hoch/Runter  Menüpunkt wählen        Sprung / Start  bestätigen
+ *   Menüpunkte: Spiel starten, Passwort, Chopfnüss (Bonus-Rätsel), Hauptmenü
  *   ESC / Controller-B                   zurück zur Spielauswahl
  * Passwort-Modus (wie bei Aladdin auf dem SNES):
  *   Links/Rechts Stelle wechseln         Hoch/Runter     Ziffer ändern
@@ -162,6 +163,7 @@ class MenuScene extends Phaser.Scene {
       Sfx.play(this, 'select');
       if (this.selected === 0) this.startScene('IntroScene', { mode: 'story' });   // Story, dann Level 1
       else if (this.selected === 1) this.openPassword();
+      else if (this.selected === 2) this.startLevel(STORY_LEVELS);                // erste Chopfnuss
       else this.startScene('GameSelectScene');
     } else if (this.anyPressed('back')) {
       this.startScene('GameSelectScene');
@@ -232,7 +234,7 @@ class MenuScene extends Phaser.Scene {
     }
     const levelIndex = Passwords.findLevel(code);
     if (levelIndex >= 0) {
-      this.pwMessage.setColor('#7dff9a').setText(`${TXT.level} ${levelIndex + 1}: ${LEVELS[levelIndex].name}`);
+      this.pwMessage.setColor('#7dff9a').setText(`${levelLabel(levelIndex)}: ${LEVELS[levelIndex].name}`);
       Sfx.play(this, 'checkpoint');
       this.time.delayedCall(700, () => this.startLevel(levelIndex));
     } else {

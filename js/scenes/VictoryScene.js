@@ -1,7 +1,8 @@
 /* =====================================================================
  * VictoryScene – Level geschafft!
  * Zeigt gesammelte Edelweiss und das Passwort für das nächste Level.
- * (Nach dem letzten Level startet stattdessen die FinaleScene.)
+ * (Nach dem letzten Level der Geschichte startet stattdessen die FinaleScene;
+ *  nach der letzten Chopfnuss geht es zurück ins Menü.)
  * ===================================================================== */
 
 class VictoryScene extends Phaser.Scene {
@@ -14,6 +15,8 @@ class VictoryScene extends Phaser.Scene {
     this.collected = data.collected || 0;
     this.total = data.total || 0;
     this.leaving = false;
+    this.isBonus = this.levelIndex >= STORY_LEVELS;
+    this.allDone = this.levelIndex >= LEVELS.length - 1;   // letzte Chopfnuss geknackt
   }
 
   create() {
@@ -27,7 +30,7 @@ class VictoryScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 5, lineSpacing: 10
     }).setOrigin(0.5);
 
-    text(80, TXT.victoryTitle, 28, '#f7d117');
+    text(80, this.isBonus ? TXT.bonusTitle : TXT.victoryTitle, 28, '#f7d117');
     text(130, LEVELS[this.levelIndex].name, 14);
 
     // Edelweiss-Ausbeute
@@ -37,7 +40,8 @@ class VictoryScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     if (this.total > 0 && this.collected === this.total) text(215, TXT.victoryAll, 9, '#7dff9a');
 
-    this.showPassword(cx);
+    if (this.allDone) text(290, TXT.bonusAllDone, 14, '#7dff9a');
+    else this.showPassword(cx);
 
     // Die beiden Wanderer jubeln
     [['hiker1', cx - 120], ['hiker2', cx + 120]].forEach(([key, x], i) => {
@@ -58,7 +62,7 @@ class VictoryScene extends Phaser.Scene {
   /** Passwort für das nächste Level in vier SNES-artigen Kästchen. */
   showPassword(cx) {
     const code = Passwords.forLevel(this.levelIndex + 1);
-    this.add.text(cx, 245, tx(TXT.victoryPassword, { n: this.levelIndex + 2 }), {
+    this.add.text(cx, 245, tx(TXT.victoryPassword, { label: levelLabel(this.levelIndex + 1) }), {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
     code.split('').forEach((digit, i) => {
@@ -77,7 +81,8 @@ class VictoryScene extends Phaser.Scene {
     if (!this.ready) return;
 
     if (this.inputs.some(i => i.justPressed('jump') || i.justPressed('start'))) {
-      this.leave('GameScene', { levelIndex: this.levelIndex + 1 });
+      if (this.allDone) this.leave('MenuScene');
+      else this.leave('GameScene', { levelIndex: this.levelIndex + 1 });
     } else if (this.inputs.some(i => i.justPressed('back'))) {
       this.leave('MenuScene');   // Controller: B = wie ESC
     }

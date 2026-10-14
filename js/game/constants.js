@@ -9,4 +9,4 @@ const DEPTH = {
 };
 
 // Farben der Farbtasten-Sequenzen
-const SEQ_COLORS = { red: 0xe0413a, blue: 0x3a7be0, yellow: 0xf2c230 };
+const SEQ_COLORS = { red: 0xe0413a, blue: 0x3a7be0, yellow: 0xf2c230, green: 0x3ab54a };

@@ -18,7 +18,7 @@ const TXT = {
 
   // Titelmenü
   menuSubtitle: 'Vo Ebertswil ufe ufs Albishorn',
-  menuItems: ['SPIIL STARTE', 'PASSWORT', 'HAUPTMENÜ'],
+  menuItems: ['SPIIL STARTE', 'PASSWORT', 'CHOPFNÜSS', 'HAUPTMENÜ'],
   passwordTitle: 'PASSWORT IIGÄ',
   passwordHelp: 'GUMP = OK   ESC = ZRUGG',
   passwordSecret: 'PSST … E ÜBERRASCHIG!',
@@ -30,6 +30,7 @@ const TXT = {
 
   // Im Level
   level: 'LEVEL',
+  bonusLevel: 'CHOPFNUSS',
   hudKeys: 'ESC/START Pause  R Nomal  M Ton',
   atGoal: '✔ AM ZIIL',
   passwordLabel: 'Passwort',
@@ -47,6 +48,13 @@ const TXT = {
   leverOff: 'Hebel zruggstellt',
   seqRight: 'Richtigi Reihefolg!',
   seqWrong: 'Falschi Reihefolg!',
+  seqClock: 'D Uhr lauft: {s} Sekunde!',
+  seqTimeout: 'Z langsam! Nomal vo vorne.',
+  timeUp: 'Ziit abgloffe!',
+  andPartial: '{n} vo {m} – de Rescht au, gschwind!',
+  ballastDown: 'De Sandsack gaht abe!',
+  balanced: 'Gliichgwicht!',
+  ballastUp: 'De Sandsack gaht ufe!',
   doorOpen: 'S Tor isch offe!',
   doorClose: 'S Tor gaht zue …',
   bridgeReady: 'D Chischte stönd parat!',
@@ -69,7 +77,9 @@ const TXT = {
   victoryTitle: 'LEVEL GSCHAFFT!',
   victoryAll: 'ALLI GFUNDE!',
   victoryPrompt: 'GUMP = WIITER   ESC / B = MENÜ',
-  victoryPassword: 'PASSWORT FÜR LEVEL {n}',
+  victoryPassword: 'PASSWORT FÜR {label}',
+  bonusTitle: 'CHOPFNUSS GKNACKT!',
+  bonusAllDone: 'ALLI CHOPFNÜSS GKNACKT!\nIhr sind es Superteam!',
   victoryWriteDown: 'Guet ufschriibe!',
 
   // Finale, Abspann, Endbild

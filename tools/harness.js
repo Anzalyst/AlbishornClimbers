@@ -8,6 +8,7 @@
  *    aller Objekte der GameScene (Position, Textur, Physik …) als Prüfsumme
  *    festgehalten. Gleiche Prüfsummen = gleiches Verhalten.
  * 2. Smoke-Test: Intro, Menü, Victory, Finale und Abspann laufen kurz an.
+ * 3. Eingabe-, Minispiel- und Rätsel-Tests (harness-puzzles.js).
  *
  * Ergebnis: Base64-JSON in <pre id="result"> (liest run-tests.js aus).
  * ===================================================================== */
@@ -680,6 +681,10 @@
       await runScenes();
       runInputTests();
       runSspTests();
+      // Chopfnüss: Lösungs-Test mit echten Eingaben (tools/harness-puzzles.js)
+      syncClock(LEVELS.length + 60);
+      PlayerInput.prototype.update = scriptedInputUpdate;
+      if (window.runPuzzleTests) window.runPuzzleTests({ step, setInput, startScene, out });
     } catch (e) {
       out.errors.push(`harness: ${e.stack || e}`);
     }

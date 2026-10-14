@@ -25,7 +25,7 @@ class Hud {
     panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(8, 8, 470, 70, 10);
     panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(GAME_WIDTH - 178, 32, 170, 30, 10);
 
-    hud(scene.add.text(18, 16, `${TXT.level} ${levelIndex + 1}  ${level.name}`, style(12)));
+    hud(scene.add.text(18, 16, `${levelLabel(levelIndex)}  ${level.name}`, style(12)));
     hud(scene.add.text(GAME_WIDTH - 16, 12, TXT.hudKeys, style(8, '#dddddd')).setOrigin(1, 0));
 
     // Edelweiss-Zähler
@@ -79,7 +79,7 @@ class Hud {
     bg.lineStyle(2, 0xf7d117, 0.9).strokeRoundedRect(-320, -h / 2, 640, h, 16);
     banner.add(bg);
     const top = -h / 2;
-    banner.add(scene.add.text(0, top + 32, `${TXT.level} ${this.levelIndex + 1}`, {
+    banner.add(scene.add.text(0, top + 32, levelLabel(this.levelIndex), {
       fontFamily: FONT, fontSize: '22px', color: '#f7d117'
     }).setOrigin(0.5));
     banner.add(scene.add.text(0, top + 68, this.level.name, { fontFamily: FONT, fontSize: '14px', color: '#ffffff' }).setOrigin(0.5));

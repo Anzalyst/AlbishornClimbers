@@ -142,8 +142,9 @@ class GameScene extends Phaser.Scene {
     }
     this.registry.set('edelweiss', results);
 
-    // Nach dem letzten Level geht es direkt zur Geburtstagsfeier
-    const isLast = this.levelIndex >= LEVELS.length - 1;
+    // Nach dem letzten Level der Geschichte geht es direkt zur Geburtstagsfeier
+    // (die Chopfnuss-Bonuslevel danach laufen über den Victory-Bildschirm)
+    const isLast = this.levelIndex === STORY_LEVELS - 1;
     this.time.delayedCall(2200, () => {
       this.cameras.main.fadeOut(400, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {

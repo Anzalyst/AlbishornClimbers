@@ -78,6 +78,13 @@ Spieler 1 bekommt den ersten verbundenen Controller, Spieler 2 den zweiten, egal
 | 4 Die Felswand | 2468 | Aufzug mit zwei Schaltern, Farbtasten-Reihenfolge + Pendel-Plattform, Zugbrücke |
 | 5 Gipfelsturm Albishorn | 0909 | Alles kombiniert + Förderband mit Kiste → Geburtstags-Finale |
 
+**Chopfnüss** – zwei optionale, schwerere Rätsel-Level (Menüpunkt *CHOPFNÜSS* oder Passwort). Sie gehören nicht zur Geschichte: Nach Level 5 kommt weiterhin direkt die Gipfelfeier.
+
+| Chopfnuss | Code | Rätsel |
+|---|---|---|
+| 1 S Farbeschloss | 4711 | Zeitschalter-Tor (4 s), UND-Tor (beide Hebel gleichzeitig, je 5 s, Simons Hebel weit weg), verdecktes Farbeschloss: Reihenfolge als Rätsel auf der Infotafel, Blau/Grün nur Jessica, Gelb/Rot nur Simon, 12 s Zeitlimit |
+| 2 D Waag vom Albis | 2525 | Waage mit Kiste, Sandsack-Schalter und Zeithebel (proportional: 2 Kacheln pro Gewicht), zweite Waage mit Gleichgewichts-Lämpli und Zeittor |
+
 Die beiden Figuren können **nicht** aufeinander stehen – jede Höhe über 3 Kacheln wird mit einer Mechanik gelöst. Steckt jemand in einer erscheinenden Kiste, Brücke oder einem Tor fest, wird er automatisch an die nächste freie Stelle geschoben.
 
 Geheim-Code **3030** springt direkt zur Geburtstagsfeier.
@@ -128,15 +135,18 @@ tools/                     Automatische Tests (nur für Entwickler, siehe unten)
 ## Neues Level bauen
 In `js/levels.js` ein Objekt mit `map`, `password`, `triggers`, `targets` (und optional `sequences`, `anecdote`) anlegen – die Legende oben in der Datei erklärt alle Zeichen und Optionen.
 
-- **Auslöser:** Bodenschalter (`plate`), Hebel (`lever`), Farbtasten (`button`, für eine Reihenfolge in `sequences`). Mit `owner: 1/2` legt man fest, wer einen Auslöser benutzen darf. Schalter ohne `owner` werden auch von Kisten und Felsbrocken gedrückt.
-- **Ziele:** Tore (`door`), Kisten-Stufen (`bridge`), Wasser (`water`), Aufzüge (`lift`, hält oder pendelt), Zugbrücken (`drawbridge`), Förderbänder (`conveyor`).
-- **Infotafeln** (`i` + `hints`) gibt es nur in Level 1. Die lustigen Kindheits-Erinnerungen stehen als `anecdote` in der Einblendung zum Levelstart.
+- **Auslöser:** Bodenschalter (`plate`), Hebel (`lever`), Farbtasten (`button`, rot/blau/gelb/grün, für eine Reihenfolge in `sequences`), Waagen-Lämpli (`scale`). Mit `owner: 1/2` legt man fest, wer einen Auslöser benutzen darf (auch bei Farbtasten). Schalter ohne `owner` werden auch von Kisten und Felsbrocken gedrückt.
+- **Zeitschalter:** `timer: 5` an einem Auslöser → er bleibt nur 5 Sekunden aktiv (Bodenschalter und Lämpli: ab dem Loslassen). Ein Ring mit Sekunden zählt über dem Schalter und beim Ziel herunter, es tickt, in den letzten 3 Sekunden schneller.
+- **Farbeschloss:** `sequences: { S: { order, targets, board, hidden: true, timeLimit: 12 } }` – falscher Knopf = Fehler-Sound und alles zurück; `hidden` zeigt auf der Tafel nur "?", `timeLimit` startet ab dem ersten Treffer eine Uhr.
+- **Ziele:** Tore (`door`), Kisten-Stufen (`bridge`), Wasser (`water`), Aufzüge (`lift`, hält oder pendelt), Zugbrücken (`drawbridge`), Förderbänder (`conveyor`), Waagen (`balance`: zwei verbundene Schalen, proportional zum Gewichts-Unterschied, optional mit Sandsack). Mit `all: true` braucht ein Ziel ALLE seine Auslöser gleichzeitig (UND statt ODER).
+- **Infotafeln** (`i` + `hints`) gibt es in Level 1 und in den Chopfnüss. Die lustigen Kindheits-Erinnerungen stehen als `anecdote` in der Einblendung zum Levelstart.
+- **Bonus-Level:** `bonus: true`, am Ende der Liste – sie erscheinen als "CHOPFNUSS n".
 
 Fehler in den Leveldaten (unbekannte Zeichen, fehlender Start/Ziel, Verweise auf unbekannte Ziele …) meldet der LevelParser als Warnung in der Browser-Konsole – oder ohne Browser mit `node tools/test-levels.js`.
 
 ## Neue Mechanik bauen
 Jeder Mechanik-Typ ist ein Eintrag in einem Register, die GameScene muss dafür nicht angefasst werden:
-- **Neuer Auslöser** (z. B. Zeitschalter): Eintrag in `TRIGGER_TYPES` (`js/game/mechanics/triggers.js`) mit `create(sys, trigger, cfg)` und `update(sys, trigger)`, der `trigger.active` setzt.
+- **Neuer Auslöser** (z. B. Waagen-Lämpli): Eintrag in `TRIGGER_TYPES` (`js/game/mechanics/triggers.js`) mit `create(sys, trigger, cfg)` und `update(sys, trigger)`, der `trigger.active` setzt.
 - **Neues Ziel** (z. B. Federbrett): Eintrag in `TARGET_TYPES` (`js/game/mechanics/targets.js`) mit `cell` / `create` / `apply` / `update` – die Bedeutung jeder Funktion steht im Dateikopf.
 - Danach in `levels.js` verwenden (`{ type: '…' }` bzw. `{ kind: '…' }`) und eine Textur in `art.js` anlegen.
 - Neue Script-Dateien in `index.html` vor `js/scenes/` eintragen.
@@ -152,6 +162,7 @@ Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das 
 
 - Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
 - `--gameplay` vergleicht nur den Spielablauf (ohne Texte und HUD). Damit lässt sich nach Übersetzungen oder Textänderungen beweisen, dass sich am Spiel selbst nichts geändert hat.
+- **Rätsel-Test** (`tools/harness-puzzles.js`): Zwei Bots lösen beide Chopfnüss nur mit normalen Eingaben (laufen, springen, Hebel/Knöpfe) bis ins Ziel und prüfen dabei jede Mechanik: Countdown und Ticken, Tor zu nach Ablauf, UND-Tor, falsche Reihenfolge/Zeitlimit beim Farbeschloss, Waage proportional, Gleichgewichts-Lämpli, Ablauf Victory → nächste Chopfnuss → Menü.
 - Geprüft werden ausserdem: fehlende Texturen in jeder Szene, die ganze Familie auf dem Gipfel und im Abspann, und die Fairness bei Pedalo-Power (8 Zufalls-Layouts, ein Bot muss allen Enten ausweichen können).
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
 

@@ -3,7 +3,12 @@
  *
  * Auslöser (Schalter, Hebel, Farbtasten-Sequenzen) senden Signale an
  * Ziel-Gruppen (Tor, Brücke, Wasser, Aufzug, Zugbrücke, Förderband).
- * Ein Ziel ist aktiv, sobald MINDESTENS EIN Auslöser mit diesem Ziel aktiv ist.
+ * Ein Ziel ist aktiv, sobald MINDESTENS EIN Auslöser mit diesem Ziel aktiv ist –
+ * oder, mit { all: true } am Ziel, erst wenn ALLE seine Auslöser aktiv sind.
+ *
+ * Zeitschalter: Auslöser mit { timer: Sekunden } bleiben nach dem Betätigen
+ * (bzw. nach dem Verlassen des Bodenschalters) nur so lange aktiv. Ein Ring
+ * mit Sekunden-Anzeige über Schalter und Ziel zählt herunter, dazu tickt es.
  *
  * Das Verhalten der einzelnen Typen steht in den Registern
  *   TRIGGER_TYPES (triggers.js) und TARGET_TYPES (targets.js).
@@ -36,7 +41,10 @@ class MechanicsSystem {
     Object.entries(level.sequences || {}).forEach(([id, cfg]) => {
       const seq = {
         id, type: 'sequence', order: cfg.order, targets: cfg.targets || [],
-        progress: 0, active: false, buttons: [], lamps: []
+        progress: 0, active: false, buttons: [], lamps: [], marks: [],
+        hidden: !!cfg.hidden,                         // Tafel verrät die Farben nicht (Rätsel!)
+        timeLimitMs: (cfg.timeLimit || 0) * 1000,     // ab dem ersten Treffer läuft die Uhr
+        remaining: 0, board: null, countdown: null
       };
       this.sequences[id] = seq;
       this.triggers.push(seq);
@@ -55,7 +63,11 @@ class MechanicsSystem {
       type: cfg.type,
       owner: cfg.owner || null,
       targets: cfg.targets || [],
-      latch: cfg.type === 'lever' ? cfg.latch !== false : !!cfg.latch, // Hebel bleiben standardmässig umgelegt
+      latch: cfg.type === 'lever' ? cfg.latch !== false : !!cfg.latch || !!cfg.timer, // Hebel bleiben standardmässig umgelegt
+      timerMs: (cfg.timer || 0) * 1000,   // Zeitschalter: so lange bleibt er aktiv
+      remaining: 0,
+      timing: false,
+      held: false,                        // Bodenschalter: steht gerade jemand drauf?
       x: cx,
       y: bottom,
       active: false
@@ -63,6 +75,10 @@ class MechanicsSystem {
     const type = TRIGGER_TYPES[cfg.type];
     if (type && type.create) type.create(this, trigger, cfg);
     else if (!type) console.warn(`Unbekannter Auslöser-Typ "${cfg.type}" (Zeichen "${ch}")`);
+    if (trigger.timerMs) {
+      // Stoppuhr-Symbol: dieser Schalter wirkt nur auf Zeit
+      this.scene.add.image(cx + 17, bottom - 22, 'stopwatch').setDepth(DEPTH.OBJECT + 0.1);
+    }
     this.triggers.push(trigger);
   }
 
@@ -103,9 +119,9 @@ class MechanicsSystem {
     return new Phaser.Geom.Rectangle(left, top, (Math.max(...cs) + 1) * TILE - left, (Math.max(...rs) + 1) * TILE - top);
   }
 
-  /** Die Aufzug-Plattformen (für die Collider der Szene). */
+  /** Bewegliche Plattformen: Aufzüge und Waagschalen (für die Collider der Szene). */
   liftSprites() {
-    return Object.values(this.targetGroups).filter(g => g.lift).map(g => g.lift.sprite);
+    return Object.values(this.targetGroups).filter(g => g.lift || g.pan).map(g => (g.lift || g.pan).sprite);
   }
 
   // ---------------------------------------------------------------------
@@ -115,7 +131,8 @@ class MechanicsSystem {
     this.forEachGroup((type, group) => { if (type.preUpdate) type.preUpdate(this, group, delta); });
     this.triggers.forEach(t => {
       const type = TRIGGER_TYPES[t.type];
-      if (type && type.update) type.update(this, t);
+      if (type && type.update) type.update(this, t, delta);
+      if (t.timerMs) this.updateTimer(t, delta);
     });
     this.updateTargets();
     this.forEachGroup((type, group) => { if (type.update) type.update(this, group, delta); });
@@ -126,14 +143,76 @@ class MechanicsSystem {
     this.forEachGroup((type, group) => { if (type.render) type.render(this, group); });
   }
 
+  /**
+   * Zeitschalter: Uhr starten, herunterzählen (Bodenschalter erst nach dem
+   * Verlassen), ticken und am Ende den Schalter zurückstellen.
+   */
+  updateTimer(t, delta) {
+    if (t.active && !t.timing) {
+      t.timing = true;
+      t.remaining = t.timerMs;
+      if (!t.countdown) t.countdown = new CountdownDisplay(this.scene, this.countdownPoints(t, t.targets));
+    }
+    if (!t.timing) return;
+    const prev = t.remaining;
+    t.remaining = t.held ? t.timerMs : t.remaining - delta;
+    this.tickSound(prev, t.remaining);
+    if (t.remaining > 0) {
+      t.countdown.show(t.remaining, t.timerMs);
+      return;
+    }
+    t.timing = false;
+    t.active = false;
+    t.countdown.hide();
+    const type = TRIGGER_TYPES[t.type];
+    if (type && type.reset) type.reset(this, t);
+    Sfx.play(this.scene, 'timeUp');
+    this.scene.toast(TXT.timeUp, '#ff8080');
+  }
+
+  /** Ticken: jede Sekunde, in den letzten 3 Sekunden doppelt so schnell und heller. */
+  tickSound(prev, remaining) {
+    if (remaining <= 0 || remaining >= prev) return;
+    const fast = remaining <= 3000;
+    const stepMs = fast ? 500 : 1000;
+    if (Math.floor(prev / stepMs) !== Math.floor(remaining / stepMs)) Sfx.play(this.scene, fast ? 'tickFast' : 'tick');
+  }
+
+  /** Wo die Countdown-Ringe stehen: über dem Auslöser und bei jedem Ziel. */
+  countdownPoints(origin, targetChars) {
+    const points = origin ? [{ x: origin.x, y: origin.y - 82 }] : [];   // über dem "↑"-Hinweis
+    targetChars.forEach(ch => {
+      const g = this.targetGroups[ch];
+      if (!g || !g.bounds) return;
+      // Tor: mitten in der Toröffnung, sonst knapp darüber
+      points.push(g.kind === 'door'
+        ? { x: g.bounds.centerX, y: g.bounds.centerY }
+        : { x: g.bounds.centerX, y: g.bounds.top - 22 });
+    });
+    return points;
+  }
+
   /** Ziele anhand aller Auslöser ein- oder ausschalten. */
   updateTargets() {
-    const signal = {};
+    const signal = {}, count = {}, total = {};
     this.triggers.forEach(t => {
-      if (t.active) t.targets.forEach(ch => { signal[ch] = true; });
+      t.targets.forEach(ch => {
+        total[ch] = (total[ch] || 0) + 1;
+        if (t.active) { signal[ch] = true; count[ch] = (count[ch] || 0) + 1; }
+      });
     });
     Object.values(this.targetGroups).forEach(group => {
-      const wanted = !!signal[group.char];
+      const ch = group.char;
+      let wanted = !!signal[ch];
+      if (group.cfg.all) {
+        // UND-Ziel: alle Auslöser gleichzeitig – Zwischenstand melden
+        const n = count[ch] || 0;
+        wanted = total[ch] > 0 && n === total[ch];
+        if (n !== (group.partial || 0)) {
+          if (n > 0 && n < total[ch]) this.scene.toast(tx(TXT.andPartial, { n, m: total[ch] }), '#ffe14a');
+          group.partial = n;
+        }
+      }
       if (wanted !== group.active) this.apply(group, wanted);
     });
   }

@@ -305,7 +305,7 @@ const Art = {
     this.canvas(scene, 'bridgeHit', TILE, 12, () => {});
 
     // Farbtasten (Wandpanel auf Pfosten), je Farbe aus/an
-    const colors = { red: ['#c8322c', '#ff6a5a'], blue: ['#2c62c8', '#6aa4ff'], yellow: ['#d6a41c', '#ffe066'] };
+    const colors = { red: ['#c8322c', '#ff6a5a'], blue: ['#2c62c8', '#6aa4ff'], yellow: ['#d6a41c', '#ffe066'], green: ['#2a8a36', '#6af07a'] };
     Object.entries(colors).forEach(([name, [dark, light]]) => {
       [false, true].forEach(on => {
         this.canvas(scene, `btn_${name}_${on ? 'on' : 'off'}`, 28, 44, ctx => {
@@ -319,6 +319,49 @@ const Art = {
         });
       });
     });
+    // Waagschale: Holzbrett mit Metallkante und Ösen für die Seile
+    this.canvas(scene, 'scalePan', TILE, 16, ctx => {
+      this.vgrad(ctx, 0, 2, TILE, 10, [[0, '#c48e52'], [1, '#8e5c2e']]);
+      this.rect(ctx, 0, 2, TILE, 1, '#e4b47c');
+      this.vgrad(ctx, 0, 11, TILE, 5, [[0, '#9aa0aa'], [1, '#4a4e58']]);
+      this.rect(ctx, 0, 0, TILE, 2, '#c4cad4');
+      this.rect(ctx, 31, 2, 1, 9, '#6a4220');
+      [[3, 5], [27, 5]].forEach(([x, y]) => { this.rect(ctx, x, y, 2, 2, '#3a3e46'); });
+    });
+    // Sandsack (Ballast für die Waage)
+    this.canvas(scene, 'sandbag', 24, 24, ctx => {
+      ctx.fillStyle = '#c8a46a';
+      ctx.beginPath(); ctx.moveTo(8, 2); ctx.lineTo(16, 2); ctx.lineTo(23, 22); ctx.lineTo(1, 22); ctx.closePath(); ctx.fill();
+      this.rect(ctx, 1, 20, 22, 4, '#8a6a3a');
+      this.rect(ctx, 8, 0, 8, 4, '#6b4a2a');
+      this.rect(ctx, 6, 9, 12, 8, '#e8d8b0');
+      this.rect(ctx, 3, 12, 1, 6, 'rgba(255,255,255,0.35)');
+    });
+    // Waagen-Lämpli: Pfosten mit Lampe und kleinem Waage-Symbol, aus/an
+    [false, true].forEach(on => {
+      this.canvas(scene, `scaleLamp_${on ? 'on' : 'off'}`, 28, 48, ctx => {
+        this.vgrad(ctx, 12, 22, 4, 26, [[0, '#7a808c'], [1, '#4a4e58']]);
+        if (on) this.radial(ctx, 14, 11, 14, [[0, 'rgba(160,255,170,0.7)'], [1, 'rgba(160,255,170,0)']]);
+        this.vgrad(ctx, 4, 2, 20, 20, [[0, '#5a606c'], [1, '#353a44']]);
+        ctx.fillStyle = on ? '#7dff9a' : '#2a4a30';
+        ctx.beginPath(); ctx.arc(14, 12, 7, 0, Math.PI * 2); ctx.fill();
+        // Waage-Symbol auf der Lampe
+        this.rect(ctx, 13, 7, 2, 9, '#111111');
+        this.rect(ctx, 8, 9, 12, 1, '#111111');
+        this.rect(ctx, 7, 10, 3, 2, '#111111'); this.rect(ctx, 18, 10, 3, 2, '#111111');
+        this.rect(ctx, 11, 16, 6, 1, '#111111');
+      });
+    });
+    // Stoppuhr-Symbol für Zeitschalter
+    this.canvas(scene, 'stopwatch', 14, 16, ctx => {
+      this.rect(ctx, 5, 0, 4, 2, '#c4cad4');
+      this.rect(ctx, 6, 2, 2, 2, '#c4cad4');
+      ctx.fillStyle = '#111111'; ctx.beginPath(); ctx.arc(7, 9.5, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffe14a'; ctx.beginPath(); ctx.arc(7, 9.5, 5, 0, Math.PI * 2); ctx.fill();
+      this.rect(ctx, 6, 5, 2, 5, '#111111');
+      this.rect(ctx, 7, 9, 3, 2, '#d7263d');
+    });
+
     // Tafel für die Reihenfolge (Lämpchen zeichnet die GameScene darauf)
     this.canvas(scene, 'seqBoard', 84, 56, ctx => {
       this.vgrad(ctx, 38, 34, 8, 22, [[0, '#8e5c2e'], [1, '#5a391d']]);

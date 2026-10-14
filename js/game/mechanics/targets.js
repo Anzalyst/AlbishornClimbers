@@ -12,6 +12,8 @@
  *
  * group = { char, kind, cfg, cells: [{c, r}], tiles, active, bounds, timers }
  * In levels.js: targets: { D: 'door', E: { kind: 'lift', dy: -4 } }
+ * Jedes Ziel kann { all: true } bekommen: dann braucht es ALLE seine
+ * Auslöser gleichzeitig (UND statt ODER, siehe MechanicsSystem).
  * ===================================================================== */
 
 /** Tor- oder Kisten-Kachel (an/aus schaltbarer Kollisionskörper). */
@@ -236,6 +238,169 @@ const TARGET_TYPES = {
       const tipX = br.pivot.x + Math.cos(a) * br.length * dir;
       const tipY = br.pivot.y + Math.sin(a) * br.length * dir;
       br.chain.clear().lineStyle(2, 0x3a3e46, 1).lineBetween(br.postTop.x, br.postTop.y, tipX, tipY);
+    }
+  },
+
+  // Waage: zwei Schalen an einem Balken – sinkt die eine, steigt die andere
+  // genau gleich viel. Die Schale mit "partner" bestimmt die Einstellungen:
+  //   a: { kind: 'balance', partner: 'b', travel: 4, perWeight: 2, speed: 70 }
+  //   b: { kind: 'balance' }
+  // travel     maximaler Weg nach oben/unten (Kacheln)
+  // perWeight  Weg pro Gewichts-Unterschied (Kacheln) → proportional
+  // Gewichte: Spieler 1, Kiste 1, Felsbrocken 2. Mit { ballast: 2 } hängt
+  // über der Schale ein Sandsack: Signal an (active) = Sandsack wird auf die
+  // Schale gelassen und zählt mit, sobald er aufliegt.
+  balance: {
+    create(sys, group) {
+      const scene = sys.scene;
+      const cs = group.cells.map(c => c.c);
+      const r = group.cells[0].r;
+      const x0 = Math.min(...cs) * TILE, y0 = r * TILE, w = (Math.max(...cs) + 1) * TILE - x0;
+      const sprite = scene.add.tileSprite(x0, y0, w, 16, 'scalePan').setOrigin(0).setDepth(DEPTH.MECH);
+      scene.physics.add.existing(sprite);
+      sprite.body.setAllowGravity(false);
+      sprite.body.setImmovable(true);
+      sprite.body.pushable = false;
+      const pan = { group, sprite, x0, w, cx: x0 + w / 2, homeY: y0, weight: 0, bag: null };
+      pan.badge = scene.add.text(pan.cx, y0, '', {
+        fontFamily: FONT, fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
+      }).setOrigin(0.5).setDepth(DEPTH.FX);
+      if (group.cfg.ballast) {
+        pan.bag = {
+          sprite: scene.add.image(x0 + 13, y0, 'sandbag').setOrigin(0.5, 1).setDepth(DEPTH.OBJECT + 0.5),   // vor Kisten
+          label: scene.add.text(x0 + 13, y0, String(group.cfg.ballast), {
+            fontFamily: FONT, fontSize: '7px', color: '#3a2a10'
+          }).setOrigin(0.5).setDepth(DEPTH.OBJECT + 0.6),
+          drop: 0                     // 0 = hängt oben, 1 = liegt auf der Schale
+        };
+      }
+      group.pan = pan;
+    },
+
+    /** Signal = Sandsack ablassen / hochziehen. */
+    apply(sys, group, active, instant) {
+      const bag = group.pan.bag;
+      if (!bag) return;
+      if (instant) { bag.drop = active ? 1 : 0; return; }
+      Sfx.play(sys.scene, 'ballast');
+      sys.scene.toast(active ? TXT.ballastDown : TXT.ballastUp, active ? '#ffe14a' : '#ffb070');
+    },
+
+    /** Partner suchen und die gemeinsamen Werte (Balken-Höhe) festlegen. */
+    link(sys, group) {
+      if (group.pair !== undefined) return group.pair;
+      const other = sys.targetGroups[group.cfg.partner];
+      group.pair = other && other.pan ? other : null;
+      if (!group.pair) { console.warn('Waage "' + group.char + '": Partnerschale "' + group.cfg.partner + '" fehlt'); return null; }
+      const travel = (group.cfg.travel || 3) * TILE;
+      group.scale = {
+        travel,
+        perWeight: (group.cfg.perWeight || group.cfg.travel || 3) * TILE,
+        speed: group.cfg.speed || 70,
+        beamY: Math.min(group.pan.homeY, other.pan.homeY) - travel - 3 * TILE,
+        moving: false
+      };
+      group.pan.ropes = sys.scene.add.graphics().setDepth(DEPTH.DECO + 0.4);   // hinter dem Gelände
+      return group.pair;
+    },
+
+    /** Wer oder was liegt auf der Schale? Spieler auf einer Kiste auf der Schale zählen mit. */
+    weightOn(sys, pan) {
+      const scene = sys.scene;
+      const lb = pan.sprite.body;
+      const restsOn = (b, s) => b.right > s.left + 2 && b.left < s.right - 2 && Math.abs(b.bottom - s.top) < 6;
+      const blocks = scene.blocks.filter(bl => restsOn(bl.body, lb));
+      let w = blocks.reduce((sum, bl) => sum + bl.weight, 0);
+      scene.players.forEach(p => {
+        const b = p.sprite.body;
+        if (!p.respawning && (restsOn(b, lb) || blocks.some(bl => restsOn(b, bl.body)))) w += 1;
+      });
+      if (pan.bag && pan.bag.drop >= 1) w += pan.group.cfg.ballast;
+      return w;
+    },
+
+    /** Sandsack Richtung Ziel bewegen (dauert ca. 0.7 s). */
+    moveBag(pan, delta) {
+      const bag = pan.bag;
+      if (!bag) return;
+      const goal = pan.group.active ? 1 : 0;
+      const step = delta / 700;
+      bag.drop = goal > bag.drop ? Math.min(goal, bag.drop + step) : Math.max(goal, bag.drop - step);
+    },
+
+    update(sys, group, delta) {
+      if (!group.cfg.partner || !this.link(sys, group)) return;
+      const scene = sys.scene;
+      const A = group.pan, B = group.pair.pan, S = group.scale;
+      this.moveBag(A, delta);
+      this.moveBag(B, delta);
+      A.weight = this.weightOn(sys, A);
+      B.weight = this.weightOn(sys, B);
+
+      // Ziel-Auslenkung proportional zum Gewichts-Unterschied (+ = Schale A tiefer)
+      const target = Phaser.Math.Clamp((A.weight - B.weight) * S.perWeight, -S.travel, S.travel);
+      const offset = A.sprite.y - A.homeY;
+      const diff = target - offset;
+      const step = S.speed * delta / 1000;
+      if (Math.abs(diff) <= Math.max(step, 0.5)) {
+        if (diff !== 0) {
+          A.sprite.body.reset(A.x0, A.homeY + target);
+          B.sprite.body.reset(B.x0, B.homeY - target);
+        }
+        A.sprite.body.setVelocity(0, 0);
+        B.sprite.body.setVelocity(0, 0);
+        if (S.moving) { S.moving = false; Sfx.play(scene, 'liftStop'); }
+        return;
+      }
+      const vy = Math.sign(diff) * S.speed;
+      const lift = TARGET_TYPES.lift;
+      if (lift.wouldCrush(scene, A, vy) || lift.wouldCrush(scene, B, -vy)) {   // lieber anhalten als einklemmen
+        A.sprite.body.setVelocity(0, 0);
+        B.sprite.body.setVelocity(0, 0);
+        return;
+      }
+      if (!S.moving) { S.moving = true; Sfx.play(scene, 'scaleCreak'); }
+      A.sprite.body.setVelocity(0, vy);
+      B.sprite.body.setVelocity(0, -vy);
+    },
+
+    /** Balken mit Umlenkrollen, Seile, Gewichtsanzeige und Sandsäcke. */
+    render(sys, group) {
+      if (!group.cfg.partner || !group.pair || !group.scale) return;
+      const A = group.pan, B = group.pair.pan, S = group.scale;
+      const g = A.ropes.clear();
+      const tilt = (A.sprite.y - A.homeY) * 0.12;     // Balken neigt sich zur schwereren Seite
+      const ends = [[A, S.beamY + tilt], [B, S.beamY - tilt]];
+      const midX = (A.cx + B.cx) / 2;
+
+      // Aufhängung in der Mitte + Balken
+      g.lineStyle(4, 0x5a391d, 1).lineBetween(midX, S.beamY - 30, midX, S.beamY);
+      g.fillStyle(0x3a3e46, 1).fillTriangle(midX - 9, S.beamY + 4, midX + 9, S.beamY + 4, midX, S.beamY - 8);
+      g.lineStyle(6, 0x3a3e46, 1).lineBetween(A.cx, ends[0][1], B.cx, ends[1][1]);
+      g.lineStyle(2, 0x8a919c, 1).lineBetween(A.cx, ends[0][1] - 2, B.cx, ends[1][1] - 2);
+
+      ends.forEach(([P, y]) => {
+        // Seile von der Rolle zu beiden Schalenecken
+        g.lineStyle(2, 0xc8a46a, 1)
+          .lineBetween(P.cx, y, P.x0 + 3, P.sprite.y)
+          .lineBetween(P.cx, y, P.x0 + P.w - 3, P.sprite.y);
+        g.fillStyle(0x6a707c, 1).fillCircle(P.cx, y, 7);
+        g.fillStyle(0xc4cad4, 1).fillCircle(P.cx, y, 2.5);
+
+        // Gewichtsanzeige über der Schale
+        const label = String(P.weight);
+        if (P.badge.text !== label) P.badge.setText(label);
+        P.badge.setPosition(P.cx, y + 20);
+
+        // Sandsack: hängt unter der Rolle oder liegt auf der Schale
+        if (P.bag) {
+          const hangY = y + 46;
+          const bagY = hangY + (P.sprite.y - hangY) * P.bag.drop;
+          g.lineStyle(2, 0xc8a46a, 1).lineBetween(P.bag.sprite.x, y, P.bag.sprite.x, bagY - 22);
+          P.bag.sprite.setY(bagY);
+          P.bag.label.setY(bagY - 9);
+        }
+      });
     }
   },
 

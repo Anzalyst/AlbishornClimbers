@@ -14,6 +14,8 @@
  * ===================================================================== */
 
 const LevelParser = {
+  COLORS: ['red', 'blue', 'yellow', 'green'],
+
   // Standard-Zeichen → Art der Zelle
   CHAR_KINDS: {
     '#': 'terrain', 'R': 'terrain', 'o': 'terrain',
@@ -36,6 +38,7 @@ const LevelParser = {
     const targets = level.targets || {};
     const sequences = level.sequences || {};
     const warnings = [];
+    const COLORS = this.COLORS;
 
     const kindOf = ch => (typeof targets[ch] === 'string' ? targets[ch] : targets[ch] && targets[ch].kind);
     const boards = {};
@@ -71,9 +74,29 @@ const LevelParser = {
       if (!used.has(ch)) warnings.push(`${name}: Auslöser "${ch}" ist definiert, steht aber nicht in der Karte`);
       (t.targets || []).forEach(tch => { if (!targets[tch]) warnings.push(`${name}: Auslöser "${ch}" verweist auf unbekanntes Ziel "${tch}"`); });
       if (t.type === 'button' && !sequences[t.group]) warnings.push(`${name}: Farbtaste "${ch}" gehört zu unbekannter Sequenz "${t.group}"`);
+      if (t.type === 'button' && !COLORS.includes(t.color)) warnings.push(`${name}: Farbtaste "${ch}" hat unbekannte Farbe "${t.color}"`);
+      if (t.type === 'scale' && kindOf(t.pan) !== 'balance') warnings.push(`${name}: Waagen-Lämpli "${ch}" verweist auf "${t.pan}" – das ist keine Waagschale`);
+      if (t.timer !== undefined && !(t.timer > 0)) warnings.push(`${name}: Auslöser "${ch}" hat ungültigen timer "${t.timer}"`);
     });
     Object.entries(sequences).forEach(([id, s]) => {
       (s.targets || []).forEach(tch => { if (!targets[tch]) warnings.push(`${name}: Sequenz "${id}" verweist auf unbekanntes Ziel "${tch}"`); });
+      s.order.forEach(color => {
+        const ok = Object.values(triggers).some(t => t.type === 'button' && t.group === id && t.color === color);
+        if (!ok) warnings.push(`${name}: Sequenz "${id}" braucht eine Farbtaste "${color}", die es nicht gibt`);
+      });
+    });
+    // UND-Ziele brauchen Auslöser, Waagen eine Partnerschale
+    const feeds = ch => Object.values(triggers).some(t => (t.targets || []).includes(ch)) ||
+      Object.values(sequences).some(s => (s.targets || []).includes(ch));
+    Object.entries(targets).forEach(([ch, t]) => {
+      if (t.all && !feeds(ch)) warnings.push(`${name}: UND-Ziel "${ch}" hat keine Auslöser`);
+      if (kindOf(ch) === 'balance' && t.partner && kindOf(t.partner) !== 'balance') {
+        warnings.push(`${name}: Waage "${ch}" – Partnerschale "${t.partner}" fehlt oder ist keine Waage`);
+      }
+    });
+    const partners = Object.values(targets).map(t => t.partner).filter(Boolean);
+    Object.entries(targets).forEach(([ch, t]) => {
+      if (kindOf(ch) === 'balance' && !t.partner && !partners.includes(ch)) warnings.push(`${name}: Waagschale "${ch}" hat keinen Partner`);
     });
     Object.keys(targets).forEach(ch => {
       if (!targetTypes[kindOf(ch)]) warnings.push(`${name}: Ziel "${ch}" hat unbekannten Typ "${kindOf(ch)}"`);

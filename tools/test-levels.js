@@ -37,6 +37,15 @@ function checkLevels(root) {
   });
   const expected = ['Unbekanntes Kartenzeichen "X"', 'Startpunkt "2" fehlt', 'Ziel "G" fehlt',
     'unbekanntes Ziel "Q"', 'Ziel "D" ist definiert, steht aber nicht in der Karte'];
+  // … und eines mit kaputten Rätsel-Mechaniken
+  const broken2 = LevelParser.parse({
+    name: 'Selbsttest 2', map: ['12 aa  b  c  E G', '################'],
+    triggers: { b: { type: 'button', color: 'pink', group: 'S' }, c: { type: 'lever', timer: 0, targets: ['a'] } },
+    sequences: { S: { order: ['red'], targets: ['E'] } },
+    targets: { a: { kind: 'balance', partner: 'z' }, E: { kind: 'door', all: true } }
+  });
+  broken.warnings.push(...broken2.warnings);
+  expected.push('unbekannte Farbe "pink"', 'ungültigen timer', 'braucht eine Farbtaste "red"', 'Partnerschale "z" fehlt');
   expected.forEach(e => {
     if (!broken.warnings.some(w => w.includes(e))) problems.push(`Selbsttest: Parser erkennt nicht: ${e}`);
   });

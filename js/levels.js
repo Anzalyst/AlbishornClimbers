@@ -31,11 +31,19 @@
  *     { type: 'plate', owner, targets }   Bodenschalter, aktiv solange jemand
  *                                         (oder ein Block, wenn ohne owner) draufsteht
  *     { type: 'lever', owner, targets }   Hebel, mit "Hoch" umlegen, bleibt umgelegt
- *     { type: 'button', color, group }    Farbtaste (red/blue/yellow) für eine Sequenz
- *     owner = 1 (Jessica) / 2 (Simon) / null (alle)
- *   sequences: { S: { order: ['red', …], targets, board: '%' } }
- *     Die Farbtasten der Gruppe müssen in dieser Reihenfolge gedrückt werden.
- *     Das Zeichen bei "board" zeigt die Reihenfolge als Tafel an.
+ *     { type: 'button', color, group }    Farbtaste (red/blue/yellow/green) für eine Sequenz
+ *     { type: 'scale', pan, min, targets } Waagen-Lämpli: aktiv, solange die Waage der
+ *                                         Schale "pan" im Gleichgewicht steht und auf
+ *                                         jeder Seite mindestens "min" Gewicht liegt
+ *     owner = 1 (Jessica) / 2 (Simon) / null (alle) – gilt auch für Farbtasten
+ *     timer = Sekunden → Zeitschalter: bleibt nach dem Betätigen (Bodenschalter:
+ *             nach dem Verlassen) nur so lange aktiv, mit Countdown-Ring & Ticken
+ *   sequences: { S: { order: ['red', …], targets, board: '%', hidden, timeLimit } }
+ *     Die Farbtasten der Gruppe müssen in dieser Reihenfolge gedrückt werden,
+ *     ein falscher Knopf setzt alles zurück. Das Zeichen bei "board" zeigt die
+ *     Reihenfolge als Tafel an – mit hidden: true nur als "?" (die Lösung
+ *     steht dann z. B. als Rätsel auf einer Infotafel). timeLimit = Sekunden
+ *     ab dem ersten richtigen Knopf.
  *   targets: Ziel-Kacheln – entweder als Text oder als Objekt mit Optionen:
  *     'door'                              Tor: öffnet bei Signal
  *     'bridge'                            Holzkisten: erscheinen bei Signal
@@ -48,10 +56,18 @@
  *        Zugbrücke: senkt sich bei Signal, sonst hochgeklappt.
  *     { kind: 'conveyor', off, on }
  *        Förderband: Geschwindigkeit (px/s, + = rechts) ohne bzw. mit Signal.
- *   Ein Ziel ist aktiv, sobald MINDESTENS EIN Auslöser mit diesem Ziel aktiv ist.
+ *     { kind: 'balance', partner, travel, perWeight, speed, ballast }
+ *        Waage: zwei verbundene Schalen (Partner = { kind: 'balance' }). Sinkt
+ *        die eine, steigt die andere gleich viel – perWeight Kacheln pro
+ *        Gewichts-Unterschied, höchstens travel. Spieler/Kiste = 1, Brocken = 2.
+ *        ballast: Sandsack über der Schale, Signal = Sandsack ablassen.
+ *   Ein Ziel ist aktiv, sobald MINDESTENS EIN Auslöser mit diesem Ziel aktiv ist,
+ *   mit { all: true } erst, wenn ALLE seine Auslöser gleichzeitig aktiv sind.
+ *
+ * CHOPFNÜSS (Bonus-Level): bonus: true, stehen am Ende der Liste.
  *
  * TEXTE
- *   hints     Infotafeln (nur Level 1)
+ *   hints     Infotafeln (Level 1 und Chopfnüss)
  *   anecdote  Kindheits-Erinnerung, erscheint beim Levelstart
  *   Platzhalter {P1} {P2} {COUSIN} {AUNT} {UNCLE} {PARENTS} → Namen aus config.js
  * ===================================================================== */
@@ -308,5 +324,146 @@ const LEVELS = [
       '######################################################################################################################################################',
       '######################################################################################################################################################'
     ]
+  },
+
+  // ===================================================================
+  // CHOPFNÜSS – zwei optionale Rätsel-Level (Menü "CHOPFNÜSS" oder Passwort).
+  // Sie gehören nicht zur Geschichte: nach Level 5 kommt weiterhin direkt
+  // die Gipfelfeier. Erkennbar an "bonus: true" – sie müssen am Schluss stehen.
+  // ===================================================================
+
+  // -------------------------------------------------------------------
+  // CHOPFNUSS 1 – S Farbeschloss
+  //  A) Zeitschalter: Hebel L hält das Tor nur 4 Sekunden offen → rennen!
+  //  B) UND-Tor E: Jessicas Hebel j UND Simons Hebel s (je 5 s) müssen
+  //     gleichzeitig laufen. Simons Hebel steht weit weg auf dem Felsband →
+  //     gleichzeitig ziehen ("3 – 2 – 1 – jetzt!") und sofort losrennen.
+  //  C) Verdecktes Farbeschloss: Die Tafel zeigt nur "????", die Reihenfolge
+  //     steht als Rätsel auf der Infotafel (Himmel, Sonne, Wiese, Fahne =
+  //     Blau, Gelb, Grün, Rot). Blau & Grün darf nur Jessica drücken, Gelb &
+  //     Rot nur Simon → abwechselnd, und alles innert 12 Sekunden.
+  // -------------------------------------------------------------------
+  {
+    name: 'S Farbeschloss',
+    bonus: true,
+    password: '4711',
+    sky: [0xb8a8e8, 0xfdf0ff],
+    anecdote: '{UNCLE}: "Das isch kei Rätsel, das isch Logik!" – {AUNT}: "Dänn lös dus doch!"',
+    triggers: {
+      L: { type: 'lever', owner: null, timer: 4, targets: ['D'] },
+      s: { type: 'lever', owner: 2, timer: 5, targets: ['E'] },
+      j: { type: 'lever', owner: 1, timer: 5, targets: ['E'] },
+      b: { type: 'button', color: 'blue', group: 'S', owner: 1 },
+      g: { type: 'button', color: 'green', group: 'S', owner: 1 },
+      r: { type: 'button', color: 'red', group: 'S', owner: 2 },
+      y: { type: 'button', color: 'yellow', group: 'S', owner: 2 }
+    },
+    sequences: {
+      S: { order: ['blue', 'yellow', 'green', 'red'], targets: ['Q'], board: '%', hidden: true, timeLimit: 12 }
+    },
+    targets: {
+      D: 'door',
+      E: { kind: 'door', all: true },
+      Q: 'door'
+    },
+    hints: [
+      'Dä Hebel hät e STOPPUHR: S Tor blibt nume 4 Sekunde offe. Hebel zieh – und RÄNNE!',
+      'Zwei Hebel, eis Tor: Es gaht nume uf, solang BEIDI Uhre laufed. {P2}s Hebel isch wiit weg … zellt zäme: 3 – 2 – 1 – JETZ!',
+      'S FARBESCHLOSS: Zerscht de Himmel überem Albis, dänn d Sunne, wo drab lacht, dänn d Wiese under eune Füess – und zletscht d Farb, wo s wiisse Chrüz drin staht. Jede druckt nume sini Chnöpf – und d Uhr lauft!'
+    ],
+    map: [
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR      *                     RR                                      RR',
+      '                    RR                            RR                                      RR',
+      '                    RR       s                    RR                                      RR',
+      '              *     RR     RRRRR                  RR                                      RR',
+      '                    DD     RRRRR                  EE                     *                QQ',
+      '              R     DD    RRRRRRR                 EE                                      QQ',
+      'T 1 2 i L     R     DD F RRRRRRRRR i  T      j    EE F i  %   b    g           r     y    QQ T G   T',
+      '#####################################################################################################',
+      '#####################################################################################################',
+      '#####################################################################################################',
+      '#####################################################################################################',
+      '#####################################################################################################'
+    ]
+  },
+
+  // -------------------------------------------------------------------
+  // CHOPFNUSS 2 – D Waag vom Albis
+  //  Gewichte: Spieler 1, Chischte 1, Felsbrocke 2, Sandsack 2. Unter den
+  //  Schächten liegt Wasser: wer unter eine hochgefahrene Schale fällt,
+  //  startet am Checkpoint neu (statt im Schacht festzusitzen).
+  //  A) Waage a/b (2 Kachle pro Gwicht, max. 4): Simon muss auf Schale b
+  //     ganz nach oben (+4) → auf a braucht es 2 Gewicht MEHR als auf b.
+  //     Chischte auf a schieben, Jessica hält Schalter P (Sandsack auf a):
+  //     1 + 2 = 3 gegen 1. Oben zieht Simon den Zeithebel L (Sandsack, 6 s),
+  //     während Jessica auf b wartet: wieder 3 gegen 1.
+  //  B) Waage c/d (1 Kachel pro Gwicht) mit Waagen-Lämpli S: Das Tor E geht
+  //     nur auf, wenn die Waage GENAU im Gleichgewicht steht – mit mindestens
+  //     2 Gewicht auf jeder Seite (1 gegen 1 zählt nicht). Dann bleibt es noch
+  //     4 Sekunden offen. Lösung: Felsbrocke (2) zu zweit auf c schieben,
+  //     dann BEIDE auf d (2 gegen 2) – absteigen und zum Tor rennen.
+  // -------------------------------------------------------------------
+  {
+    name: 'D Waag vom Albis',
+    bonus: true,
+    password: '2525',
+    sky: [0x9ec8e8, 0xfff4e0],
+    anecdote: 'Was isch schwärer: es Kilo Stei oder es Kilo Edelwiiss? {COUSIN} studiert hüt no dra ume.',
+    triggers: {
+      P: { type: 'plate', owner: null, targets: ['a'] },
+      L: { type: 'lever', owner: null, timer: 6, targets: ['a'] },
+      S: { type: 'scale', pan: 'c', min: 2, timer: 4, targets: ['E'] }
+    },
+    targets: {
+      a: { kind: 'balance', partner: 'b', travel: 4, perWeight: 2, speed: 80, ballast: 2 },
+      b: { kind: 'balance' },
+      c: { kind: 'balance', partner: 'd', travel: 3, perWeight: 1, speed: 70 },
+      d: { kind: 'balance' },
+      E: 'door'
+    },
+    hints: [
+      'D WAAG: Wo s schwärer isch, gaht d Schale abe – di anderi gaht gliich viel ufe. Pro Gwicht 2 Stuck. {P1} = 1, {P2} = 1, Chischte = 1, Sandsack = 2. D Zahle obe zeiged s Gwicht.',
+      'DI ZWEIT WAAG: S Tor gaht nume uf, wänn s Lämpli lüchtet – und das lüchtet nume, wänn d Waag GANZ GENAU im Gliichgwicht isch, mit mindestens 2 Gwicht uf jedere Siite. Dänn händ ihr 4 Sekunde! Felsbrocke = 2.'
+    ],
+    map: [
+      '                                          RR',
+      '                                          RR',
+      '                                          RR',
+      '                                          RR',
+      '                                 *        RR',
+      '                                          EE',
+      '                                          EE',
+      '                     F  L iK    ##   S    EE T G   T',
+      '                    ##########cc##dd#################',
+      '                 *  ##########  ##  #################',
+      '                    ##########  ##  #################',
+      '                    ##########  ##  #################',
+      '                ##  ##########~~##~~#################',
+      '                ##  #################################',
+      'T1 2 i P  k     ##  #################################',
+      '##############aa##bb#################################',
+      '##############  ##  #################################',
+      '##############  ##  #################################',
+      '##############  ##  #################################',
+      '##############  ##  #################################',
+      '##############~~##~~#################################',
+      '#####################################################'
+    ]
   }
 ];
+
+/** Anzahl Level der Geschichte (die Chopfnüss stehen am Schluss und zählen nicht dazu). */
+const STORY_LEVELS = LEVELS.filter(l => !l.bonus).length;
+
+/** Anzeige-Name eines Levels: "LEVEL 3" bzw. "CHOPFNUSS 1". */
+function levelLabel(index) {
+  return index >= STORY_LEVELS ? `${TXT.bonusLevel} ${index - STORY_LEVELS + 1}` : `${TXT.level} ${index + 1}`;
+}
