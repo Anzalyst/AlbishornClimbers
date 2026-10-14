@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albishorn Climbers</title>
+  <!-- Retro-Pixel-Schrift (falls offline: Fallback auf monospace) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #10131c;
+      overflow: hidden;
+    }
+    #game {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      image-rendering: pixelated;   /* scharfe Pixel beim Hochskalieren */
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <!-- Phaser 3 vom CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+
+  <!--
+    Klassische Scripts (keine ES-Module): So läuft das Spiel auch per
+    Doppelklick auf index.html, ganz ohne lokalen Webserver.
+    Reihenfolge ist wichtig: zuerst Konfiguration & Helfer, dann Szenen, dann main.js.
+  -->
+  <script src="js/config.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/sfx.js"></script>
+  <script src="js/dialog.js"></script>
+  <script src="js/asset-layout.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/scenes/BootScene.js"></script>
+  <script src="js/scenes/IntroScene.js"></script>
+  <script src="js/scenes/MenuScene.js"></script>
+  <script src="js/scenes/GameScene.js"></script>
+  <script src="js/scenes/VictoryScene.js"></script>
+  <script src="js/scenes/FinaleScene.js"></script>
+  <script src="js/scenes/CreditsScene.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
