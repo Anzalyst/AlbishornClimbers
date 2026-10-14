@@ -16,15 +16,6 @@
  * werden kann, ohne die Physik zu beeinflussen.
  * ===================================================================== */
 
-// Darstellungsreihenfolge (höher = weiter vorne)
-const DEPTH = {
-  DECO: 1, DOOR: 4, TERRAIN: 5, MECH: 6, OBJECT: 7, WATER: 8, SHADOW: 9, PLAYER: 10,
-  FX: 20, VIGNETTE: 95, HUD: 100
-};
-
-// Farben der Farbtasten-Sequenzen
-const SEQ_COLORS = { red: 0xe0413a, blue: 0x3a7be0, yellow: 0xf2c230 };
-
 class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -41,15 +32,17 @@ class GameScene extends Phaser.Scene {
 
   create() {
     this.inputs = createPlayerInputs(this);
+    this.fx = new Fx(this);
     this.backdrop = addBackdrop(this, this.level.sky);
 
     this.buildLevel();
     this.createPlayers();
     this.setupCollisions();
     this.setupCamera();
-    this.createAtmosphere();
-    this.createHud();
-    this.showLevelIntro();
+    this.fx.createAtmosphere(this.flowers);
+    this.hud = new Hud(this, this.levelIndex, this.level);
+    this.hud.setFlowers(this.collected, this.totalEdelweiss);
+    this.hud.showLevelIntro();
 
     // Globale Tasten: ESC = Menü, R = Level neu starten, M = Ton an/aus
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('MenuScene'));
@@ -559,113 +552,12 @@ class GameScene extends Phaser.Scene {
     this.camTarget.setPosition((a.x + b.x) / 2, (a.y + b.y) / 2 - 40);
   }
 
-  /** Stimmung: schwebende Staubkörnchen, Glitzern am Edelweiss, Vignette. */
-  createAtmosphere() {
-    this.add.particles(0, 0, 'mote', {
-      x: { min: 0, max: GAME_WIDTH }, y: { min: 0, max: GAME_HEIGHT },
-      lifespan: 7000, speedX: { min: -6, max: 6 }, speedY: { min: -10, max: -2 },
-      scale: { min: 0.3, max: 0.8 }, alpha: { start: 0.55, end: 0 },
-      frequency: 280, quantity: 1, blendMode: 'ADD'
-    }).setScrollFactor(0).setDepth(DEPTH.FX - 1);
-
-    this.time.addEvent({
-      delay: 700, loop: true,
-      callback: () => {
-        const flowers = this.flowers.getChildren().filter(f => f.active && f.body.enable);
-        if (!flowers.length) return;
-        const f = Phaser.Utils.Array.GetRandom(flowers);
-        const s = this.add.image(f.x + Phaser.Math.Between(-8, 8), f.y + Phaser.Math.Between(-8, 4), 'softDot')
-          .setDepth(DEPTH.FX).setScale(0.5).setBlendMode('ADD');
-        this.tweens.add({ targets: s, y: s.y - 10, alpha: 0, scale: 0.1, duration: 700, onComplete: () => s.destroy() });
-      }
-    });
-
-    addVignette(this, DEPTH.VIGNETTE);
-  }
-
   // =====================================================================
   // HUD
   // =====================================================================
-  createHud() {
-    const style = (size, color = '#ffffff') => ({
-      fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#000000', strokeThickness: 4
-    });
-    const hud = obj => obj.setScrollFactor(0).setDepth(DEPTH.HUD);
-
-    // halbtransparente Panels hinter den Texten
-    const panels = hud(this.add.graphics());
-    panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(8, 8, 470, 70, 10);
-    panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(GAME_WIDTH - 178, 32, 170, 30, 10);
-
-    hud(this.add.text(18, 16, `LEVEL ${this.levelIndex + 1}  ${this.level.name}`, style(12)));
-    hud(this.add.text(GAME_WIDTH - 16, 12, 'ESC Menü  R Neustart  M Ton', style(8, '#dddddd')).setOrigin(1, 0));
-
-    // Edelweiss-Zähler
-    hud(this.add.image(GAME_WIDTH - 150, 47, 'edelweiss').setScale(1.4));
-    this.flowerText = hud(this.add.text(GAME_WIDTH - 132, 39, '', style(12)));
-    this.updateFlowerText();
-
-    // Status pro Spieler (Controller verbunden? Am Ziel?)
-    this.playerHud = this.players.map((p, i) =>
-      hud(this.add.text(18, 38 + i * 18, '', style(10, p.def.colorCss))));
-
-    // Hinweisbox unten (Infotafeln – nur in Level 1)
-    this.hintBox = hud(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 44, GAME_WIDTH - 80, 56, 0x10131c, 0.85)
-      .setStrokeStyle(2, 0xf7d117)).setVisible(false);
-    this.hintText = hud(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 44, '', {
-      fontFamily: FONT, fontSize: '10px', color: '#ffffff', align: 'center',
-      wordWrap: { width: GAME_WIDTH - 120 }, lineSpacing: 6
-    }).setOrigin(0.5)).setVisible(false);
-
-    // Kurze Meldungen in der Bildschirmmitte ("Tor offen!" usw.)
-    this.toastText = hud(this.add.text(GAME_WIDTH / 2, 112, '', style(14, '#f7d117')).setOrigin(0.5).setAlpha(0));
-  }
-
-  updateFlowerText() {
-    this.flowerText.setText(`${this.collected}/${this.totalEdelweiss}`);
-  }
-
-  updateHud() {
-    this.players.forEach((p, i) => {
-      const pad = p.input.hasPad ? ' [PAD]' : '';
-      const status = p.atGoal ? '  ✔ AM ZIEL' : '';
-      this.playerHud[i].setText(`${p.def.name.toUpperCase()}${pad}${status}`);
-    });
-  }
-
-  toast(message, color = '#f7d117') {
-    this.toastText.setText(message).setColor(color).setAlpha(1).setScale(0.6);
-    this.tweens.killTweensOf(this.toastText);
-    this.tweens.add({ targets: this.toastText, scale: 1, duration: 220, ease: 'Back.out' });
-    this.tweens.add({ targets: this.toastText, alpha: 0, delay: 1800, duration: 400 });
-  }
-
-  /** Levelname, Passwort und eine Erinnerung an die Kindheits-Wanderung. */
-  showLevelIntro() {
-    const banner = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
-    const anecdote = this.level.anecdote ? fillNames(this.level.anecdote) : '';
-    const h = anecdote ? 176 : 130;
-    const bg = this.add.graphics();
-    bg.fillStyle(0x0b1020, 0.82).fillRoundedRect(-320, -h / 2, 640, h, 16);
-    bg.lineStyle(2, 0xf7d117, 0.9).strokeRoundedRect(-320, -h / 2, 640, h, 16);
-    banner.add(bg);
-    const top = -h / 2;
-    banner.add(this.add.text(0, top + 32, `LEVEL ${this.levelIndex + 1}`, {
-      fontFamily: FONT, fontSize: '22px', color: '#f7d117'
-    }).setOrigin(0.5));
-    banner.add(this.add.text(0, top + 68, this.level.name, { fontFamily: FONT, fontSize: '14px', color: '#ffffff' }).setOrigin(0.5));
-    banner.add(this.add.text(0, top + 96, `Passwort: ${this.level.password}`, {
-      fontFamily: FONT, fontSize: '9px', color: '#aab4cc'
-    }).setOrigin(0.5));
-    if (anecdote) {
-      banner.add(this.add.text(0, top + 136, `„${anecdote}“`, {
-        fontFamily: FONT, fontSize: '9px', color: '#ffe9a8', align: 'center', wordWrap: { width: 560 }, lineSpacing: 6
-      }).setOrigin(0.5));
-    }
-    banner.setAlpha(0).setScale(0.92);
-    this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 350, ease: 'Back.out' });
-    this.tweens.add({ targets: banner, alpha: 0, delay: anecdote ? 4200 : 2600, duration: 500, onComplete: () => banner.destroy() });
-    Sfx.play(this, 'levelStart');
+  /** Kurze Meldung in der Bildmitte (für alle Systeme der Szene). */
+  toast(message, color) {
+    this.hud.toast(message, color);
   }
 
   // =====================================================================
@@ -693,8 +585,8 @@ class GameScene extends Phaser.Scene {
 
     this.updateDrawbridgeChains();
     this.updateViews(time, delta);
-    this.updateInfoSigns();
-    this.updateHud();
+    this.hud.updateInfoSigns(this.infoSigns, this.players);
+    this.hud.update(this.players);
     this.updateCameraTarget();
     this.backdrop.update(this.cameras.main, this.worldHeight, delta);
   }
@@ -724,7 +616,7 @@ class GameScene extends Phaser.Scene {
       p.jumpBuffer = 0;
       p.coyote = 0;
       p.sx = 0.8; p.sy = 1.22;
-      this.puffDust(sprite.x, body.bottom, 4);
+      this.fx.dust(sprite.x, body.bottom, 4);
       Sfx.play(this, 'jump');
     }
     // Sprungtaste früh losgelassen → niedriger springen
@@ -735,12 +627,12 @@ class GameScene extends Phaser.Scene {
     // Landung: kurz stauchen + Staub
     if (onGround && !p.wasOnGround && p.prevVy > 220) {
       p.sx = 1.25; p.sy = 0.8;
-      this.puffDust(sprite.x, body.bottom, 6);
+      this.fx.dust(sprite.x, body.bottom, 6);
       Sfx.play(this, 'land');
     }
     // Laufstaub
     if (onGround && Math.abs(body.velocity.x) > 150 && time > p.nextDust) {
-      this.puffDust(sprite.x - Math.sign(body.velocity.x) * 6, body.bottom, 2);
+      this.fx.dust(sprite.x - Math.sign(body.velocity.x) * 6, body.bottom, 2);
       p.nextDust = time + 170;
     }
     p.wasOnGround = onGround;
@@ -1094,7 +986,7 @@ class GameScene extends Phaser.Scene {
       if (dir !== 0 && time > block.pushSoundAt) {
         Sfx.play(this, 'push');
         block.pushSoundAt = time + 160;
-        this.puffDust(block.x - dir * block.displayWidth / 2, bb.bottom, 1);
+        this.fx.dust(block.x - dir * block.displayWidth / 2, bb.bottom, 1);
       }
       const tooHeavy = dir === 0 && bestCount > 0 && bestCount < block.weight;
       block.label.setText(tooHeavy ? 'ZU SCHWER!\nZU ZWEIT!' : '')
@@ -1106,7 +998,7 @@ class GameScene extends Phaser.Scene {
       if (onGround && !block.wasOnGround && block.fallSpeed > 200) {
         Sfx.play(this, 'blockLand');
         this.cameras.main.shake(100, 0.004 * block.weight);
-        this.puffDust(block.x, bb.bottom, 8);
+        this.fx.dust(block.x, bb.bottom, 8);
       }
       block.wasOnGround = onGround;
       block.fallSpeed = bb.velocity.y;
@@ -1180,7 +1072,7 @@ class GameScene extends Phaser.Scene {
     body.setVelocity(0, 0);
     const player = this.players && this.players.find(p => p.sprite === go);
     if (player) { player.sx = 1.25; player.sy = 0.8; }
-    this.puffDust(go.x, body.bottom, 5);
+    this.fx.dust(go.x, body.bottom, 5);
     Sfx.play(this, 'pop');
     return true;
   }
@@ -1229,17 +1121,9 @@ class GameScene extends Phaser.Scene {
     if (!flower.active || !flower.body.enable) return;
     this.tweens.killTweensOf(flower);
     flower.body.enable = false;
-    this.tweens.add({
-      targets: flower, y: flower.y - 30, alpha: 0, scale: 2, duration: 350, ease: 'Quad.out',
-      onComplete: () => flower.destroy()
-    });
-    for (let i = 0; i < 8; i++) {
-      const s = this.add.image(flower.x, flower.y, 'softDot').setDepth(DEPTH.FX).setScale(0.6).setBlendMode('ADD');
-      const a = (i / 8) * Math.PI * 2;
-      this.tweens.add({ targets: s, x: s.x + Math.cos(a) * 22, y: s.y + Math.sin(a) * 22, alpha: 0, scale: 0.1, duration: 450, onComplete: () => s.destroy() });
-    }
+    this.fx.collect(flower);
     this.collected++;
-    this.updateFlowerText();
+    this.hud.setFlowers(this.collected, this.totalEdelweiss);
     Sfx.play(this, 'collect');
   }
 
@@ -1251,7 +1135,7 @@ class GameScene extends Phaser.Scene {
     s.body.enable = false;
     if (reason === 'water') {
       Sfx.play(this, 'splash');
-      this.splash(s.x, s.y);
+      this.fx.splash(s.x, s.y);
     } else {
       Sfx.play(this, 'respawn');
     }
@@ -1273,27 +1157,8 @@ class GameScene extends Phaser.Scene {
   }
 
   // =====================================================================
-  // INFOTAFELN & ZIEL
+  // ZIEL
   // =====================================================================
-  updateInfoSigns() {
-    let shown = null;
-    this.infoSigns.forEach(sign => {
-      if (!sign.text) return;
-      const near = this.players.some(p => Math.abs(p.sprite.x - sign.x) < 48 && Math.abs(p.sprite.y - sign.y) < 64);
-      if (near) shown = sign;
-    });
-    this.hintBox.setVisible(!!shown);
-    this.hintText.setVisible(!!shown);
-    if (shown && this.hintText.text !== shown.text) {
-      this.hintText.setText(shown.text);
-      // Box an die Textlänge anpassen; Unterkante bleibt am Bildschirmrand
-      const h = this.hintText.height + 28;
-      const cy = GAME_HEIGHT - 16 - h / 2;
-      this.hintBox.setSize(GAME_WIDTH - 80, h).setPosition(GAME_WIDTH / 2, cy);
-      this.hintText.setY(cy);
-    }
-  }
-
   updateGoal() {
     if (!this.goal) return;
     this.players.forEach(p => {
@@ -1320,7 +1185,7 @@ class GameScene extends Phaser.Scene {
     });
     Sfx.play(this, 'win');
     this.toast('GESCHAFFT!', '#7dff9a');
-    this.confetti();
+    this.fx.confetti();
 
     // Edelweiss-Ergebnis merken (bestes Ergebnis pro Level) – fürs Finale
     const results = this.registry.get('edelweiss') || {};
@@ -1342,55 +1207,5 @@ class GameScene extends Phaser.Scene {
         });
       });
     });
-  }
-
-  // =====================================================================
-  // EFFEKTE
-  // =====================================================================
-  puffDust(x, y, count = 5) {
-    for (let i = 0; i < count; i++) {
-      const d = this.add.image(x, y - 2, 'softDot').setTint(0xf0e6d0).setDepth(DEPTH.FX)
-        .setScale(Phaser.Math.FloatBetween(0.5, 0.9)).setAlpha(0.8);
-      this.tweens.add({
-        targets: d,
-        x: x + Phaser.Math.Between(-16, 16),
-        y: y - Phaser.Math.Between(4, 14),
-        alpha: 0, scale: 0.2, duration: Phaser.Math.Between(280, 420), ease: 'Quad.out',
-        onComplete: () => d.destroy()
-      });
-    }
-  }
-
-  /** Wasserspritzer, wenn jemand nass wird. */
-  splash(x, y) {
-    for (let i = 0; i < 16; i++) {
-      const drop = this.add.image(x, y, 'softDot').setTint(i % 2 ? 0x8fd0ff : 0xffffff).setDepth(DEPTH.FX).setScale(0.6);
-      this.tweens.add({
-        targets: drop,
-        x: x + Phaser.Math.Between(-34, 34),
-        y: y - Phaser.Math.Between(20, 64),
-        alpha: 0, duration: 450, ease: 'Quad.out',
-        onComplete: () => drop.destroy()
-      });
-    }
-  }
-
-  confetti() {
-    const colors = [0xd52b1e, 0xffffff, 0xf7d117, 0x3fd06a, 0x1b6ee8];
-    const cam = this.cameras.main;
-    for (let i = 0; i < 80; i++) {
-      const c = this.add.image(
-        cam.scrollX + Phaser.Math.Between(0, GAME_WIDTH), cam.scrollY - 10, 'confetti'
-      ).setTint(Phaser.Utils.Array.GetRandom(colors)).setDepth(DEPTH.FX).setScale(Phaser.Math.FloatBetween(0.8, 1.4));
-      this.tweens.add({
-        targets: c,
-        y: cam.scrollY + GAME_HEIGHT + 20,
-        x: c.x + Phaser.Math.Between(-60, 60),
-        angle: Phaser.Math.Between(-360, 360),
-        duration: Phaser.Math.Between(1200, 2200),
-        delay: Phaser.Math.Between(0, 600),
-        onComplete: () => c.destroy()
-      });
-    }
   }
 }
