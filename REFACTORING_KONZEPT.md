@@ -6,6 +6,18 @@
 
 ---
 
+## Umsetzungsstand (14.10.2026): ✅ abgeschlossen
+
+Alle 6 Stufen sind umgesetzt, je Stufe ein Commit auf `master`. Nach jeder Stufe hat der Replay-Test alle 5 Level **bitgenau identisch** zur Referenz (Stand `862738e` vor dem Refactoring) bestätigt. `GameScene.js` ist von 1 397 auf 141 Zeilen geschrumpft; das Spiel läuft weiterhin ohne Build-Schritt per Doppelklick.
+
+Abweichungen vom Konzept (bewusst):
+- **`js/game/constants.js`** zusätzlich: `DEPTH` und `SEQ_COLORS` werden von mehreren Modulen gebraucht.
+- **Kein Event-Bus für Toasts:** In `create()` angemeldete Listener auf Szenen-Events bleiben bei einem Neustart der Szene (Taste R) bestehen und müssten jedes Mal manuell abgemeldet werden. Stattdessen rufen die Module die dünne Methode `scene.toast()` auf, die an das Hud weiterleitet – gleiche Entkopplung, weniger Fehlerquellen.
+- **`tools/test-levels.js`** zusätzlich: prüft alle Level per LevelParser in Node, ohne Browser.
+- Die Absturz-Prüfung („aus der Welt gefallen“) bleibt in der GameScene, weil sie auch nach dem Levelende läuft.
+
+---
+
 ## 1. Ziel & Leitplanken
 
 **Ziel:** `GameScene.js` (≈ 1 400 Zeilen) in klar abgegrenzte Module aufteilen, sodass neue Mechaniken, Collectibles und später Gegner jeweils in **einer** Datei entstehen, ohne Eingriffe quer durch die Szene.

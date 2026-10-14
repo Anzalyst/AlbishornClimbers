@@ -60,10 +60,20 @@ js/art.js                  Gelände, Mechaniken, Parallax-Hintergrund & Licht ("
 js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte, ruft art.js auf)
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
 js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe
-js/scenes/GameScene.js     Gameplay: Level-Aufbau, Physik, Koop-Mechaniken, HUD
+js/scenes/GameScene.js     Gameplay-Szene: erzeugt die Module aus js/game/ und taktet sie
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
 js/scenes/CreditsScene.js  Abspann
+js/game/LevelParser.js     ASCII-Karte → Datenobjekt, prüft die Leveldaten (ohne Phaser)
+js/game/LevelBuilder.js    Datenobjekt → Gelände, Wasser, Deko, Collider
+js/game/Player.js          Spielfigur: Bewegung, Sprung, Animation, Respawn
+js/game/BlockSystem.js     Schiebbare Kisten & Felsbrocken
+js/game/mechanics/         MechanicsSystem + Register triggers.js / targets.js
+js/game/Unstuck.js         Feststecken erkennen & freischieben
+js/game/CoopRules.js       Kamera, Spielerabstand, Checkpoints, Ziel
+js/game/Hud.js, Fx.js      Anzeigen und visuelle Effekte
+js/game/constants.js       Darstellungsebenen (DEPTH), Farbtasten-Farben
+tools/                     Automatische Tests (nur für Entwickler, siehe unten)
 ```
 
 ## Neues Level bauen
@@ -73,6 +83,15 @@ In `js/levels.js` ein Objekt mit `map`, `password`, `triggers`, `targets` (und o
 - **Ziele:** Tore (`door`), Kisten-Stufen (`bridge`), Wasser (`water`), Aufzüge (`lift`, hält oder pendelt), Zugbrücken (`drawbridge`), Förderbänder (`conveyor`).
 - **Infotafeln** (`i` + `hints`) gibt es nur in Level 1. Die lustigen Kindheits-Erinnerungen stehen als `anecdote` in der Einblendung zum Levelstart.
 
+Fehler in den Leveldaten (unbekannte Zeichen, fehlender Start/Ziel, Verweise auf unbekannte Ziele …) meldet der LevelParser als Warnung in der Browser-Konsole – oder ohne Browser mit `node tools/test-levels.js`.
+
+## Neue Mechanik bauen
+Jeder Mechanik-Typ ist ein Eintrag in einem Register, die GameScene muss dafür nicht angefasst werden:
+- **Neuer Auslöser** (z. B. Zeitschalter): Eintrag in `TRIGGER_TYPES` (`js/game/mechanics/triggers.js`) mit `create(sys, trigger, cfg)` und `update(sys, trigger)`, der `trigger.active` setzt.
+- **Neues Ziel** (z. B. Federbrett): Eintrag in `TARGET_TYPES` (`js/game/mechanics/targets.js`) mit `cell` / `create` / `apply` / `update` – die Bedeutung jeder Funktion steht im Dateikopf.
+- Danach in `levels.js` verwenden (`{ type: '…' }` bzw. `{ kind: '…' }`) und eine Textur in `art.js` anlegen.
+- Neue Script-Dateien in `index.html` vor `js/scenes/` eintragen.
+
 ## Automatische Tests
 Für Entwickler (das Spiel selbst braucht weiterhin nur den Browser):
 
@@ -80,7 +99,7 @@ Für Entwickler (das Spiel selbst braucht weiterhin nur den Browser):
 node tools/run-tests.js
 ```
 
-Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an. JS-Fehler und fehlende Texturen lassen den Test scheitern.
+Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an. Vorab prüft `tools/test-levels.js` die Leveldaten. JS-Fehler, fehlende Texturen und Level-Probleme lassen den Test scheitern.
 
 - Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.

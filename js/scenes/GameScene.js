@@ -1,18 +1,20 @@
 /* =====================================================================
- * GameScene – Das eigentliche Gameplay
+ * GameScene – Das eigentliche Gameplay (nur noch Orchestrierung)
  *
- * Ablauf:
- *   create()  → Level aus ASCII-Karte bauen, Spieler erzeugen, Kollisionen,
- *               Kamera und HUD einrichten
- *   update()  → Eingaben lesen, Spieler bewegen, Mechaniken (Schalter,
- *               Hebel, Farbtasten, Aufzüge, Brücken, Förderbänder) auswerten,
- *               Feststecken auflösen, Checkpoints, Gefahren und Ziel prüfen
+ * Die Szene erzeugt die Module aus js/game/ und legt die Reihenfolge fest,
+ * in der sie pro Frame laufen. Die Logik selbst steckt in den Modulen:
+ *
+ *   LevelParser   ASCII-Karte → Datenobjekt (prüft die Leveldaten)
+ *   LevelBuilder  Datenobjekt → Gelände, Wasser, Deko, Collider
+ *   Player        Spielfigur: Bewegung, Sprung, Animation, Respawn
+ *   BlockSystem   schiebbare Kisten & Felsbrocken
+ *   mechanics/    MechanicsSystem + Register TRIGGER_TYPES / TARGET_TYPES
+ *   Unstuck       Feststecken erkennen & freischieben
+ *   CoopRules     Kamera, Abstand, Checkpoints, Ziel
+ *   Hud / Fx      Anzeigen / visuelle Effekte
  *
  * Die Spieler kollidieren NICHT miteinander und können nicht
  * aufeinander stehen. Koop entsteht nur über Mechaniken.
- *
- * Module in js/game/: Player, Fx, Hud, Unstuck, BlockSystem und die
- * Mechaniken (mechanics/: MechanicsSystem + Register triggers.js/targets.js).
  * ===================================================================== */
 
 class GameScene extends Phaser.Scene {
@@ -33,13 +35,14 @@ class GameScene extends Phaser.Scene {
     this.inputs = createPlayerInputs(this);
     this.fx = new Fx(this);
     this.unstuck = new Unstuck(this);
+    this.coop = new CoopRules(this);
     this.backdrop = addBackdrop(this, this.level.sky);
 
     this.builder = new LevelBuilder(this);
     this.builder.build(LevelParser.parse(this.level));
     this.createPlayers();
     this.builder.setupCollisions(this.players);
-    this.setupCamera();
+    this.coop.setupCamera();
     this.fx.createAtmosphere(this.flowers);
     this.hud = new Hud(this, this.levelIndex, this.level);
     this.hud.setFlowers(this.collected, this.totalEdelweiss);
@@ -51,9 +54,6 @@ class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-M', () => this.toast(Sfx.toggleMute() ? 'Ton aus' : 'Ton an', '#ffffff'));
   }
 
-  // =====================================================================
-  // SPIELER
-  // =====================================================================
   createPlayers() {
     this.players = PLAYER_DEFS.map((def, i) => {
       const spawn = this.spawns[def.id] || { x: 64 + i * 48, y: this.worldHeight - 3 * TILE };
@@ -61,45 +61,21 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  setupCamera() {
-    const cam = this.cameras.main;
-    cam.setBounds(0, 0, this.worldWidth, this.worldHeight);
-    cam.setRoundPixels(true);
-
-    // Die Kamera folgt weich einem unsichtbaren Punkt zwischen beiden Spielern
-    this.camTarget = this.add.zone(0, 0, 1, 1);
-    this.updateCameraTarget();
-    cam.startFollow(this.camTarget, true, 0.09, 0.09);
-    cam.centerOn(this.camTarget.x, this.camTarget.y);
-  }
-
-  updateCameraTarget() {
-    const [a, b] = this.players.map(p => p.sprite);
-    this.camTarget.setPosition((a.x + b.x) / 2, (a.y + b.y) / 2 - 40);
-  }
-
   // =====================================================================
-  // HUD
-  // =====================================================================
-  /** Kurze Meldung in der Bildmitte (für alle Systeme der Szene). */
-  toast(message, color) {
-    this.hud.toast(message, color);
-  }
-
-  // =====================================================================
-  // UPDATE-SCHLEIFE
+  // UPDATE-SCHLEIFE – die Reihenfolge ist wichtig für die Physik:
+  // Spieler → Abstand → Blöcke → Mechaniken (Förderband addiert auf die
+  // Block-Geschwindigkeit, Aufzüge fahren nach dem Schalten) → Freischieben
   // =====================================================================
   update(time, delta) {
     this.inputs.forEach(i => i.update());
 
     if (!this.completed) {
       this.players.forEach(p => p.update(time, delta));
-      this.limitPlayerSpread();
+      this.coop.limitSpread();
       this.blockSystem.update(time);
       this.mechanics.update(delta);
       this.unstuck.resolve();
-      this.updateCheckpoints();
-      this.updateGoal();
+      this.coop.update();
     }
 
     this.players.forEach(p => {
@@ -110,40 +86,17 @@ class GameScene extends Phaser.Scene {
     this.players.forEach(p => p.updateView(time, delta));
     this.hud.updateInfoSigns(this.infoSigns, this.players);
     this.hud.update(this.players);
-    this.updateCameraTarget();
+    this.coop.updateCamera();
     this.backdrop.update(this.cameras.main, this.worldHeight, delta);
   }
 
-  /** Beide Spieler müssen gemeinsam im Bild bleiben. */
-  limitPlayerSpread() {
-    const [a, b] = this.players.map(p => p.sprite.body);
-    const dx = a.center.x - b.center.x;
-    if (Math.abs(dx) < MAX_PLAYER_SPREAD) return;
-    const [right, left] = dx > 0 ? [a, b] : [b, a];
-    if (right.velocity.x > 0) right.setVelocityX(0);  // nicht weiter auseinander laufen
-    if (left.velocity.x < 0) left.setVelocityX(0);
-  }
+  // =====================================================================
+  // EREIGNISSE (von den Modulen aufgerufen)
+  // =====================================================================
 
-  // =====================================================================
-  // CHECKPOINTS & SAMMELOBJEKTE
-  // =====================================================================
-  updateCheckpoints() {
-    this.checkpoints.forEach(cp => {
-      this.players.forEach(p => {
-        if (cp.reachedBy.has(p.def.id)) return;
-        const s = p.sprite;
-        if (Math.abs(s.x - cp.x) < 24 && Math.abs(s.y - cp.y) < 40) {
-          cp.reachedBy.add(p.def.id);
-          p.checkpoint = { x: cp.x, y: cp.y };
-          if (cp.sprite.texture.key !== 'flag_on') {
-            cp.sprite.setTexture('flag_on');
-            this.tweens.add({ targets: cp.sprite, scaleX: 0.85, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-          }
-          Sfx.play(this, 'checkpoint');
-          this.toast(`Checkpoint für ${p.def.name}!`, p.def.colorCss);
-        }
-      });
-    });
+  /** Kurze Meldung in der Bildmitte. */
+  toast(message, color) {
+    this.hud.toast(message, color);
   }
 
   collectFlower(flower) {
@@ -156,24 +109,7 @@ class GameScene extends Phaser.Scene {
     Sfx.play(this, 'collect');
   }
 
-  // =====================================================================
-  // ZIEL
-  // =====================================================================
-  updateGoal() {
-    if (!this.goal) return;
-    this.players.forEach(p => {
-      const wasAtGoal = p.atGoal;
-      p.atGoal = Phaser.Geom.Rectangle.Contains(this.goal.zone, p.sprite.x, p.sprite.y);
-      if (p.atGoal && !wasAtGoal && !this.players.every(q => q.atGoal)) {
-        const other = this.players.find(q => q !== p);
-        this.toast(`Warte auf ${other.def.name}!`, p.def.colorCss);
-      }
-    });
-
-    // Level geschafft erst, wenn BEIDE Spieler am Ziel sind
-    if (this.players.every(p => p.atGoal)) this.completeLevel();
-  }
-
+  /** Beide Spieler sind am Ziel. */
   completeLevel() {
     this.completed = true;
     this.players.forEach(p => p.celebrate());
