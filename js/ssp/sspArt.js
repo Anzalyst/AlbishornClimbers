@@ -73,19 +73,32 @@ const SspArt = {
       A.rect(ctx, 1, 0, 9, 4, '#3a7be0'); A.rect(ctx, 12, 0, 9, 4, '#3a7be0');
       [2, 6, 13, 17].forEach(x => { A.rect(ctx, x, 5, 3, 3, '#f2c230'); });
     });
-    // Zeltleine mit Hering
-    A.canvas(scene, 'ssp_rope', 40, 20, ctx => {
-      ctx.strokeStyle = '#f08a24'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(36, 17); ctx.stroke();
-      A.rect(ctx, 34, 12, 3, 8, '#9aa0aa');
+    // Zeltleine: rot-weiss gestreiftes Seil zwischen zwei Heringen, gelbe
+    // Warnwimpel, dunkle Kontur – hebt sich klar von Wiese und Zelten ab
+    A.canvas(scene, 'ssp_rope', 52, 26, ctx => {
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#111111'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(4, 8); ctx.lineTo(48, 8); ctx.stroke();
+      for (let x = 4; x < 48; x += 8) {
+        ctx.strokeStyle = (x / 8) % 2 < 1 ? '#ff2a2a' : '#ffffff'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(x, 8); ctx.lineTo(Math.min(48, x + 8), 8); ctx.stroke();
+      }
+      [[2, 4], [46, 4]].forEach(([x, y]) => { A.rect(ctx, x - 1, y, 6, 22, '#111111'); A.rect(ctx, x, y + 1, 4, 20, '#d0d6de'); });
+      [14, 30].forEach(x => {
+        ctx.fillStyle = '#111111'; ctx.beginPath(); ctx.moveTo(x - 1, 9); ctx.lineTo(x + 9, 9); ctx.lineTo(x + 4, 21); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffe14a'; ctx.beginPath(); ctx.moveTo(x, 10); ctx.lineTo(x + 8, 10); ctx.lineTo(x + 4, 19); ctx.closePath(); ctx.fill();
+      });
     });
-    // Campingstuhl
-    A.canvas(scene, 'ssp_chair', 30, 34, ctx => {
-      ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(3, 34); ctx.lineTo(26, 16); ctx.moveTo(26, 34); ctx.lineTo(3, 16); ctx.stroke();
-      A.rect(ctx, 3, 14, 24, 5, '#3a8a4a');
-      A.rect(ctx, 20, 0, 6, 16, '#3a8a4a');
-      A.rect(ctx, 2, 12, 26, 2, '#2a6a3a');
+    // Campingstuhl: knallblau mit gelbem Sitz, dunkle Kontur
+    A.canvas(scene, 'ssp_chair', 36, 40, ctx => {
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#111111'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(5, 38); ctx.lineTo(30, 18); ctx.moveTo(30, 38); ctx.lineTo(5, 18); ctx.stroke();
+      ctx.strokeStyle = '#d0d6de'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(5, 38); ctx.lineTo(30, 18); ctx.moveTo(30, 38); ctx.lineTo(5, 18); ctx.stroke();
+      A.rect(ctx, 1, 13, 34, 10, '#111111'); A.rect(ctx, 3, 15, 30, 6, '#ffd21a');
+      A.rect(ctx, 22, 0, 12, 22, '#111111'); A.rect(ctx, 24, 2, 8, 18, '#1b6ee8');
+      A.rect(ctx, 25, 3, 2, 16, '#6aa4ff');
     });
     // Zelt (Deko)
     A.canvas(scene, 'ssp_tent', 84, 56, ctx => {

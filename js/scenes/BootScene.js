@@ -256,9 +256,109 @@ const PEOPLE = {
         [20, 11, 'qq.qq'], [21, 11, 'kk.kk'], [22, 11, 'kkkkkk'], [23, 11, 'KKKKKK']
       ]
     }
+  },
+
+  // Angi (Svens Frau): blonde Haare mit Zopf über der rechten Schulter,
+  // rosa Outdoorjacke, dunkle Hose, Wanderschuhe – lacht
+  angi: {
+    width: 16, originX: 0.5,
+    palette: {
+      h: '#ecc868', H: '#c89a3c', s: '#f4c8a4', e: '#1e3a6e', m: '#c0506a', r: '#f0a0a8',
+      j: '#ec6aa8', J: '#c8488a', z: '#fbe0ee', p: '#3a3f4e', P: '#2a2e3a', k: '#5a3418'
+    },
+    base: [
+      '.....hhhhhh.....',
+      '....hhHhhhhh....',
+      '...hhhhhhHhhh...',
+      '...hsssssssh....',
+      '...hsesssesh....',
+      '...hrsssssrhH...',   // rote Bäckchen
+      '...hssmmmssHh...',   // breites Lachen
+      '....sssssssHh...',
+      '.....jsssjhH....',   // Zopf beginnt
+      '...jjjjzjjjhH...',
+      '..jjjjjzjjjHh...',
+      '..jJjjjzjjhJj...',
+      '..jJjjjzjjHJj...',
+      '..jJjjjzjjhJj...',
+      '..sjjjjzjjjjs...',
+      '..s.jjjzjjj.s...',
+      '....ppppppp.....',
+      '....ppppppp.....',
+      '....pppPppp.....'
+    ].concat(LEGS16.idle),
+    frames: {
+      wave: [[15, 12, '.'], [14, 12, 'j'], [11, 13, 'j'], [10, 13, 'j'], [9, 13, 'j'], [8, 13, 's'], [7, 13, 's']],
+      walk1: legOps(LEGS16.walk1),
+      walk2: legOps(LEGS16.walk2)
+    }
+  },
+
+  // Peter Kammer (Grill-Meister der Sempach-Party): kleinere, rundere Version
+  // von Sven – gleiches olivgrünes T-Shirt und graue Shorts, fast Glatze
+  // mit Haarkranz, grosses Grinsen
+  peter: {
+    width: 16, originX: 0.5,
+    palette: {
+      s: '#e8b08a', S: '#d0946e', L: '#f6d0b0', h: '#7a6a5a', e: '#222222', m: '#9a5040', w: '#ffffff',
+      o: '#5a6b3a', O: '#46552c', b: '#3a2a1a', p: '#5a5a62', q: '#18181c', k: '#5a5040'
+    },
+    base: [
+      '................',
+      '................',
+      '................',
+      '................',
+      '.....sLssss.....',   // Glatze mit Glanzpunkt
+      '....hssssssh....',   // Haarkranz an den Seiten
+      '....hsessesh....',
+      '....sssSSsss....',
+      '....smwwwwms....',   // breites Grinsen
+      '.....ssssss.....',
+      '...oooooooooo...',
+      '..oooooooooooo..',
+      '.soooooooooooos.',
+      '.sooooOOOOoooos.',   // Bauch
+      '.soooooooooooos.',
+      '..oooooooooooo..',
+      '..bbbbbbbbbbbb..',
+      '...pppppppppp...',
+      '...pppp..pppp...',
+      '...pppp..pppp...',
+      '...ssss..ssss...',
+      '...qqqq..qqqq...',
+      '...kkkk..kkkk...',
+      '..kkkkk..kkkkk..'
+    ],
+    frames: {
+      wave: [[12, 14, '.'], [13, 14, '.'], [14, 14, '.'], [11, 14, 's'], [10, 15, 's'], [9, 15, 's'], [8, 15, 's']]
+    }
   }
 };
 const PERSON_HEIGHT = 24;
+
+// Ginny, die getigerte Katze: braun getigert, weisse Brust & Pfötchen,
+// grüne Augen. Seitenansicht (schaut nach rechts), 16×12 Pixel.
+// Frames: 0 = sitzen, 1/2 = laufen
+const GINNY = {
+  palette: { b: '#9a7650', d: '#5a3e26', w: '#f6f4ee', g: '#6ad04a', n: '#e88a9a', k: '#2a2018' },
+  body: [
+    '..........b...b.',
+    '..........bb.bb.',
+    '.........bdbbdb.',
+    '.........bgbbgb.',
+    'd........bbwnwb.',
+    'db.......wwkwww.',
+    '.d.bdbdbdbwwww..',
+    '..bbdbdbdbbww...',
+    '..bdbbbdbbbww...',
+    '..bbbdbbbdbwb...'
+  ],
+  legs: {
+    sit:   ['..ww......ww....', '..ww......ww....'],
+    walk1: ['..w..w....w..w..', '..w..w....w..w..'],
+    walk2: ['...ww......ww...', '...ww......ww...']
+  }
+};
 
 // Svens Tochter in der Kraxe: rosa Hose, graue Jacke, altrosa Mütze.
 // Sie schaut neugierig nach hinten (links) über Svens Schulter.
@@ -415,8 +515,16 @@ class BootScene extends Phaser.Scene {
     this.drawPixels(d.getContext(), DAUGHTER.pixels, DAUGHTER.palette, SCALE);
     d.refresh();
 
+    // Ginny, die Katze: 3 Frames (sitzen, 2× laufen)
+    const cat = this.textures.createCanvas('cat_ginny', 16 * SCALE * 3, 12 * SCALE);
+    ['sit', 'walk1', 'walk2'].forEach((pose, i) => {
+      this.drawPixels(cat.getContext(), GINNY.body.concat(GINNY.legs[pose]), GINNY.palette, SCALE, i * 16 * SCALE, 0);
+      cat.add(i, 0, i * 16 * SCALE, 0, 16 * SCALE, 12 * SCALE);
+    });
+    cat.refresh();
+
     // Porträts: Kopf + Schultern
-    ['edith', 'kurt'].forEach(key => {
+    ['edith', 'kurt', 'angi'].forEach(key => {
       const grid = this.buildPersonGrid(PEOPLE[key]).slice(0, 13);
       this.makePortrait(`portrait_${key}`, grid, PEOPLE[key].palette, 4);
     });
@@ -460,6 +568,9 @@ class BootScene extends Phaser.Scene {
         frameRate: 8,
         repeat: -1
       });
+    });
+    this.anims.create({
+      key: 'cat_ginny-walk', frames: [{ key: 'cat_ginny', frame: 1 }, { key: 'cat_ginny', frame: 2 }], frameRate: 8, repeat: -1
     });
     ['hiker1', 'hiker2'].forEach(key => {
       this.anims.create({
@@ -670,6 +781,11 @@ function addRestaurant(scene, x, bottom, depth = 1, scale = 1) {
  * ------------------------------------------------------------------- */
 function addPerson(scene, name, x, bottom, scale = 2) {
   return scene.add.sprite(x, bottom, `person_${name}`, 0).setOrigin(PEOPLE[name].originX, 1).setScale(scale);
+}
+
+/** Ginny, die getigerte Katze (Frame 0 = sitzen, Animation 'cat_ginny-walk'). */
+function addGinny(scene, x, bottom, scale = 2) {
+  return scene.add.sprite(x, bottom, 'cat_ginny', 0).setOrigin(0.5, 1).setScale(scale);
 }
 
 /* ---------------------------------------------------------------------

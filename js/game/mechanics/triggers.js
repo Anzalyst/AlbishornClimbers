@@ -60,7 +60,7 @@ const TRIGGER_TYPES = {
       scene.players.forEach(p => {
         if (!sys.isNear(t, p)) return;
         if (!sys.canUse(t, p)) {
-          if (p.input.justPressed('up')) scene.toast(`Nur ${PLAYER_DEFS[t.owner - 1].name}!`, '#ff8080');
+          if (p.input.justPressed('up')) scene.toast(tx(TXT.onlyFor, { name: PLAYER_DEFS[t.owner - 1].name }), '#ff8080');
           return;
         }
         someoneNear = someoneNear || !t.active;
@@ -68,7 +68,7 @@ const TRIGGER_TYPES = {
           t.active = t.latch ? true : !t.active;
           t.sprite.setTexture(t.active ? 'lever_on' : 'lever_off');
           Sfx.play(scene, 'lever');
-          scene.toast(t.active ? 'Hebel umgelegt!' : 'Hebel zurückgestellt');
+          scene.toast(t.active ? TXT.leverOn : TXT.leverOff);
           scene.cameras.main.shake(120, 0.004);
         }
       });
@@ -131,7 +131,7 @@ const TRIGGER_TYPES = {
         if (seq.progress >= seq.order.length) {
           seq.active = true;
           Sfx.play(scene, 'lever');
-          scene.toast('Richtige Reihenfolge!', '#7dff9a');
+          scene.toast(TXT.seqRight, '#7dff9a');
           scene.cameras.main.shake(120, 0.004);
         }
       } else {
@@ -139,7 +139,7 @@ const TRIGGER_TYPES = {
         seq.buttons.forEach(b => { b.lit = false; b.sprite.setTexture(`btn_${b.color}_off`); });
         seq.lamps.forEach(l => l.setAlpha(0.35));
         Sfx.play(scene, 'error');
-        scene.toast('Falsche Reihenfolge!', '#ff8080');
+        scene.toast(TXT.seqWrong, '#ff8080');
         scene.cameras.main.shake(150, 0.006);
       }
     }

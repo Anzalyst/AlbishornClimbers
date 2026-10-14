@@ -53,7 +53,7 @@ class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', () => this.openPause());
     this.input.keyboard.on('keydown-P', () => this.openPause());
     this.input.keyboard.on('keydown-R', () => this.scene.restart({ levelIndex: this.levelIndex }));
-    this.input.keyboard.on('keydown-M', () => this.toast(Sfx.toggleMute() ? 'Ton aus' : 'Ton an', '#ffffff'));
+    this.input.keyboard.on('keydown-M', () => this.toast(Sfx.toggleMute() ? TXT.soundOff : TXT.soundOn, '#ffffff'));
   }
 
   createPlayers() {
@@ -102,7 +102,7 @@ class GameScene extends Phaser.Scene {
     if (this.completed || this.scene.isPaused()) return;
     Sfx.play(this, 'select');
     this.scene.pause();
-    this.scene.launch('PauseScene', { parent: this.scene.key, restart: { levelIndex: this.levelIndex } });
+    this.scene.launch('PauseScene', { parent: this.scene.key, restart: { levelIndex: this.levelIndex }, labels: TXT.pause });
   }
 
   /** Von der PauseScene aufgerufen. */
@@ -131,7 +131,7 @@ class GameScene extends Phaser.Scene {
     this.completed = true;
     this.players.forEach(p => p.celebrate());
     Sfx.play(this, 'win');
-    this.toast('GESCHAFFT!', '#7dff9a');
+    this.toast(TXT.levelDone, '#7dff9a');
     this.fx.confetti();
 
     // Edelweiss-Ergebnis merken (bestes Ergebnis pro Level) – fürs Finale

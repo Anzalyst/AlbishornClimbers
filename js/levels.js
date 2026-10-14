@@ -63,19 +63,19 @@ const LEVELS = [
   // Simon geht durch und legt dahinter den Hebel um → Tor bleibt offen.
   // -------------------------------------------------------------------
   {
-    name: 'Der Start in Ebertswil',
+    name: 'De Start z Ebertswil',
     password: '1291',
     sky: [0x8ccbf0, 0xe4f3fb],
-    anecdote: '{PARENTS} behaupteten: "Es ist nicht mehr weit!" – Das war eine Lüge.',
+    anecdote: '{PARENTS} händ behauptet: "Es isch nüme wiit!" – Das isch glogge gsi.',
     triggers: {
       P: { type: 'plate', owner: 1, targets: ['D'] },
       L: { type: 'lever', owner: null, targets: ['D'] }
     },
     targets: { D: 'door' },
     hints: [
-      'Willkommen in Ebertswil! {P1}: A/D + LEERTASTE. {P2}: Pfeile + ENTER. Ihr kommt nur gemeinsam ans Ziel!',
-      'Ein Felsband! {P1}: Stell dich auf den BLAUEN Schalter – solange du draufstehst, ist das Tor offen.',
-      'Hebel legt man mit HOCH um. {P2}: Dieser Hebel hält das Tor dauerhaft offen.'
+      'Willkomme z Ebertswil! {P1}: A/D + LEERTASCHTE. {P2}: Pfiil + ENTER. Ihr chömed nume zäme as Ziil!',
+      'Es Felsband! {P1}: Stell di uf de BLAU Schalter – solang du druf stahsch, isch s Tor offe.',
+      'En Hebel leit mer mit UFE um. {P2}: Dä Hebel hebt s Tor für immer offe.'
     ],
     map: [
       '                                                          RR',
@@ -109,10 +109,10 @@ const LEVELS = [
   //     als Stufe über die Felsrippe (und bleibt, weil der Brocken liegt).
   // -------------------------------------------------------------------
   {
-    name: 'Der steile Waldaufstieg',
+    name: 'De stotzig Waldufstieg',
     password: '3842',
     sky: [0x9fd8cc, 0xeefaf4],
-    anecdote: 'Laut {UNCLE} war das hier "nur ein kleiner Hügel". Das Vermessungsamt sagt: Nein.',
+    anecdote: 'Für de {UNCLE} isch das do "nume es chliises Hügeli". S Vermässigsamt seit: Nei.',
     triggers: {
       P: { type: 'plate', owner: null, targets: ['B'] }
     },
@@ -151,10 +151,10 @@ const LEVELS = [
   //          Schalter Q, damit der Aufzug den anderen hinauffährt.
   // -------------------------------------------------------------------
   {
-    name: 'Der Bachlauf',
+    name: 'De Bachlauf',
     password: '7156',
     sky: [0xa4d4f2, 0xf2f9ff],
-    anecdote: 'Wer nasse Füsse bekommt, darf trotzdem NICHT umkehren. – Gezeichnet: {AUNT}',
+    anecdote: 'Wer nassi Füess überchunnt, dörf glich NÖD umchehre. – Underschribe: {AUNT}',
     triggers: {
       P: { type: 'plate', owner: null, targets: ['W'] },
       L: { type: 'lever', owner: null, targets: ['W'] },
@@ -200,10 +200,10 @@ const LEVELS = [
   //           und sichert die Brücke mit Hebel Y für den Partner.
   // -------------------------------------------------------------------
   {
-    name: 'Die Felswand',
+    name: 'D Felswand',
     password: '2468',
     sky: [0xb0d8f4, 0xfff2de],
-    anecdote: '"Schaut doch mal die schöne Aussicht an!" – Die Aussicht: eine Felswand.',
+    anecdote: '"Lueged doch emal di schöni Ussicht aa!" – D Ussicht: e Felswand.',
     triggers: {
       P: { type: 'plate', owner: null, targets: ['E'] },
       C: { type: 'plate', owner: null, targets: ['E'] },
@@ -270,7 +270,7 @@ const LEVELS = [
     name: 'Gipfelsturm Albishorn',
     password: '0909',
     sky: [0xf4b07a, 0xffe9cc],
-    anecdote: 'Fast oben! (Diesmal stimmt es wirklich. Ehrlich. Vertraut uns.)',
+    anecdote: 'Fascht obe! (Dasmal stimmts würkli. Ehrlich. Vertraued eus.)',
     triggers: {
       P: { type: 'plate', owner: 1, targets: ['W'] },
       L: { type: 'lever', owner: null, targets: ['W'] },

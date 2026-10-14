@@ -208,10 +208,10 @@ class LevelBuilder {
     // Pfosten des Wegweisers steht auf der Zelle, das Schild zeigt nach rechts
     const sign = scene.add.image(cx, bottom, 'goalSign').setOrigin(16 / 140, 1).setDepth(DEPTH.DECO);
     const boardX = sign.x - 16 + 60, boardY = bottom - 110 + 22;
-    scene.add.text(boardX, boardY, 'Albishorn', {
+    scene.add.text(boardX, boardY, TXT.goalBoard, {
       fontFamily: FONT, fontSize: '10px', color: '#111111'
     }).setOrigin(0.5).setDepth(DEPTH.DECO);
-    const zielText = scene.add.text(boardX, boardY - 30, 'ZIEL', {
+    const zielText = scene.add.text(boardX, boardY - 30, TXT.goalSign, {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5).setDepth(DEPTH.DECO);
     scene.tweens.add({ targets: zielText, y: zielText.y - 4, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });

@@ -47,13 +47,16 @@ class CreditsScene extends Phaser.Scene {
     const ground = GAME_HEIGHT - 58, scale = 1.5;
     const kid = key => this.add.sprite(0, ground, key, 0).setOrigin(0.5, 1).setScale(scale).setDepth(25);
 
-    // Sven mit der Tochter in der Kraxe – sie wippt bei jedem Schritt mit
+    // Die ganze Familie: Jessica & Simon, Katze Ginny, Sven mit Hannah in der
+    // Kraxe (sie wippt bei jedem Schritt mit), Angi, Tante Edith & Onkel Kurt
     this.svenGroup = addSvenWithDaughter(this, 0, ground, scale, 25).setBob(1, 2);
     const walkers = [
-      [kid('hiker1'), 0], [kid('hiker2'), 50],
-      [this.svenGroup.sven, 130],
-      [addPerson(this, 'edith', 0, ground, scale).setDepth(25), 210],
-      [addPerson(this, 'kurt', 0, ground, scale).setDepth(25), 265]
+      [kid('hiker1'), 0], [kid('hiker2'), 46],
+      [addGinny(this, 0, ground, scale).setDepth(25), 92],
+      [this.svenGroup.sven, 140],
+      [addPerson(this, 'angi', 0, ground, scale).setDepth(25), 196],
+      [addPerson(this, 'edith', 0, ground, scale).setDepth(25), 252],
+      [addPerson(this, 'kurt', 0, ground, scale).setDepth(25), 304]
     ];
     this.parade = walkers.map(([sprite, offset]) => {
       sprite.x = -60 - offset;
@@ -93,7 +96,7 @@ class CreditsScene extends Phaser.Scene {
     });
 
     // Zum Schluss: KES-Logo und "ENDE" – bleibt in der Bildmitte stehen
-    const end = this.add.text(cx, y + 40, 'ENDE', {
+    const end = this.add.text(cx, y + 40, TXT.creditsEnd, {
       fontFamily: FONT, fontSize: '28px', color: '#ffffff'
     }).setOrigin(0.5);
     const kes = this.add.text(cx, y + 100, `${CONSOLE.name} · ${CONSOLE.fullName}`, {
@@ -102,7 +105,7 @@ class CreditsScene extends Phaser.Scene {
     this.roll.add([end, kes]);
     this.rollStopY = -(y + 40) + GAME_HEIGHT / 2 - 60;   // "ENDE" landet etwas über der Mitte
 
-    this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 16, 'SPRUNG = WEITER', {
+    this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 16, TXT.creditsPrompt, {
       fontFamily: FONT, fontSize: '9px', color: '#dddddd'
     }).setOrigin(0.5, 1).setDepth(30).setVisible(false);
   }

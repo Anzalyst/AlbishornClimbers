@@ -29,15 +29,22 @@ Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und v
 
 **Einzige Ausnahme:** das Victory-Bild der `EndScene` (`assets/images/endscreen.jpg`, 720×540). Per Doppelklick (`file://`) darf der Browser Bilddateien weder per XHR laden noch als WebGL-Textur nutzen. Deshalb wird das Bild als Base64 in `js/generated/endscreen-image.js` eingebettet und in der BootScene mit `textures.addBase64` angelegt. Nach einem Austausch des Bildes `node tools/embed-images.js` ausführen und die erzeugte Datei mitcommitten.
 
-## Personalisierung
-Alle Namen und Texte stehen zentral in `js/config.js`:
-- `CAST`: Jessica (Spielerin 1), Simon (Spieler 2), Sven, Tante Edith & Onkel Kurt
-- `CONSOLE`: KES – Kammer Entertainment Systems (Startlogo)
-- `STORY`: Intro-Dialog in Ebertswil und Svens Gipfel-Gruss
-- `BIRTHDAY`: Glückwunsch-Nachricht im Finale
-- `CREDITS`: Abspann
+## Personalisierung & Sprache
+**Albishorn Climbers ist komplett auf Züritüütsch** (Mundart). Die Super Sempach Party bleibt auf Hochdeutsch, nur Grill-Legende Peter Kammer redet Mundart.
 
-In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{AUNT}`, `{UNCLE}` und `{PARENTS}` automatisch durch die Namen ersetzt.
+Alle Namen und Texte stehen zentral:
+- `js/config.js`
+  - `CAST`: Jessica (Spielerin 1), Simon (Spieler 2), Sven, Tante Edith & Onkel Kurt (Svens Eltern), Angi (Svens Frau), Hannah (Svens Tochter in der Kraxe), Ginny (die getigerte Katze)
+  - `CONSOLE`: KES – Kammer Entertainment Systems (Startlogo)
+  - `STORY`: Intro-Dialog in Ebertswil (Tante Edith läuft mit Jessica voraus) und der Empfang auf dem Gipfel
+  - `BIRTHDAY`: Glückwunsch-Nachricht im Finale
+  - `CREDITS`: Abspann
+- `js/texts.js`: alle Menüs, Anzeigen, Meldungen und Hinweise (`TXT`)
+- `js/levels.js`: Levelnamen, Infotafeln, Anekdoten
+
+Auf dem Gipfel und im Abspann ist die ganze Familie dabei: Jessica, Simon, Tante Edith, Onkel Kurt, Sven mit Hannah in der Kraxe, Angi und Katze Ginny. Die Figuren sind Pixel-Raster in `js/scenes/BootScene.js` (`PEOPLE`, `GINNY`).
+
+In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{AUNT}`, `{UNCLE}`, `{PARENTS}`, `{PARTNER}`, `{DAUGHTER}` und `{CAT}` automatisch durch die Namen ersetzt.
 
 ## Ablauf
 KES-Startlogo → **Spielauswahl** (Albishorn Climbers oder Super Sempach Party)
@@ -81,6 +88,7 @@ index.html                 Einstieg, lädt Phaser + Scripts (alles lokal)
 js/lib/                    Phaser 3.80.1 (phaser.min.js) + Lizenz
 assets/fonts/              Schrift Press Start 2P (woff2) + Lizenz
 js/config.js               Physik, Steuerung, Namen, Dialoge, Abspann
+js/texts.js                Alle Bildschirmtexte von Albishorn Climbers (Züritüütsch)
 js/levels.js               Alle Level als ASCII-Karten (Legende im Dateikopf)
 js/input.js                Tastatur + Gamepad API → einheitliche Spieler-Eingabe
 js/sfx.js                  Retro-Sounds & Melodien per Web Audio
@@ -143,6 +151,8 @@ node tools/run-tests.js
 Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an, und simulierte Controller prüfen die Eingabe (Zuordnung, Bewegung, Sprung, Pausenmenü, Menü, Tastatur parallel). Für die Super Sempach Party spielen einfache Bots jedes Minispiel gegen einen untätigen Gegner (der Bot muss gewinnen, auf beiden Seiten), dazu ein kompletter Party-Durchlauf bis zur Siegerehrung, der freie Modus und die Pause im Minispiel. Der Testbrowser hat kein Netzwerk: Lädt das Spiel etwas von aussen nach oder fehlt die Schrift, schlägt der Test fehl. Vorab prüft `tools/test-levels.js` die Leveldaten. JS-Fehler, fehlende Texturen und Level-Probleme lassen den Test scheitern.
 
 - Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
+- `--gameplay` vergleicht nur den Spielablauf (ohne Texte und HUD). Damit lässt sich nach Übersetzungen oder Textänderungen beweisen, dass sich am Spiel selbst nichts geändert hat.
+- Geprüft werden ausserdem: fehlende Texturen in jeder Szene, die ganze Familie auf dem Gipfel und im Abspann, und die Fairness bei Pedalo-Power (8 Zufalls-Layouts, ein Bot muss allen Enten ausweichen können).
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
 
 ## Neues Sempach-Minispiel bauen

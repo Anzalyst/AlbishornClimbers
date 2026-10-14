@@ -27,7 +27,7 @@ class VictoryScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 5, lineSpacing: 10
     }).setOrigin(0.5);
 
-    text(80, 'LEVEL GESCHAFFT!', 28, '#f7d117');
+    text(80, TXT.victoryTitle, 28, '#f7d117');
     text(130, LEVELS[this.levelIndex].name, 14);
 
     // Edelweiss-Ausbeute
@@ -35,7 +35,7 @@ class VictoryScene extends Phaser.Scene {
     this.add.text(cx - 52, 185, `${this.collected} / ${this.total}`, {
       fontFamily: FONT, fontSize: '16px', color: '#ffffff', stroke: '#000000', strokeThickness: 5
     }).setOrigin(0, 0.5);
-    if (this.total > 0 && this.collected === this.total) text(215, 'ALLE GEFUNDEN!', 9, '#7dff9a');
+    if (this.total > 0 && this.collected === this.total) text(215, TXT.victoryAll, 9, '#7dff9a');
 
     this.showPassword(cx);
 
@@ -45,7 +45,7 @@ class VictoryScene extends Phaser.Scene {
       this.tweens.add({ targets: s, y: s.y - 30, duration: 350, yoyo: true, repeat: -1, ease: 'Quad.out', delay: i * 175 });
     });
 
-    const prompt = text(GAME_HEIGHT - 40, 'SPRUNG = WEITER   ESC / B = MENÜ', 11, '#aab4cc');
+    const prompt = text(GAME_HEIGHT - 40, TXT.victoryPrompt, 11, '#aab4cc');
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-ESC', () => this.leave('MenuScene'));
@@ -58,7 +58,7 @@ class VictoryScene extends Phaser.Scene {
   /** Passwort für das nächste Level in vier SNES-artigen Kästchen. */
   showPassword(cx) {
     const code = Passwords.forLevel(this.levelIndex + 1);
-    this.add.text(cx, 245, `PASSWORT FÜR LEVEL ${this.levelIndex + 2}`, {
+    this.add.text(cx, 245, tx(TXT.victoryPassword, { n: this.levelIndex + 2 }), {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
     code.split('').forEach((digit, i) => {
@@ -66,7 +66,7 @@ class VictoryScene extends Phaser.Scene {
       this.add.rectangle(x, 300, 56, 64, 0x10131c, 0.9).setStrokeStyle(3, 0xf7d117);
       this.add.text(x, 302, digit, { fontFamily: FONT, fontSize: '28px', color: '#f7d117' }).setOrigin(0.5);
     });
-    this.add.text(cx, 348, 'Gut aufschreiben!', {
+    this.add.text(cx, 348, TXT.victoryWriteDown, {
       fontFamily: FONT, fontSize: '9px', color: '#dddddd', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
   }

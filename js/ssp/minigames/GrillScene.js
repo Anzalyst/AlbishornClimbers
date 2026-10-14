@@ -9,7 +9,27 @@
  *   verbrennt sie ganz (-2). Nach zwei Seiten wird sie serviert und eine
  *   neue kommt auf den Rost. Nach 45 s gewinnt, wer mehr Punkte hat.
  * Beide Grills bekommen dieselbe Abfolge von Garzeiten (fair).
+ *
+ * Zwischen den Grills steht Grill-Legende Peter Kammer und gibt seinen
+ * Senf dazu (Sprüche in PETER_SAYS, auf Züritüütsch).
  * ===================================================================== */
+
+const PETER_SAYS = {
+  hello: ['Grüezi mitenand! Ich bi de Peter – hüt zeig ich eu, wie mer richtig grilliert!'],
+  idle: [
+    'Nöd z früe chehre, gäll!',
+    'E Wurscht ohni Senf isch wie es Fondue ohni Brot.',
+    'Ich ha scho grilliert, da sind ihr no im Chinderwage gsi!',
+    'Mit Gfühl, nöd mit Gwalt!',
+    'Wer d Wurscht verchohlet, wäscht nachher ab!',
+    'Ah, das schmöckt nach Summer am Sempachersee!',
+    'Cervelat isch Chefsach!',
+    'Lueged uf de Balke – grüen isch guet!'
+  ],
+  perfect: ['Perfekt! Genau eso mach ich das au!', 'Lueg da – en echte Profi!', 'Wunderbar, die chunnt uf mini Platte!'],
+  burnt: ['Oha – das isch jetz Grillchohle!', 'Verchohlt! Das git Abwäsch-Dienscht.', 'Die chasch grad em Hund gäh!'],
+  raw: ['Die isch jo no roh wie-n-es Rüebli!', 'Gedulding, gedulding … d Wurscht lauft nöd devo!']
+};
 
 const GRILL = {
   slots: [-108, -36, 36, 108],      // x-Versatz der Würste zur Grillmitte
@@ -43,6 +63,8 @@ class GrillScene extends MinigameScene {
       scale: { start: 0.8, end: 2 }, alpha: { start: 0.5, end: 0 }, tint: 0x555555, emitting: false
     }).setDepth(15);
 
+    this.createPeter();
+
     this.grills = [1, 2].map(id => {
       const cx = id === 1 ? 240 : 720;
       const gg = this.add.graphics();
@@ -63,6 +85,48 @@ class GrillScene extends MinigameScene {
     });
   }
 
+  /** Peter Kammer: kleiner, runder als Sven, fast Glatze, mit Grillzange und Sprechblase. */
+  createPeter() {
+    const x = GAME_WIDTH / 2, ground = GRILL.y + 120;
+    this.peter = addPerson(this, 'peter', x, ground, 2).setDepth(25);
+    const tongs = this.add.graphics().setDepth(26);
+    tongs.lineStyle(3, 0x9aa0aa).lineBetween(x + 26, ground - 46, x + 46, ground - 70).lineBetween(x + 30, ground - 44, x + 50, ground - 66);
+    this.add.text(x, ground + 6, 'PETER KAMMER', { fontFamily: FONT, fontSize: '7px', color: '#ffe9a8', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(25);
+
+    this.bubble = this.add.container(x, 168).setDepth(60).setVisible(false);
+    this.bubbleBg = this.add.graphics();
+    this.bubbleText = this.add.text(0, 0, '', {
+      fontFamily: FONT, fontSize: '9px', color: '#111111', align: 'center', wordWrap: { width: 280 }, lineSpacing: 5
+    }).setOrigin(0.5);
+    this.bubble.add([this.bubbleBg, this.bubbleText]);
+    this.peterQuietUntil = 0;
+    this.peterIdleAt = 9000;
+    this.time.delayedCall(400, () => this.peterSays('hello', true));
+  }
+
+  /** Spruch zeigen. Reaktionen haben eine kurze Sperrzeit, damit Peter nicht pausenlos redet. */
+  peterSays(kind, force = false) {
+    const now = this.time.now;
+    if (!force && now < this.peterQuietUntil) return;
+    const list = PETER_SAYS[kind];
+    const text = list[Math.floor(Math.random() * list.length)];
+    this.bubbleText.setText(text);
+    const w = Math.max(120, this.bubbleText.width + 28), h = this.bubbleText.height + 22;
+    this.bubbleBg.clear().fillStyle(0x000000).fillRoundedRect(-w / 2 - 2, -h / 2 - 2, w + 4, h + 4, 12)
+      .fillStyle(0xffffff).fillRoundedRect(-w / 2, -h / 2, w, h, 10)
+      .fillStyle(0x000000).fillTriangle(-10, h / 2, 10, h / 2, 0, h / 2 + 16)
+      .fillStyle(0xffffff).fillTriangle(-7, h / 2 - 1, 7, h / 2 - 1, 0, h / 2 + 11);
+    this.bubble.setVisible(true).setScale(0.6);
+    this.tweens.killTweensOf(this.bubble);
+    this.tweens.add({ targets: this.bubble, scale: 1, duration: 180, ease: 'Back.out' });
+    if (this.bubbleTimer) this.bubbleTimer.remove();
+    this.bubbleTimer = this.time.delayedCall(kind === 'hello' ? 3600 : 2600, () => this.bubble.setVisible(false));
+    this.peterQuietUntil = now + 3000;
+    this.peterIdleAt = now + Phaser.Math.Between(6000, 9000);
+    // Peter winkt mit der Zange
+    this.time.addEvent({ delay: 160, repeat: 5, callback: () => this.peter.setFrame(Number(this.peter.frame.name) === 1 ? 0 : 1) });
+  }
+
   newSausage(x, slot, n) {
     const sprite = this.add.image(x, GRILL.y + 4, 'ssp_sausage').setDepth(20);
     const meter = this.add.graphics().setDepth(30);
@@ -70,6 +134,7 @@ class GrillScene extends MinigameScene {
   }
 
   tick(dt) {
+    if (this.time.now > this.peterIdleAt) this.peterSays('idle');
     this.grills.forEach(gr => {
       const input = this.inputOf(gr.id);
       if (input.justPressed('left')) gr.cursor = Math.max(0, gr.cursor - 1);
@@ -110,6 +175,9 @@ class GrillScene extends MinigameScene {
 
   award(gr, s, points, text, color) {
     this.score[gr.id] += points;
+    if (points >= 3) this.peterSays('perfect');
+    else if (points < 0) this.peterSays('burnt');
+    else if (text === 'ROH') this.peterSays('raw');
     if (points >= 3) Sfx.play(this, 'perfect');
     else if (points < 0) Sfx.play(this, 'burnt');
     this.popText(s.x, GRILL.y - 50, text, color, 10);

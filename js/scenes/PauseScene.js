@@ -13,6 +13,8 @@
  *   START / B / ESC / P                  weiterspielen
  *
  * "HAUPTMENÜ" führt zur Spielauswahl (GameSelectScene).
+ * Optional: { labels: { title, resume, restart, soundOn, soundOff, mainMenu, help } }
+ * – Albishorn Climbers übergibt so die Mundart-Texte (TXT.pause).
  * ===================================================================== */
 
 class PauseScene extends Phaser.Scene {
@@ -23,6 +25,10 @@ class PauseScene extends Phaser.Scene {
   init(data) {
     this.parentKey = data.parent || 'GameScene';
     this.restartData = data.restart || {};
+    this.labels = Object.assign({
+      title: 'PAUSE', resume: 'WEITER', restart: 'NEU STARTEN', soundOn: 'TON: AN', soundOff: 'TON: AUS',
+      mainMenu: 'HAUPTMENÜ', help: 'SPRUNG = OK   START = WEITER'
+    }, data.labels || {});
     this.selected = 0;
     this.closing = false;
   }
@@ -33,19 +39,19 @@ class PauseScene extends Phaser.Scene {
 
     this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x05060a, 0.6);
     this.add.rectangle(cx, cy, 420, 280, 0x10131c, 0.95).setStrokeStyle(3, 0xf7d117);
-    this.add.text(cx, cy - 100, 'PAUSE', { fontFamily: FONT, fontSize: '22px', color: '#f7d117' }).setOrigin(0.5);
+    this.add.text(cx, cy - 100, this.labels.title, { fontFamily: FONT, fontSize: '22px', color: '#f7d117' }).setOrigin(0.5);
 
     this.items = [
-      { label: () => 'WEITER', action: () => this.resume() },
-      { label: () => 'NEU STARTEN', action: () => this.restart() },
-      { label: () => (Sfx.muted ? 'TON: AUS' : 'TON: AN'), action: () => { Sfx.toggleMute(); this.refresh(); } },
-      { label: () => 'HAUPTMENÜ', action: () => this.toMainMenu() }
+      { label: () => this.labels.resume, action: () => this.resume() },
+      { label: () => this.labels.restart, action: () => this.restart() },
+      { label: () => (Sfx.muted ? this.labels.soundOff : this.labels.soundOn), action: () => { Sfx.toggleMute(); this.refresh(); } },
+      { label: () => this.labels.mainMenu, action: () => this.toMainMenu() }
     ];
     this.texts = this.items.map((item, i) => this.add.text(cx, cy - 40 + i * 38, '', {
       fontFamily: FONT, fontSize: '14px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5));
     this.arrow = this.add.text(0, 0, '▶', { fontFamily: FONT, fontSize: '14px', color: '#f7d117' }).setOrigin(0.5);
-    this.add.text(cx, cy + 118, 'SPRUNG = OK   START = WEITER', {
+    this.add.text(cx, cy + 118, this.labels.help, {
       fontFamily: FONT, fontSize: '8px', color: '#aab4cc'
     }).setOrigin(0.5);
 

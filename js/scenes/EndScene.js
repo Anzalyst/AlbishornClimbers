@@ -64,7 +64,7 @@ class EndScene extends Phaser.Scene {
     // Hinweis zum Weitermachen (auf dunkler Plakette), erst nach einer kurzen Pause
     const plate = this.add.graphics().setDepth(29).setVisible(false);
     plate.fillStyle(0x0b1020, 0.75).fillRoundedRect(cx - 120, GAME_HEIGHT - 38, 240, 28, 8);
-    this.prompt = this.add.text(cx, GAME_HEIGHT - 24, 'SPRUNG = HAUPTMENÜ', {
+    this.prompt = this.add.text(cx, GAME_HEIGHT - 24, TXT.endPrompt, {
       fontFamily: FONT, fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5).setDepth(30).setVisible(false);
     this.time.delayedCall(2500, () => {

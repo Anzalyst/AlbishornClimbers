@@ -67,10 +67,16 @@
 
   // --- Zustand erfassen ----------------------------------------------------
   const r1 = n => (typeof n === 'number' ? Math.round(n * 10) / 10 : '');
-  function snapshotRows(scene) {
+  /**
+   * gameplayOnly: nur die Spielwelt (ohne Texte und ohne fest am Bildschirm
+   * stehende HUD-Elemente) – damit lässt sich beweisen, dass sich der
+   * Spielablauf nicht ändert, wenn nur Texte/Übersetzungen geändert werden.
+   */
+  function snapshotRows(scene, gameplayOnly = false) {
     const rows = [];
     const visit = o => {
       if (o.type === 'ParticleEmitter') return;
+      if (gameplayOnly && (o.type === 'Text' || o.scrollFactorX === 0)) return;
       // Texte und TileSprites haben eine zufällige interne Textur-ID →
       // bei TileSprites die Quelltextur nehmen, bei Texten nur den Inhalt
       const key = o.displayTexture ? o.displayTexture.key : (o.texture && o.type !== 'Text' ? o.texture.key : '');
@@ -122,7 +128,7 @@
     setInput(0); setInput(1);
     startScene('GameScene', { levelIndex: index });
     const scene = game.scene.getScene('GameScene');
-    const hashes = [];
+    const hashes = [], gameplay = [];
     let frame = 0;
 
     const tick = (n = 1) => {
@@ -133,6 +139,7 @@
           const rows = snapshotRows(scene);
           const snapIndex = hashes.length;
           hashes.push(hash(rows.join('\n')));
+          gameplay.push(hash(snapshotRows(scene, true).join('\n')));
           if (OPTS.dump && OPTS.dump.level === index && OPTS.dump.snap === snapIndex) out.dump = rows;
         }
       }
@@ -204,10 +211,23 @@
       teleport(1, cx(goal.c) + 40, feetY(goal.r));
     }
     tick(400);
-    out.levels.push({ index, hashes, next: game.scene.getScenes(true).map(s => s.sys.settings.key) });
+    out.levels.push({ index, hashes, gameplay, next: game.scene.getScenes(true).map(s => s.sys.settings.key) });
   }
 
-  function runScenes() {
+  /** Kurz an den Browser abgeben, damit Promises (z. B. Dialog-Abläufe) weiterlaufen. */
+  const yieldToBrowser = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  /** Takten mit Pausen für Promises; optional drückt Jessica alle 40 Frames "Sprung". */
+  async function stepAsync(frames, autoJump = false) {
+    for (let k = 0; k < frames; k++) {
+      if (autoJump) setInput(0, k % 40 < 2 ? { jump: true } : {});
+      step();
+      if (k % 5 === 0) await yieldToBrowser();
+    }
+    setInput(0);
+  }
+
+  async function runScenes() {
     const scenes = [
       ['IntroScene', { mode: 'logo' }, 120],
       ['IntroScene', { mode: 'story' }, 400],
@@ -217,13 +237,52 @@
       ['CreditsScene', undefined, 400],
       ['EndScene', undefined, 240]
     ];
-    scenes.forEach(([key, data, frames], i) => {
+    for (const [i, [key, data, frames]] of scenes.entries()) {
       syncClock(LEVELS.length + 1 + i);
       const before = out.errors.length;
       startScene(key, data);
-      step(frames);
+      if (key === 'FinaleScene') await checkFinale();
+      else if (key === 'CreditsScene') checkCredits(frames);
+      else step(frames);
+      // Fehlende Texturen zeigt Phaser als grünes Gitter (__MISSING)
+      const sc = game.scene.getScene(key);
+      const missing = [];
+      const scan = o => { if (o.texture && o.texture.key === '__MISSING') missing.push(o.type); if (o.list) o.list.forEach(scan); };
+      sc.children.list.forEach(scan);
+      if (missing.length) out.errors.push(`${key}: ${missing.length} Objekte mit fehlender Textur`);
       out.scenes[key + (data && data.mode ? `:${data.mode}` : '')] = out.errors.length === before ? 'ok' : 'error';
+    }
+  }
+
+  /** Gipfelfeier: alle kommen an, Dialog wird weitergedrückt, dann feiert die ganze Familie. */
+  async function checkFinale() {
+    const sc = game.scene.getScene('FinaleScene');
+    const texOf = o => (o.texture ? o.texture.key : '');
+    const present = ['person_angi', 'person_sven', 'svenDaughter', 'cat_ginny', 'person_edith', 'person_kurt', 'hiker1', 'hiker2']
+      .filter(k => sc.children.list.some(o => texOf(o) === k));
+    out.family = out.family || {};
+    out.family.finale = present;
+    if (present.length !== 8) out.errors.push(`Gipfel: es fehlen Familienmitglieder (da: ${present})`);
+    await stepAsync(330);
+    if (!sc.dialog.active) out.errors.push('Gipfel: Dialog startet nicht nach der Ankunft');
+    await stepAsync(400, true);
+    const hats = sc.children.list.filter(o => texOf(o) === 'partyHat').length;
+    out.family.partyHats = hats;
+    if (sc.celebrants.length !== 6) out.errors.push(`Gipfel: ${sc.celebrants.length} statt 6 Feiernde`);
+    if (hats < 7) out.errors.push(`Gipfel: nur ${hats} Partyhütchen (erwartet 6 + Hannah)`);
+  }
+
+  /** Abspann: die ganze Familie läuft mit. */
+  function checkCredits(frames) {
+    const sc = game.scene.getScene('CreditsScene');
+    const keys = sc.parade.map(p => p.texture.key);
+    out.family = out.family || {};
+    out.family.credits = keys;
+    ['hiker1', 'hiker2', 'cat_ginny', 'person_sven', 'person_angi', 'person_edith', 'person_kurt'].forEach(k => {
+      if (!keys.includes(k)) out.errors.push(`Abspann: ${k} läuft nicht mit`);
     });
+    if (!sc.children.list.some(o => o.texture && o.texture.key === 'svenDaughter')) out.errors.push('Abspann: Hannah fehlt');
+    step(frames);
   }
 
   // --- Gamepad & Tastatur: echte Eingabe-Schicht mit simulierten Geräten ---
@@ -377,8 +436,14 @@
       const a = {};
       if (f % 8 === 0) a.jump = true;
       if (f % 8 === 4) a.action = true;
-      const duck = sc.ducks.find(d => d.id === id && !d.hit && d.track === b.track && d.x - (b.x + 66) > -4 && d.x - (b.x + 66) < 60);
-      if (duck && f % 2 === 0) a[b.track ? 'up' : 'down'] = true;
+      // Ente in meiner Spur voraus? → in eine Nachbarspur, in der vorne frei ist
+      // from = -64: auch Enten neben dem Rumpf zählen (Boot ist 56 px lang)
+      const ahead = (track, range, from = -4) => sc.ducks.some(d => d.id === id && !d.hit && d.track === track && d.x - (b.x + 66) > from && d.x - (b.x + 66) < range);
+      if (ahead(b.track, 60) && f % 2 === 0) {
+        const options = [b.track - 1, b.track + 1].filter(t => t >= 0 && t < PEDALO.tracks && !ahead(t, 30, -64))
+          .sort((x, y) => ahead(x, 140) - ahead(y, 140));   // lieber eine Spur, die länger frei ist
+        if (options.length) a[options[0] < b.track ? 'up' : 'down'] = true;
+      }
       return a;
     },
     SspWasser(sc, id, f, mem) {
@@ -471,6 +536,22 @@
         if (missing(sc)) check(`${key}: Texturen`, false, `${missing(sc)} fehlende Texturen`);
       });
     });
+
+    // 1b) Pedalo fair: in 8 Zufalls-Layouts kommt ein Bot, der nur 60 px weit
+    //     schaut, ohne Entenzusammenstoss durch; nie mehr als eine Ente pro Stelle
+    let hits = 0, layoutOk = true;
+    for (let seedNo = 1; seedNo <= 8; seedNo++) {
+      reseed(4000 + seedNo);
+      const p = play('SspPedalo', [1, 2]);
+      hits += p.ducks.filter(d => d.hit).length;
+      [1, 2].forEach(id => {
+        const xs = p.ducks.filter(d => d.id === id).map(d => d.x).sort((x, y) => x - y);
+        xs.forEach((x, i) => { if (i && x - xs[i - 1] < PEDALO.duckGap) layoutOk = false; });
+      });
+    }
+    out.sspStats.splice(-8, 8);   // die 8 Läufe nicht einzeln auflisten
+    check('PEDALO-POWER: Enten fair verteilt (8 Layouts)', layoutOk);
+    check('PEDALO-POWER: Ausweichen immer möglich (0 Zusammenstösse)', hits === 0, `(${hits} Zusammenstösse)`);
 
     // 2) Brennessel: Bot gegen Bot – der Strauch wechselt in beide Richtungen
     reseed(77);
@@ -574,7 +655,7 @@
   // Nicht auf die Browser-Schleife verlassen: Headless-Chrome liefert unter
   // virtueller Zeit nicht zuverlässig Animation-Frames.
   const waitStart = performance.now();
-  const wait = setInterval(() => {
+  const wait = setInterval(async () => {
     const elapsed = performance.now() - waitStart;
     const booted = window.game && game.textures && game.textures.exists('hiker1');
     if (!booted || (document.fonts.status !== 'loaded' && elapsed < 2000)) {
@@ -596,7 +677,7 @@
     checkOffline();
     try {
       for (let i = 0; i < LEVELS.length; i++) runLevel(i);
-      runScenes();
+      await runScenes();
       runInputTests();
       runSspTests();
     } catch (e) {

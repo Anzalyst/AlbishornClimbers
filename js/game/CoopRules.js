@@ -64,7 +64,7 @@ class CoopRules {
             scene.tweens.add({ targets: cp.sprite, scaleX: 0.85, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
           }
           Sfx.play(scene, 'checkpoint');
-          scene.toast(`Checkpoint für ${p.def.name}!`, p.def.colorCss);
+          scene.toast(tx(TXT.checkpoint, { name: p.def.name }), p.def.colorCss);
         }
       });
     });
@@ -78,7 +78,7 @@ class CoopRules {
       p.atGoal = Phaser.Geom.Rectangle.Contains(scene.goal.zone, p.sprite.x, p.sprite.y);
       if (p.atGoal && !wasAtGoal && !scene.players.every(q => q.atGoal)) {
         const other = scene.players.find(q => q !== p);
-        scene.toast(`Warte auf ${other.def.name}!`, p.def.colorCss);
+        scene.toast(tx(TXT.waitFor, { name: other.def.name }), p.def.colorCss);
       }
     });
 

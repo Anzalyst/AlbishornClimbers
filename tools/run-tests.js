@@ -7,6 +7,8 @@
  *   node tools/run-tests.js --update-golden   Referenz neu schreiben
  *   node tools/run-tests.js --root <Ordner>   anderen Spielstand testen
  *   node tools/run-tests.js --dump 2:15       Zustand Level 3, Messpunkt 15 ausgeben
+ *   node tools/run-tests.js --gameplay        nur den Spielablauf vergleichen (Texte
+ *                                             und HUD ignorieren, z. B. nach Übersetzungen)
  *
  * Braucht nur Node.js und einen installierten Chrome oder Edge
  * (Pfad notfalls per Umgebungsvariable CHROME_PATH). Das Spiel selbst
@@ -23,6 +25,7 @@ const arg = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] 
 const root = path.resolve(arg('--root') || path.join(__dirname, '..'));
 const goldenPath = path.join(__dirname, 'golden.json');
 const update = args.includes('--update-golden');
+const gameplayOnly = args.includes('--gameplay');
 const dumpArg = arg('--dump');
 const dump = dumpArg ? { level: Number(dumpArg.split(':')[0]), snap: Number(dumpArg.split(':')[1]) } : null;
 
@@ -107,11 +110,12 @@ if (result.errors.length) {
 }
 Object.entries(result.scenes).forEach(([key, status]) => console.log(`  Szene ${key.padEnd(18)} ${status}`));
 Object.entries(result.input || {}).forEach(([name, ok]) => console.log(`  Eingabe ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
+if (result.family) console.log(`  Familie  Gipfel: ${(result.family.finale || []).length}/8 da, ${result.family.partyHats} Partyhütchen | Abspann: ${(result.family.credits || []).join(', ')}`);
 (result.sspStats || []).forEach(l => console.log(`  SSP-Statistik  ${l}`));
 Object.entries(result.ssp || {}).forEach(([name, ok]) => console.log(`  SSP     ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 
 if (update) {
-  const golden = { levels: result.levels.map(l => ({ index: l.index, hashes: l.hashes, next: l.next })) };
+  const golden = { levels: result.levels.map(l => ({ index: l.index, hashes: l.hashes, gameplay: l.gameplay, next: l.next })) };
   fs.writeFileSync(goldenPath, JSON.stringify(golden, null, 1) + '\n');
   console.log(`Referenz geschrieben: ${goldenPath}`);
 } else {
@@ -120,16 +124,18 @@ if (update) {
     const l = result.levels.find(x => x.index === g.index);
     const label = `  Level ${g.index + 1}`;
     if (!l) { failed = true; console.log(`${label}: FEHLT`); return; }
-    const diff = g.hashes.findIndex((h, i) => l.hashes[i] !== h);
-    if (diff >= 0 || l.hashes.length !== g.hashes.length) {
+    const key = gameplayOnly ? 'gameplay' : 'hashes';
+    if (!g[key]) { failed = true; console.log(`${label}: Referenz enthält keine ${key}-Prüfsummen`); return; }
+    const diff = g[key].findIndex((h, i) => l[key][i] !== h);
+    if (diff >= 0 || l[key].length !== g[key].length) {
       failed = true;
-      const at = diff >= 0 ? diff : Math.min(l.hashes.length, g.hashes.length);
+      const at = diff >= 0 ? diff : Math.min(l[key].length, g[key].length);
       console.log(`${label}: ABWEICHUNG ab Messpunkt ${at} (Frame ${(at + 1) * 10})  →  Details: --dump ${g.index}:${at}`);
     } else if (JSON.stringify(l.next) !== JSON.stringify(g.next)) {
       failed = true;
       console.log(`${label}: andere Folgeszene (${l.next} statt ${g.next})`);
     } else {
-      console.log(`${label}: identisch (${g.hashes.length} Messpunkte, danach ${l.next})`);
+      console.log(`${label}: identisch${gameplayOnly ? ' (Spielablauf)' : ''} (${g.hashes.length} Messpunkte, danach ${l.next})`);
     }
   });
 }

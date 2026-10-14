@@ -37,7 +37,7 @@ const TARGET_TYPES = {
       if (solid && !instant) scene.unstuck.resolve(true, 'side');
       if (!instant) {
         Sfx.play(scene, 'door');
-        scene.toast(active ? 'Das Tor ist offen!' : 'Das Tor schliesst sich …', active ? '#7dff9a' : '#ffb070');
+        scene.toast(active ? TXT.doorOpen : TXT.doorClose, active ? '#7dff9a' : '#ffb070');
       }
     }
   },
@@ -58,7 +58,7 @@ const TARGET_TYPES = {
       if (active && !instant) scene.unstuck.resolve(true);       // niemand darf in einer neuen Kiste stecken
       if (!instant) {
         Sfx.play(scene, active ? 'bridge' : 'door');
-        if (active) scene.toast('Die Kisten stehen bereit!', '#7dff9a');
+        if (active) scene.toast(TXT.bridgeReady, '#7dff9a');
       }
     }
   },
@@ -89,7 +89,7 @@ const TARGET_TYPES = {
 
       if (!instant) {
         Sfx.play(scene, drained ? 'waterDown' : 'waterUp');
-        scene.toast(drained ? 'Der Wasserstand sinkt!' : 'Achtung, das Wasser steigt!', drained ? '#7dd8ff' : '#ffb070');
+        scene.toast(drained ? TXT.waterDown : TXT.waterUp, drained ? '#7dd8ff' : '#ffb070');
       }
     }
   },
@@ -220,12 +220,12 @@ const TARGET_TYPES = {
             scene.cameras.main.shake(120, 0.004);
           }
         });
-        scene.toast('Die Brücke senkt sich!', '#7dff9a');
+        scene.toast(TXT.drawbridgeDown, '#7dff9a');
       } else {
         br.hits.forEach(h => { h.body.enable = false; });
         Sfx.play(scene, 'bridgeDown');
         scene.tweens.add({ targets: br.plank, angle: br.raised, duration: 700, ease: 'Sine.inOut' });
-        scene.toast('Die Brücke klappt hoch!', '#ffb070');
+        scene.toast(TXT.drawbridgeUp, '#ffb070');
       }
     },
     /** Kette vom Pfosten zur Brückenspitze. */
@@ -256,7 +256,7 @@ const TARGET_TYPES = {
       cv.speed = active ? (group.cfg.on !== undefined ? group.cfg.on : 80) : (group.cfg.off || 0);
       if (!instant) {
         Sfx.play(sys.scene, 'conveyor');
-        sys.scene.toast(cv.speed > 0 ? 'Das Band läuft nach rechts!' : cv.speed < 0 ? 'Das Band läuft nach links!' : 'Das Band steht.', '#7dd8ff');
+        sys.scene.toast(cv.speed > 0 ? TXT.beltRight : cv.speed < 0 ? TXT.beltLeft : TXT.beltStop, '#7dd8ff');
       }
     },
     /** Gurt scrollen, Spieler und Blöcke auf dem Band mitnehmen (vor den Auslösern). */

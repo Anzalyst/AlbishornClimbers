@@ -25,8 +25,8 @@ class Hud {
     panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(8, 8, 470, 70, 10);
     panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(GAME_WIDTH - 178, 32, 170, 30, 10);
 
-    hud(scene.add.text(18, 16, `LEVEL ${levelIndex + 1}  ${level.name}`, style(12)));
-    hud(scene.add.text(GAME_WIDTH - 16, 12, 'ESC/START Pause  R Neustart  M Ton', style(8, '#dddddd')).setOrigin(1, 0));
+    hud(scene.add.text(18, 16, `${TXT.level} ${levelIndex + 1}  ${level.name}`, style(12)));
+    hud(scene.add.text(GAME_WIDTH - 16, 12, TXT.hudKeys, style(8, '#dddddd')).setOrigin(1, 0));
 
     // Edelweiss-Zähler
     hud(scene.add.image(GAME_WIDTH - 150, 47, 'edelweiss').setScale(1.4));
@@ -55,7 +55,7 @@ class Hud {
   update(players) {
     players.forEach((p, i) => {
       const pad = p.input.hasPad ? ' [PAD]' : '';
-      const status = p.atGoal ? '  ✔ AM ZIEL' : '';
+      const status = p.atGoal ? `  ${TXT.atGoal}` : '';
       this.playerHud[i].setText(`${p.def.name.toUpperCase()}${pad}${status}`);
     });
   }
@@ -79,11 +79,11 @@ class Hud {
     bg.lineStyle(2, 0xf7d117, 0.9).strokeRoundedRect(-320, -h / 2, 640, h, 16);
     banner.add(bg);
     const top = -h / 2;
-    banner.add(scene.add.text(0, top + 32, `LEVEL ${this.levelIndex + 1}`, {
+    banner.add(scene.add.text(0, top + 32, `${TXT.level} ${this.levelIndex + 1}`, {
       fontFamily: FONT, fontSize: '22px', color: '#f7d117'
     }).setOrigin(0.5));
     banner.add(scene.add.text(0, top + 68, this.level.name, { fontFamily: FONT, fontSize: '14px', color: '#ffffff' }).setOrigin(0.5));
-    banner.add(scene.add.text(0, top + 96, `Passwort: ${this.level.password}`, {
+    banner.add(scene.add.text(0, top + 96, `${TXT.passwordLabel}: ${this.level.password}`, {
       fontFamily: FONT, fontSize: '9px', color: '#aab4cc'
     }).setOrigin(0.5));
     if (anecdote) {

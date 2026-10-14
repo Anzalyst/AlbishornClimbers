@@ -65,7 +65,7 @@ class IntroScene extends Phaser.Scene {
       consoleBox.add(this.add.circle(x + 40, 20, 4, c)));
     this.powerScreen = consoleBox;
 
-    this.powerHint = this.add.text(cx, cy + 70, 'DRÜCKE EINE TASTE ZUM EINSCHALTEN', {
+    this.powerHint = this.add.text(cx, cy + 70, TXT.powerOn, {
       fontFamily: FONT, fontSize: '11px', color: '#aab4cc'
     }).setOrigin(0.5);
     this.tweens.add({ targets: this.powerHint, alpha: 0.2, duration: 600, yoyo: true, repeat: -1 });
@@ -142,7 +142,7 @@ class IntroScene extends Phaser.Scene {
     // Dorfwiese
     for (let x = 0; x < GAME_WIDTH; x += TILE) {
       this.add.image(x + TILE / 2, ground + TILE / 2, `grass${(x / TILE) % 3}`);
-      for (let y = ground + TILE; y < GAME_HEIGHT; y += TILE) this.add.image(x + TILE / 2, y + TILE / 2, `earth${(x / TILE + y / TILE) % 2}`);
+      for (let y = ground + TILE; y < GAME_HEIGHT; y += TILE) this.add.image(x + TILE / 2, y + TILE / 2, `earth${Math.floor(x / TILE + y / TILE) % 2}`);
     }
     this.add.image(110, ground, 'house').setOrigin(0.5, 1);
     this.add.image(250, ground, 'tree').setOrigin(0.5, 1);
@@ -150,7 +150,7 @@ class IntroScene extends Phaser.Scene {
 
     // Wegweiser zum Albishorn (mit optimistischer Zeitangabe)
     this.add.image(690, ground, 'goalSign').setOrigin(16 / 140, 1);
-    this.add.text(690 - 16 + 60, ground - 110 + 22, 'Albishorn 1h30', {
+    this.add.text(690 - 16 + 60, ground - 110 + 22, TXT.signpost, {
       fontFamily: FONT, fontSize: '8px', color: '#111111'
     }).setOrigin(0.5);
 
@@ -162,7 +162,7 @@ class IntroScene extends Phaser.Scene {
       simon: this.add.sprite(595, ground, 'hiker2', 0).setOrigin(0.5, 1).setScale(2).setFlipX(true)
     };
 
-    this.add.text(GAME_WIDTH - 16, 14, 'ESC = ÜBERSPRINGEN', {
+    this.add.text(GAME_WIDTH - 16, 14, TXT.skipIntro, {
       fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3
     }).setOrigin(1, 0);
     this.input.keyboard.once('keydown-ESC', () => this.leave('GameScene', { levelIndex: 0 }));
@@ -183,16 +183,14 @@ class IntroScene extends Phaser.Scene {
     });
   }
 
-  /** Nach dem Dialog: Kinder laufen los, Eltern winken. */
+  /** Nach dem Dialog: Tante Edith läuft mit Jessica voraus, Onkel Kurt folgt mit Simon. */
   departure() {
     const { kurt, edith, jessica, simon } = this.actors;
-    [kurt, edith].forEach((p, i) => {
-      this.time.addEvent({ delay: 250, repeat: 12, callback: () => p.setFrame(Number(p.frame.name) === 1 ? 0 : 1), startAt: i * 120 });
+    [[edith, 0], [jessica, 0], [simon, 450], [kurt, 450]].forEach(([p, delay]) => {
+      if (p.texture.key.startsWith('hiker')) p.setFlipX(false);
+      this.time.delayedCall(delay, () => p.play(`${p.texture.key}-walk`));
+      this.tweens.add({ targets: p, x: GAME_WIDTH + 80, duration: 2400, delay });
     });
-    [jessica, simon].forEach((kid, i) => {
-      kid.setFlipX(false).play(`${kid.texture.key}-walk`);
-      this.tweens.add({ targets: kid, x: GAME_WIDTH + 60, duration: 2200, delay: i * 200 });
-    });
-    this.time.delayedCall(2300, () => this.leave('GameScene', { levelIndex: 0 }));
+    this.time.delayedCall(2700, () => this.leave('GameScene', { levelIndex: 0 }));
   }
 }

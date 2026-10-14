@@ -2,8 +2,9 @@
  * FinaleScene – Die grosse Geburtstagsfeier auf dem Albishorn
  *
  * Erscheint nach Level 5 (oder mit dem Geheim-Passwort aus BIRTHDAY).
- * Ablauf: Jessica & Simon kommen am Aussichtsturm an, Sven begrüsst sie
- * (STORY.summit in config.js) – danach startet die Party:
+ * Ablauf: Jessica & Simon kommen mit Tante Edith & Onkel Kurt am
+ * Aussichtsturm an. Dort warten Sven, Angi, Hannah (in der Kraxe) und
+ * Katze Ginny (STORY.summit in config.js) – danach startet die Party:
  *   - Abendhimmel mit Sternen, Alpenglühen und Zürichsee
  *   - Restaurant Albishorn mit Aussichtsturm & Lichterkette
  *   - Feuerwerk (manche Raketen schreiben eine "30" in den Himmel)
@@ -108,31 +109,39 @@ class FinaleScene extends Phaser.Scene {
   // ---------------------------------------------------------------------
   createCast() {
     const ground = 468;
-    // Sven mit seiner Tochter in der Kraxe
+    // Am Turm warten: Angi, Sven mit Hannah in der Kraxe und Katze Ginny
+    this.angi = addPerson(this, 'angi', 345, ground, 2).setDepth(5);
     this.svenGroup = addSvenWithDaughter(this, 410, ground, 2, 5);
     this.sven = this.svenGroup.sven;
+    this.ginny = addGinny(this, 455, ground + 4, 2).setDepth(7);
+    // Den Weg herauf: Jessica & Simon mit Tante Edith & Onkel Kurt
     this.jessica = this.add.sprite(GAME_WIDTH + 40, ground, 'hiker1', 0).setOrigin(0.5, 1).setScale(2).setFlipX(true).setDepth(5);
     this.simon = this.add.sprite(GAME_WIDTH + 110, ground, 'hiker2', 0).setOrigin(0.5, 1).setScale(2).setFlipX(true).setDepth(5);
+    this.edith = addPerson(this, 'edith', GAME_WIDTH + 190, ground, 2).setDepth(4);
+    this.kurt = addPerson(this, 'kurt', GAME_WIDTH + 260, ground, 2).setDepth(4);
     this.celebrants = [];
   }
 
-  /** Die Geschwister laufen zum Turm, Sven winkt. Liefert ein Promise. */
+  /** Die Wanderer laufen zum Turm, Sven & Angi winken. Liefert ein Promise. */
   arrive() {
+    const wavers = [this.sven, this.angi];
     const wave = this.time.addEvent({
       delay: 280, loop: true,
-      callback: () => this.sven.setFrame(Number(this.sven.frame.name) === 1 ? 0 : 1)
+      callback: () => wavers.forEach(p => p.setFrame(Number(p.frame.name) === 1 ? 0 : 1))
     });
+    const walkers = [[this.jessica, 500], [this.simon, 570], [this.edith, 650], [this.kurt, 718]];
+    let arrived = 0;
     return new Promise(resolve => {
-      [[this.jessica, 500], [this.simon, 570]].forEach(([kid, x], i) => {
-        kid.play(`${kid.texture.key}-walk`);
+      walkers.forEach(([p, x], i) => {
+        p.play(`${p.texture.key}-walk`);
         this.tweens.add({
-          targets: kid, x, duration: 2600 + i * 300, delay: 600, ease: 'Linear',
+          targets: p, x, duration: 2600 + i * 300, delay: 600, ease: 'Linear',
           onComplete: () => {
-            kid.anims.stop();
-            kid.setFrame(0);
-            if (i === 1) {
+            p.anims.stop();
+            p.setFrame(0);
+            if (++arrived === walkers.length) {
               wave.remove();
-              this.sven.setFrame(0);
+              wavers.forEach(w => w.setFrame(0));
               this.time.delayedCall(400, resolve);
             }
           }
@@ -146,18 +155,22 @@ class FinaleScene extends Phaser.Scene {
     this.cameras.main.flash(250, 255, 255, 255);
     Sfx.play(this, 'boom');
 
-    // Alle drei hüpfen mit Partyhütchen
-    this.celebrants = [this.sven, this.jessica, this.simon].map((sprite, i) => {
-      if (sprite.texture.key.startsWith('hiker')) sprite.setFrame(charFrame(sprite.texture.key, 'jump'));
+    // Die ganze Familie hüpft mit Partyhütchen
+    const family = [this.angi, this.sven, this.jessica, this.simon, this.edith, this.kurt];
+    this.celebrants = family.map((sprite, i) => {
+      const isHiker = sprite.texture.key.startsWith('hiker');
+      if (isHiker) sprite.setFrame(charFrame(sprite.texture.key, 'jump'));
       const hat = this.add.image(sprite.x, 0, 'partyHat').setScale(1.5).setOrigin(0.5, 1).setDepth(6)
         .setAngle(i % 2 ? 12 : -12);
       this.tweens.add({ targets: sprite, y: sprite.y - 40, duration: 380, yoyo: true, repeat: -1, ease: 'Quad.out', delay: i * 130 });
       const isSven = sprite === this.sven;
-      return { sprite, hat, headOffset: isSven ? 92 : 58, dx: isSven ? -2 : 0 };
+      return { sprite, hat, headOffset: isHiker ? 58 : isSven ? 92 : 94, dx: isSven ? -2 : 0 };
     });
+    // Ginny macht kleine Freudensprünge
+    this.tweens.add({ targets: this.ginny, y: this.ginny.y - 16, duration: 260, yoyo: true, repeat: -1, ease: 'Quad.out', repeatDelay: 400 });
     // Die Tochter wippt fröhlich mit – mit eigenem Mini-Hütchen
     this.svenGroup.setBob(2.2, 2.6).addHat();
-    this.time.addEvent({ delay: 300, loop: true, callback: () => this.sven.setFrame(Number(this.sven.frame.name) === 1 ? 0 : 1) });
+    this.time.addEvent({ delay: 300, loop: true, callback: () => [this.sven, this.angi].forEach(p => p.setFrame(Number(p.frame.name) === 1 ? 0 : 1)) });
 
     this.createTexts();
     this.time.addEvent({ delay: 900, loop: true, callback: () => this.launchRocket() });
@@ -188,7 +201,7 @@ class FinaleScene extends Phaser.Scene {
   createTexts() {
     const cx = GAME_WIDTH / 2;
 
-    this.title = this.add.text(cx, 46, 'HAPPY BIRTHDAY!', {
+    this.title = this.add.text(cx, 46, TXT.finaleTitle, {
       fontFamily: FONT, fontSize: '36px', color: '#f7d117', stroke: '#2a1040', strokeThickness: 8
     }).setOrigin(0.5).setDepth(40);
     this.tweens.add({ targets: this.title, scale: 1.08, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -232,12 +245,12 @@ class FinaleScene extends Phaser.Scene {
       const got = results.reduce((s, r) => s + r.collected, 0);
       const all = results.reduce((s, r) => s + r.total, 0);
       this.add.image(cx - 150, 512, 'edelweiss').setScale(1.4).setDepth(40);
-      this.add.text(cx - 132, 512, `Edelweiss gesammelt: ${got} / ${all}`, {
+      this.add.text(cx - 132, 512, tx(TXT.finaleEdelweiss, { got, all }), {
         fontFamily: FONT, fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
       }).setOrigin(0, 0.5).setDepth(40);
     }
 
-    this.prompt = this.add.text(GAME_WIDTH - 16, GAME_HEIGHT - 12, 'SPRUNG = ABSPANN', {
+    this.prompt = this.add.text(GAME_WIDTH - 16, GAME_HEIGHT - 12, TXT.finalePrompt, {
       fontFamily: FONT, fontSize: '9px', color: '#dddddd', stroke: '#000000', strokeThickness: 3
     }).setOrigin(1, 1).setDepth(40).setVisible(false);
   }
@@ -245,8 +258,8 @@ class FinaleScene extends Phaser.Scene {
   greetingLine() {
     const names = BIRTHDAY.names.map(n => n.trim()).filter(Boolean);
     const who = names.length >= 2 ? `${names[0]} & ${names[1]}`
-      : names.length === 1 ? names[0] : 'ihr zwei Gipfelstürmer';
-    return `Alles Gute zum ${BIRTHDAY.age}. Geburtstag,\n${who}!`;
+      : names.length === 1 ? names[0] : TXT.finaleGreetingFallback;
+    return tx(TXT.finaleGreeting, { age: BIRTHDAY.age, who });
   }
 
   hsvCss(h) {

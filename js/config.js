@@ -45,13 +45,17 @@ const CAST = {
   player1: { first: 'Jessica', full: 'Jessica Kistler', born: 'Kammer', role: 'Cousine' },
   player2: { first: 'Simon', full: 'Simon Kammer', role: 'Cousin' },
   cousin:  { first: 'Sven', full: 'Sven Kammer', role: 'der absolute Lieblingscousin' },
+  // Tante Edith & Onkel Kurt sind Svens Eltern (und Hannahs Grosseltern)
   aunt:    'Tante Edith',
-  uncle:   'Onkel Kurt'
+  uncle:   'Onkel Kurt',
+  partner: 'Angi',         // Svens Frau
+  daughter: 'Hannah',      // Svens Tochter, reist in der Kraxe mit
+  cat:     'Ginny'         // die getigerte Familienkatze
 };
 
 /**
  * Platzhalter in Texten (Infotafeln, Dialoge) durch Namen ersetzen:
- *   {P1} {P2} {COUSIN} {AUNT} {UNCLE} {PARENTS}
+ *   {P1} {P2} {COUSIN} {AUNT} {UNCLE} {PARENTS} {PARTNER} {DAUGHTER} {CAT}
  */
 const NAME_TOKENS = {
   P1: CAST.player1.first,
@@ -59,7 +63,10 @@ const NAME_TOKENS = {
   COUSIN: CAST.cousin.first,
   AUNT: CAST.aunt,
   UNCLE: CAST.uncle,
-  PARENTS: `${CAST.aunt} & ${CAST.uncle}`
+  PARENTS: `${CAST.aunt} & ${CAST.uncle}`,
+  PARTNER: CAST.partner,
+  DAUGHTER: CAST.daughter,
+  CAT: CAST.cat
 };
 function fillNames(text) {
   return String(text).replace(/\{(\w+)\}/g, (match, key) => (key in NAME_TOKENS ? NAME_TOKENS[key] : match));
@@ -108,24 +115,30 @@ const SPEAKERS = {
   simon:    { name: CAST.player2.first, portrait: 'portrait_hiker2', color: '#ff5a6e' },
   edith:    { name: CAST.aunt, portrait: 'portrait_edith', color: '#7dff9a' },
   kurt:     { name: CAST.uncle, portrait: 'portrait_kurt', color: '#ffb070' },
-  sven:     { name: CAST.cousin.first, portrait: 'portrait_sven', color: '#f7d117' }
+  sven:     { name: CAST.cousin.first, portrait: 'portrait_sven', color: '#f7d117' },
+  angi:     { name: CAST.partner, portrait: 'portrait_angi', color: '#ff9ad0' }
 };
 
+// Alle Dialoge auf Züritüütsch. Tante Edith & Onkel Kurt sind Svens Eltern –
+// sie wandern mit Jessica & Simon los; Edith geht mit Jessica voraus.
 const STORY = {
-  // Vor Level 1 (nach "Spiel starten")
+  // Vor Level 1 (nach "Spiil starte")
   intro: [
-    { who: 'narrator', text: 'Ebertswil, vor vielen, vielen Jahren …' },
-    { who: 'kurt', text: 'So, Kinder! Schuhe binden – heute wandern wir aufs Albishorn!' },
-    { who: 'simon', text: 'Muss das sein? Da ist es doch so steil …' },
-    { who: 'edith', text: 'Keine Sorge, es ist nicht mehr weit!' },
-    { who: 'jessica', text: 'Mama, wir sind noch nicht mal losgelaufen.' },
-    { who: 'kurt', text: 'Oben gibt es eine Glace. Und euer Cousin {COUSIN} wartet auch schon!' },
-    { who: 'narrator', text: 'Hilf {P1} und {P2} hinauf aufs Albishorn. Allein schafft es keiner – nur zusammen!' }
+    { who: 'narrator', text: 'Ebertswil, vor vilne, vilne Jahr …' },
+    { who: 'kurt', text: 'So, Chind! Schue binde – hüt wanderet mir ufs Albishorn!' },
+    { who: 'simon', text: 'Mues das sii? Det ufe isch es doch so stotzig …' },
+    { who: 'edith', text: 'Kei Angscht, es isch nüme wiit!' },
+    { who: 'jessica', text: 'Tante Edith, mir sind jo no nöd emal losgloffe!' },
+    { who: 'kurt', text: 'Obe gits e Glace. Und eue Cousin {COUSIN} wartet au scho!' },
+    { who: 'edith', text: 'Chumm, {P1} – mir zwöi laufed voruus!' },
+    { who: 'narrator', text: 'Hilf {P1} und {P2} ufs Albishorn ufe. Elei schafft’s keine – nume zäme!' }
   ],
 
-  // Gipfel: Jessica & Simon treffen Sven am Aussichtsturm
+  // Gipfel: Jessica & Simon treffen Sven, Angi, Hannah & Ginny am Aussichtsturm
   summit: [
-    { who: 'sven', text: 'Henders au scho gschafft ihr alte Seck?!? Alles gueti zum 30. Geburtstag =)' }
+    { who: 'sven', text: 'Henders au scho gschafft ihr alte Seck?!? Alles gueti zum 30. Geburtstag =)' },
+    { who: 'angi', text: 'D {DAUGHTER} und d {CAT} händ scho ganz ungeduldig uf eu gwartet!' },
+    { who: 'edith', text: 'Gsehnd er? Ich ha doch gseit, es isch nüme wiit!' }
   ]
 };
 
@@ -135,14 +148,14 @@ const BIRTHDAY = {
   age: 30,
   secretCode: '3030',      // Passwort, das direkt zur Geburtstagsfeier springt
   message: [
-    'Vor vielen Jahren habt ihr diesen Weg gehasst.',
-    'Heute habt ihr ihn gemeinsam bezwungen –',
+    'Vor vilne Jahr händ ihr dä Wäg ghasst.',
+    'Hüt händ ihr ne zäme packt –',
     'Schalter für Schalter, Hebel für Hebel.',
     '',
-    'Auf die nächsten 30 Jahre voller Gipfel,',
-    'Abenteuer und Teamwork!',
+    'Uf di nächschte 30 Jahr volle Gipfel,',
+    'Abentüür und Teamwork!',
     '',
-    'Und keine Sorge: Ab hier geht es nur noch bergab.'
+    'Und kei Angscht: Ab jetzt gaht’s nume no abe.'
   ]
 };
 
@@ -150,12 +163,13 @@ const BIRTHDAY = {
 // ABSPANN (CreditsScene) – von oben nach unten
 // =====================================================================
 const CREDITS = [
-  { title: 'Ein Spiel zum 30. Geburtstag von', names: [`${CAST.player1.first} & ${CAST.player2.first}`] },
-  { title: 'Game Design & Story', names: [CAST.cousin.full] },
-  { title: 'Die leidgeprüften Hauptdarsteller', names: [`${CAST.player1.full} & ${CAST.player2.full}`] },
-  { title: 'Reiseleitung & Wandermotivation', names: [`${CAST.aunt} & ${CAST.uncle}`] },
+  { title: 'Es Spiil zum 30. Geburtstag vo', names: [`${CAST.player1.first} & ${CAST.player2.first}`] },
+  { title: 'Spiilidee & Gschicht', names: [CAST.cousin.full] },
+  { title: 'Di schwer prüefte Hauptdarsteller', names: [`${CAST.player1.full} & ${CAST.player2.full}`] },
+  { title: 'Reiseleitig & Wandermotivation', names: [`${CAST.aunt} & ${CAST.uncle}`] },
+  { title: 'Gipfel-Empfangskomitee', names: [`${CAST.cousin.first} & ${CAST.partner}`, `${CAST.daughter} (i de Chraxe) & ${CAST.cat} (d Chatz)`] },
   { title: 'System Engine', names: [`${CONSOLE.name} / Phaser 3 & Claude AI`] },
-  { title: '', names: ['Danke fürs Mitwandern!', '', 'HAPPY BIRTHDAY!'] }
+  { title: '', names: ['Merci fürs Mitwandere!', '', 'HAPPY BIRTHDAY!'] }
 ];
 
 // --- Passwort-System ------------------------------------------------------

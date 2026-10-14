@@ -54,7 +54,7 @@ class BlockSystem {
         scene.fx.dust(block.x - dir * block.displayWidth / 2, bb.bottom, 1);
       }
       const tooHeavy = dir === 0 && bestCount > 0 && bestCount < block.weight;
-      block.label.setText(tooHeavy ? 'ZU SCHWER!\nZU ZWEIT!' : '')
+      block.label.setText(tooHeavy ? TXT.tooHeavy : '')
         .setPosition(block.x, bb.top - 6);
       if (tooHeavy && !block.wasTooHeavy) Sfx.play(scene, 'tooHeavy');
       block.wasTooHeavy = tooHeavy;
@@ -72,7 +72,7 @@ class BlockSystem {
       if (block.y > scene.worldHeight + 64) {
         bb.reset(block.spawn.x, block.spawn.y);
         scene.unstuck.unstick(bb);
-        scene.toast('Der Block ist wieder da!', '#ffffff');
+        scene.toast(TXT.blockBack, '#ffffff');
       }
     });
   }

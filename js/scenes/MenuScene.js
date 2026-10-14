@@ -52,7 +52,7 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.tweens.add({ targets: title, y: 76, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
-    this.add.text(cx, 150, 'Von Ebertswil hinauf aufs Albishorn', {
+    this.add.text(cx, 150, TXT.menuSubtitle, {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
 
@@ -63,7 +63,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   createMainMenu() {
-    this.menuItems = ['SPIEL STARTEN', 'PASSWORT', 'HAUPTMENÜ'].map((label, i) =>
+    this.menuItems = TXT.menuItems.map((label, i) =>
       this.add.text(GAME_WIDTH / 2, 260 + i * 50, label, {
         fontFamily: FONT, fontSize: '18px', color: '#ffffff', stroke: '#000000', strokeThickness: 5
       }).setOrigin(0.5));
@@ -76,7 +76,7 @@ class MenuScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     this.pwPanel = this.add.container(cx, 300);
     this.pwPanel.add(this.add.rectangle(0, 0, 440, 210, 0x10131c, 0.9).setStrokeStyle(3, 0xf7d117));
-    this.pwPanel.add(this.add.text(0, -78, 'PASSWORT EINGEBEN', {
+    this.pwPanel.add(this.add.text(0, -78, TXT.passwordTitle, {
       fontFamily: FONT, fontSize: '14px', color: '#f7d117'
     }).setOrigin(0.5));
 
@@ -99,7 +99,7 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '10px', color: '#ff8080'
     }).setOrigin(0.5);
     this.pwPanel.add(this.pwMessage);
-    this.pwPanel.add(this.add.text(0, 86, 'SPRUNG = OK   ESC = ZURÜCK', {
+    this.pwPanel.add(this.add.text(0, 86, TXT.passwordHelp, {
       fontFamily: FONT, fontSize: '8px', color: '#aab4cc'
     }).setOrigin(0.5));
   }
@@ -107,8 +107,8 @@ class MenuScene extends Phaser.Scene {
   createFooter() {
     const style = color => ({ fontFamily: FONT, fontSize: '9px', color, stroke: '#000000', strokeThickness: 3, lineSpacing: 6 });
     const [p1, p2] = PLAYER_DEFS.map(d => d.name.toUpperCase());
-    this.add.text(40, GAME_HEIGHT - 70, `${p1}\nWASD + LEERTASTE\nController 1`, style(PLAYER_DEFS[0].colorCss));
-    this.add.text(GAME_WIDTH - 40, GAME_HEIGHT - 70, `${p2}\nPFEILE + ENTER\nController 2`, style(PLAYER_DEFS[1].colorCss))
+    this.add.text(40, GAME_HEIGHT - 70, `${p1}\n${TXT.footerKeys1}\nController 1`, style(PLAYER_DEFS[0].colorCss));
+    this.add.text(GAME_WIDTH - 40, GAME_HEIGHT - 70, `${p2}\n${TXT.footerKeys2}\nController 2`, style(PLAYER_DEFS[1].colorCss))
       .setOrigin(1, 0);
     this.padStatus = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 26, '', style('#ffffff')).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, `© ${CONSOLE.name} – ${CONSOLE.fullName}`, style('#aab4cc')).setOrigin(0.5);
@@ -145,7 +145,7 @@ class MenuScene extends Phaser.Scene {
     this.backdrop.update(this.cameras.main, GAME_HEIGHT, delta);
 
     const pads = this.inputs.map((inp, i) => `Controller ${i + 1}: ${inp.hasPad ? 'OK' : '–'}`);
-    this.padStatus.setText(pads.join('     ') + (Sfx.muted ? '     TON AUS (M)' : '     M = TON AUS'));
+    this.padStatus.setText(pads.join('     ') + (Sfx.muted ? `     ${TXT.soundIsOff}` : `     ${TXT.soundOffHint}`));
 
     if (this.mode === 'main') this.updateMain();
     else this.updatePassword();
@@ -225,18 +225,18 @@ class MenuScene extends Phaser.Scene {
     const code = this.digits.join('');
     if (code === BIRTHDAY.secretCode) {
       // Geheim-Code: direkt zur Geburtstagsfeier
-      this.pwMessage.setColor('#ff7ad9').setText('PSST … EINE ÜBERRASCHUNG!');
+      this.pwMessage.setColor('#ff7ad9').setText(TXT.passwordSecret);
       Sfx.play(this, 'win');
       this.time.delayedCall(900, () => this.startScene('FinaleScene'));
       return;
     }
     const levelIndex = Passwords.findLevel(code);
     if (levelIndex >= 0) {
-      this.pwMessage.setColor('#7dff9a').setText(`LEVEL ${levelIndex + 1}: ${LEVELS[levelIndex].name}`);
+      this.pwMessage.setColor('#7dff9a').setText(`${TXT.level} ${levelIndex + 1}: ${LEVELS[levelIndex].name}`);
       Sfx.play(this, 'checkpoint');
       this.time.delayedCall(700, () => this.startLevel(levelIndex));
     } else {
-      this.pwMessage.setColor('#ff8080').setText('FALSCHES PASSWORT!');
+      this.pwMessage.setColor('#ff8080').setText(TXT.passwordWrong);
       this.cursor = 0;            // neu tippen beginnt wieder bei der ersten Stelle
       this.refresh();
       Sfx.play(this, 'error');

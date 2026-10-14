@@ -1,9 +1,12 @@
 /* =====================================================================
  * PedaloScene – Pedalo-Power: Rennen über den Sempachersee
  *
- * Jede Spielerin / jeder Spieler hat eine eigene Bahn mit zwei Spuren.
+ * Jede Spielerin / jeder Spieler hat eine eigene Bahn mit drei Spuren
+ * (oben, Mitte, unten).
  *   A und B ABWECHSELND drücken = strampeln (zweimal derselbe Knopf bremst)
- *   HOCH / RUNTER = Spur wechseln, um Enten auszuweichen
+ *   HOCH / RUNTER = eine Spur wechseln, um Enten auszuweichen
+ * Fair: An jeder Stelle schwimmt höchstens eine Ente (zwei Spuren bleiben
+ * frei), und zwischen zwei Enten ist immer genug Platz zum Ausweichen.
  * Wer eine Ente rammt, steht kurz still. Wer zuerst im Ziel ist, gewinnt.
  * Nach 60 s gewinnt, wer weiter vorne ist.
  * ===================================================================== */
@@ -11,12 +14,14 @@
 const PEDALO = {
   startX: 70, finishX: 880,
   lanes: [205, 395],          // Mittellinie der beiden Bahnen (Jessica oben, Simon unten)
-  trackOffset: 34,            // Abstand der zwei Spuren von der Mittellinie
+  tracks: 3,                  // Spuren pro Bahn: 0 = oben, 1 = Mitte, 2 = unten
+  trackOffset: 34,            // Abstand zwischen zwei Spuren
   stroke: 16,                 // Tempo-Gewinn pro richtigem Tritt (px/s)
   maxSpeed: 260,
   drag: 1.1,                  // Abbremsen pro Sekunde (Anteil)
   stunTime: 0.8,
-  ducks: 6,
+  ducks: 7,
+  duckGap: 90,                // Mindestabstand zwischen zwei Enten (px)
   timeLimit: 60
 };
 
@@ -46,7 +51,7 @@ class PedaloScene extends MinigameScene {
     this.boats = [1, 2].map(id => {
       const laneY = PEDALO.lanes[id - 1];
       const boat = {
-        id, x: PEDALO.startX, track: 0, y: laneY - PEDALO.trackOffset, speed: 0,
+        id, x: PEDALO.startX, track: 1, y: laneY, speed: 0,
         last: null, stun: 0, finishedAt: null,
         hull: this.add.image(0, 0, 'ssp_pedalo').setOrigin(0, 1).setDepth(10),
         wheel: this.add.image(0, 0, 'ssp_wheel').setDepth(11),
@@ -55,12 +60,13 @@ class PedaloScene extends MinigameScene {
       return boat;
     });
 
-    // Enten: in jeder Bahn an denselben Stellen (fair), Spur zufällig aber gleich für beide
+    // Enten: in beiden Bahnen an denselben Stellen und Spuren (fair). Pro
+    // Stelle eine Ente → immer zwei freie Spuren; Abstand ≥ duckGap
     this.ducks = [];
-    const seg = (PEDALO.finishX - 220) / PEDALO.ducks;
+    const seg = (PEDALO.finishX - 240) / PEDALO.ducks;
     for (let i = 0; i < PEDALO.ducks; i++) {
-      const x = 220 + i * seg + Phaser.Math.Between(10, seg - 30);
-      const track = Phaser.Math.Between(0, 1);
+      const x = 240 + i * seg + Phaser.Math.FloatBetween(0, Math.max(0, seg - PEDALO.duckGap));
+      const track = Phaser.Math.Between(0, PEDALO.tracks - 1);
       [1, 2].forEach(id => {
         const sprite = this.add.image(x, 0, 'ssp_duck').setOrigin(0.5, 1).setDepth(8).setFlipX(true);
         this.ducks.push({ id, x, track, sprite, hit: false, phase: i * 1.3 });
@@ -82,8 +88,8 @@ class PedaloScene extends MinigameScene {
             else b.speed *= 0.85;             // zweimal derselbe Knopf: Tritt ins Leere
             b.last = btn;
           });
-          if (input.justPressed('up') && b.track !== 0) b.track = 0;
-          if (input.justPressed('down') && b.track !== 1) b.track = 1;
+          if (input.justPressed('up')) b.track = Math.max(0, b.track - 1);
+          if (input.justPressed('down')) b.track = Math.min(PEDALO.tracks - 1, b.track + 1);
         }
         b.speed -= b.speed * PEDALO.drag * dt;
         b.x += b.speed * dt;
@@ -121,7 +127,7 @@ class PedaloScene extends MinigameScene {
       this.waves.fillRect(x, y, 10, 2);
     }
     this.boats.forEach(b => {
-      const targetY = PEDALO.lanes[b.id - 1] + (b.track ? PEDALO.trackOffset : -PEDALO.trackOffset);
+      const targetY = this.trackY(b.id, b.track);
       b.y += (targetY - b.y) * Math.min(1, dt * 12);
       const bob = Math.sin(time / 300 + b.id) * 1.5;
       b.hull.setPosition(b.x, b.y + 10 + bob);
@@ -130,9 +136,14 @@ class PedaloScene extends MinigameScene {
     });
     this.ducks.forEach(d => {
       if (d.hit) return;
-      const y = PEDALO.lanes[d.id - 1] + (d.track ? PEDALO.trackOffset : -PEDALO.trackOffset) + 10;
+      const y = this.trackY(d.id, d.track) + 10;
       d.sprite.setPosition(d.x + Math.sin(time / 600 + d.phase) * 3, y + Math.sin(time / 250 + d.phase));
     });
+  }
+
+  /** y-Position einer Spur (0 oben, 1 Mitte, 2 unten) in der Bahn eines Spielers. */
+  trackY(id, track) {
+    return PEDALO.lanes[id - 1] + (track - (PEDALO.tracks - 1) / 2) * PEDALO.trackOffset;
   }
 
   hudValue(id) {

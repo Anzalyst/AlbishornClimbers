@@ -20,7 +20,7 @@ const SSP = {
     {
       key: 'SspPedalo', name: 'PEDALO-POWER',
       desc: 'Pedalo-Rennen über den Sempachersee! Wer zuerst am Ziel ist, gewinnt. Achtung, Enten!',
-      controls: 'A und B ABWECHSELND = strampeln     HOCH / RUNTER = ausweichen'
+      controls: 'A und B ABWECHSELND = strampeln     HOCH / RUNTER = Spur wechseln (3 Spuren)'
     },
     {
       key: 'SspWasser', name: 'WASSER-MARSCH!',
