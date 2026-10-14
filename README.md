@@ -72,3 +72,15 @@ In `js/levels.js` ein Objekt mit `map`, `password`, `triggers`, `targets` (und o
 - **Auslöser:** Bodenschalter (`plate`), Hebel (`lever`), Farbtasten (`button`, für eine Reihenfolge in `sequences`). Mit `owner: 1/2` legt man fest, wer einen Auslöser benutzen darf. Schalter ohne `owner` werden auch von Kisten und Felsbrocken gedrückt.
 - **Ziele:** Tore (`door`), Kisten-Stufen (`bridge`), Wasser (`water`), Aufzüge (`lift`, hält oder pendelt), Zugbrücken (`drawbridge`), Förderbänder (`conveyor`).
 - **Infotafeln** (`i` + `hints`) gibt es nur in Level 1. Die lustigen Kindheits-Erinnerungen stehen als `anecdote` in der Einblendung zum Levelstart.
+
+## Automatische Tests
+Für Entwickler (das Spiel selbst braucht weiterhin nur den Browser):
+
+```
+node tools/run-tests.js
+```
+
+Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an. JS-Fehler und fehlende Texturen lassen den Test scheitern.
+
+- Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
+- Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
