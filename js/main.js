@@ -20,7 +20,7 @@ const gameConfig = {
       debug: false                      // auf true setzen, um Hitboxen zu sehen
     }
   },
-  scene: [BootScene, IntroScene, MenuScene, GameScene, VictoryScene, FinaleScene, CreditsScene]
+  scene: [BootScene, IntroScene, MenuScene, GameScene, PauseScene, VictoryScene, FinaleScene, CreditsScene]
 };
 
 const game = new Phaser.Game(gameConfig);

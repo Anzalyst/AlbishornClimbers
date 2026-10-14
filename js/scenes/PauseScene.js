@@ -1,0 +1,96 @@
+/* =====================================================================
+ * PauseScene – Pausenmenü über dem laufenden Level
+ *
+ * Öffnen:  START (Controller) oder P (Tastatur) im Level
+ * Bedienung (beide Spieler, Controller oder Tastatur):
+ *   Hoch/Runter  Menüpunkt wählen        Sprung       bestätigen
+ *   START / B / ESC / P                  weiterspielen
+ *
+ * Damit ist das Spiel auch ganz ohne Tastatur bedienbar (Konsolen-Betrieb):
+ * Neustart, Ton und Hauptmenü gibt es sonst nur über R, M und ESC.
+ * ===================================================================== */
+
+class PauseScene extends Phaser.Scene {
+  constructor() {
+    super('PauseScene');
+  }
+
+  init(data) {
+    this.levelIndex = data.levelIndex || 0;
+    this.selected = 0;
+    this.closing = false;
+  }
+
+  create() {
+    this.inputs = createPlayerInputs(this);
+    const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
+
+    this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x05060a, 0.6);
+    this.add.rectangle(cx, cy, 420, 280, 0x10131c, 0.95).setStrokeStyle(3, 0xf7d117);
+    this.add.text(cx, cy - 100, 'PAUSE', { fontFamily: FONT, fontSize: '22px', color: '#f7d117' }).setOrigin(0.5);
+
+    this.items = [
+      { label: () => 'WEITER', action: () => this.resume() },
+      { label: () => 'LEVEL NEU STARTEN', action: () => this.restart() },
+      { label: () => (Sfx.muted ? 'TON: AUS' : 'TON: AN'), action: () => { Sfx.toggleMute(); this.refresh(); } },
+      { label: () => 'HAUPTMENÜ', action: () => this.toMenu() }
+    ];
+    this.texts = this.items.map((item, i) => this.add.text(cx, cy - 40 + i * 38, '', {
+      fontFamily: FONT, fontSize: '14px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5));
+    this.arrow = this.add.text(0, 0, '▶', { fontFamily: FONT, fontSize: '14px', color: '#f7d117' }).setOrigin(0.5);
+    this.add.text(cx, cy + 118, 'SPRUNG = OK   START = WEITER', {
+      fontFamily: FONT, fontSize: '8px', color: '#aab4cc'
+    }).setOrigin(0.5);
+
+    // Tastatur: ESC und P schliessen die Pause, M schaltet den Ton
+    this.input.keyboard.on('keydown-ESC', () => this.resume());
+    this.input.keyboard.on('keydown-P', () => this.resume());
+    this.input.keyboard.on('keydown-M', () => { Sfx.toggleMute(); this.refresh(); });
+
+    this.refresh();
+  }
+
+  refresh() {
+    this.texts.forEach((t, i) => t.setText(this.items[i].label()).setColor(i === this.selected ? '#f7d117' : '#ffffff'));
+    const sel = this.texts[this.selected];
+    this.arrow.setPosition(sel.x - sel.width / 2 - 24, sel.y);
+  }
+
+  update() {
+    this.inputs.forEach(i => i.update());
+    if (this.closing) return;
+    const any = action => this.inputs.some(i => i.justPressed(action));
+
+    if (any('up') || any('down')) {
+      const n = this.items.length;
+      this.selected = (this.selected + (any('down') ? 1 : n - 1)) % n;
+      Sfx.play(this, 'select');
+      this.refresh();
+    }
+    if (any('start') || any('back')) this.resume();
+    else if (any('jump')) {
+      Sfx.play(this, 'select');
+      this.items[this.selected].action();
+    }
+  }
+
+  resume() {
+    if (this.closing) return;
+    this.closing = true;
+    this.scene.stop();
+    this.scene.get('GameScene').resumeFromPause();
+  }
+
+  restart() {
+    this.closing = true;
+    this.scene.stop();
+    this.scene.get('GameScene').scene.restart({ levelIndex: this.levelIndex });
+  }
+
+  toMenu() {
+    this.closing = true;
+    this.scene.stop('GameScene');
+    this.scene.start('MenuScene');
+  }
+}

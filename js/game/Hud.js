@@ -26,7 +26,7 @@ class Hud {
     panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(GAME_WIDTH - 178, 32, 170, 30, 10);
 
     hud(scene.add.text(18, 16, `LEVEL ${levelIndex + 1}  ${level.name}`, style(12)));
-    hud(scene.add.text(GAME_WIDTH - 16, 12, 'ESC Menü  R Neustart  M Ton', style(8, '#dddddd')).setOrigin(1, 0));
+    hud(scene.add.text(GAME_WIDTH - 16, 12, 'P/START Pause  ESC Menü  R Neustart  M Ton', style(8, '#dddddd')).setOrigin(1, 0));
 
     // Edelweiss-Zähler
     hud(scene.add.image(GAME_WIDTH - 150, 47, 'edelweiss').setScale(1.4));

@@ -7,7 +7,13 @@
  *
  * Gamepad (Standard-Mapping, z. B. Xbox / PlayStation / 8BitDo):
  *   Linker Stick oder D-Pad = Bewegung, Button 0 (A / Kreuz) = Sprung,
- *   Button 9 (Start) = Bestätigen im Menü.
+ *   Stick/D-Pad hoch = Hebel, Button 9 (Start / Options) = Bestätigen bzw.
+ *   Pause im Level, Button 1 (B / Kreis) = Zurück.
+ *
+ * Zuordnung: Spieler 1 bekommt den ersten verbundenen Controller, Spieler 2
+ * den zweiten – unabhängig davon, in welchem Browser-Slot sie stecken
+ * (Linux vergibt nach dem Neu-Verbinden gern Slot 1, 2 …). Controller mit
+ * Standard-Mapping haben dabei Vorrang vor sonstigen "Joystick"-Geräten.
  *
  * Hinweis: Browser melden einen Controller erst, nachdem einmal eine
  * Taste auf ihm gedrückt wurde.
@@ -39,16 +45,21 @@ class PlayerInput {
 
     // Bereits gehaltene Controller-Tasten (z. B. aus der vorherigen Szene)
     // sollen nicht sofort als "neu gedrückt" zählen.
-    this.update();
-    INPUT_ACTIONS.forEach(a => { this.prev[a] = this.state[a]; });
+    this.resync();
   }
 
   /** Liefert das Gamepad dieses Spielers oder null. */
   getPad() {
-    if (!navigator.getGamepads) return null;
-    const pads = navigator.getGamepads();
-    const pad = pads && pads[this.padIndex];
-    return pad && pad.connected ? pad : null;
+    return connectedPads()[this.padIndex] || null;
+  }
+
+  /**
+   * Aktuellen Zustand als "schon gehalten" übernehmen – z. B. nach einer
+   * Pause, damit der Knopf, mit dem man weiterspielt, keinen Sprung auslöst.
+   */
+  resync() {
+    this.update();
+    INPUT_ACTIONS.forEach(a => { this.prev[a] = this.state[a]; });
   }
 
   /** Einmal pro Frame aufrufen (am Anfang von update()). */
@@ -94,6 +105,17 @@ class PlayerInput {
 
   /** Ist ein Controller für diesen Spieler verbunden? */
   get hasPad() { return !!this.getPad(); }
+}
+
+/**
+ * Alle verbundenen Controller in fester Reihenfolge: zuerst die mit
+ * Standard-Mapping (Xbox, PlayStation, 8BitDo …), dann sonstige Geräte,
+ * jeweils nach Browser-Slot sortiert. Lücken im Browser-Array entfallen.
+ */
+function connectedPads() {
+  if (!navigator.getGamepads) return [];
+  const pads = Array.from(navigator.getGamepads() || []).filter(p => p && p.connected);
+  return pads.filter(p => p.mapping === 'standard').concat(pads.filter(p => p.mapping !== 'standard'));
 }
 
 /** Erstellt die Eingaben für beide Spieler einer Szene. */

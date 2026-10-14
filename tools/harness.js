@@ -29,6 +29,7 @@
 
   // --- Eingaben: Drehbuch statt Tastatur/Gamepad -------------------------
   const scripted = [{}, {}];
+  const realInputUpdate = PlayerInput.prototype.update;   // für den Gamepad-Test
   PlayerInput.prototype.update = function () {
     INPUT_ACTIONS.forEach(a => { this.prev[a] = this.state[a]; });
     const s = scripted[this.padIndex] || {};
@@ -101,7 +102,17 @@
     return cells;
   }
 
+  /**
+   * Jeder Testabschnitt beginnt auf einem festen Zeitpunkt (immer vorwärts):
+   * Wie viele Frames der Start bis zur IntroScene braucht, schwankt, und die
+   * absolute Zeit fliesst z. B. in Tweens und die Atem-Animation ein.
+   */
+  function syncClock(slot) {
+    T = Math.max(T, slot * 1e6);
+  }
+
   function runLevel(index) {
+    syncClock(index + 1);
     reseed(1000 + index);
     let inputRng = 77 + index;
     const rnd = () => { inputRng = (inputRng * 48271) % 2147483647; return inputRng / 2147483647; };
@@ -204,12 +215,133 @@
       ['FinaleScene', undefined, 900],
       ['CreditsScene', undefined, 400]
     ];
-    scenes.forEach(([key, data, frames]) => {
+    scenes.forEach(([key, data, frames], i) => {
+      syncClock(LEVELS.length + 1 + i);
       const before = out.errors.length;
       startScene(key, data);
       step(frames);
       out.scenes[key + (data && data.mode ? `:${data.mode}` : '')] = out.errors.length === before ? 'ok' : 'error';
     });
+  }
+
+  // --- Gamepad & Tastatur: echte Eingabe-Schicht mit simulierten Geräten ---
+  function runInputTests() {
+    syncClock(LEVELS.length + 20);
+    out.input = {};
+    const check = (name, ok, detail = '') => {
+      out.input[name] = !!ok;
+      if (!ok) out.errors.push(`Eingabe-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+
+    // Simulierte Controller: Slot 0 = Nicht-Standard-Gerät (z. B. Joystick-
+    // Treiber), Slot 1 + 2 = Standard-Pads → Spieler 1 = Slot 1, Spieler 2 = Slot 2
+    const makePad = (index, mapping) => ({
+      index, mapping, id: `Testpad ${index}`, connected: true, timestamp: 0,
+      axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 }))
+    });
+    const odd = makePad(0, ''), padA = makePad(1, 'standard'), padB = makePad(2, 'standard');
+    Object.defineProperty(navigator, 'getGamepads', { value: () => [odd, padA, padB], configurable: true });
+    PlayerInput.prototype.update = realInputUpdate;
+    const btn = (pad, i, on) => { pad.buttons[i].pressed = on; pad.buttons[i].value = on ? 1 : 0; };
+    const tap = (pad, i) => { btn(pad, i, true); step(); btn(pad, i, false); step(); };
+    const key = (type, keyCode) => {
+      const e = new KeyboardEvent(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(e, 'keyCode', { value: keyCode });
+      Object.defineProperty(e, 'which', { value: keyCode });
+      window.dispatchEvent(e);
+    };
+    const active = k => game.scene.isActive(k);
+    const gs = () => game.scene.getScene('GameScene');
+    const startLevel = () => {
+      startScene('GameScene', { levelIndex: 0 });
+      step(90);   // Spieler landen lassen
+    };
+
+    // 1) Zuordnung: erster/zweiter Standard-Controller, Lücken & Fremdgeräte egal
+    startLevel();
+    check('Zuordnung Controller → Spieler', gs().inputs[0].getPad() === padA && gs().inputs[1].getPad() === padB);
+
+    // 2) D-Pad bewegt nur Spieler 1, linker Stick bewegt Spieler 2
+    let [p1, p2] = gs().players.map(p => p.sprite.x);
+    btn(padA, 15, true); step(40); btn(padA, 15, false);
+    check('D-Pad rechts bewegt Spieler 1', gs().players[0].sprite.x > p1 + 40 && Math.abs(gs().players[1].sprite.x - p2) < 2);
+    p2 = gs().players[1].sprite.x;
+    padB.axes[0] = -1; step(40); padB.axes[0] = 0;
+    check('Linker Stick bewegt Spieler 2', gs().players[1].sprite.x < p2 - 40);
+    step(30);   // ausrutschen lassen
+    padB.axes[0] = 0.2; p2 = gs().players[1].sprite.x; step(20); padB.axes[0] = 0;
+    check('Stick-Totzone ignoriert leichtes Antippen', Math.abs(gs().players[1].sprite.x - p2) < 2);
+
+    // 3) A = Springen
+    step(30);
+    btn(padA, 0, true);
+    let jumped = false;
+    for (let k = 0; k < 10; k++) { step(); if (gs().players[0].sprite.body.velocity.y < -100) jumped = true; }
+    btn(padA, 0, false); step(60);
+    check('A springt', jumped);
+
+    // 4) Tastatur parallel zum Controller: Spieler 1 per D-Taste, Spieler 2 per Pad
+    [p1, p2] = gs().players.map(p => p.sprite.x);
+    key('keydown', 68); btn(padB, 15, true); step(30); key('keyup', 68); btn(padB, 15, false); step(5);
+    check('Tastatur und Controller gleichzeitig', gs().players[0].sprite.x > p1 + 30 && gs().players[1].sprite.x > p2 + 30);
+
+    // 5) START = Pause, Spiel steht still
+    tap(padA, 9); step(2);
+    check('START öffnet die Pause', active('PauseScene') && game.scene.isPaused('GameScene'));
+    p1 = gs().players[0].sprite.x;
+    btn(padA, 15, true); step(30); btn(padA, 15, false); step(2);
+    check('Spiel steht während der Pause', gs().players[0].sprite.x === p1);
+
+    // 6) "Weiter" mit gehaltenem A darf keinen Sprung auslösen
+    btn(padA, 0, true); step(3);
+    check('WEITER per A schliesst die Pause', !active('PauseScene') && active('GameScene'));
+    let jumpAfterResume = false;
+    for (let k = 0; k < 10; k++) { step(); if (gs().players[0].sprite.body.velocity.y < -100) jumpAfterResume = true; }
+    btn(padA, 0, false); step(5);
+    check('Weiter-Knopf löst keinen Sprung aus', !jumpAfterResume);
+
+    // 7) Pause → "Level neu starten" (Spieler 2 navigiert mit dem D-Pad)
+    gs().players[0].sprite.body.reset(gs().players[0].sprite.x + 200, gs().players[0].sprite.y);
+    tap(padB, 9); step(2);
+    tap(padB, 13); tap(padB, 0); step(3);
+    check('Pause → Neustart', active('GameScene') && !active('PauseScene') && Math.abs(gs().players[0].sprite.x - gs().spawns[1].x) < 2);
+
+    // 8) Pause → Ton umschalten → Hauptmenü
+    step(30);
+    const mutedBefore = Sfx.muted;
+    tap(padA, 9); step(2);
+    tap(padA, 13); tap(padA, 13); tap(padA, 0);
+    check('Pause → Ton umschalten', Sfx.muted !== mutedBefore);
+    tap(padA, 0); if (Sfx.muted !== mutedBefore) Sfx.toggleMute();   // Zustand zurücksetzen
+    tap(padA, 13); tap(padA, 0); step(3);
+    check('Pause → Hauptmenü', active('MenuScene') && !active('GameScene') && !active('PauseScene'));
+
+    // 9) Menü per Controller: runter, A → Passwort-Eingabe, B → zurück
+    step(30);
+    const menu = game.scene.getScene('MenuScene');
+    tap(padA, 13); tap(padA, 0);
+    check('Menü: Passwort per Controller öffnen', menu.mode === 'password');
+    tap(padA, 1);
+    check('Menü: B geht zurück', menu.mode === 'main');
+
+    // 10) Tastatur: P öffnet die Pause, ESC schliesst sie (statt ins Menü zu springen)
+    startLevel();
+    key('keydown', 80); step(); key('keyup', 80); step(2);
+    check('Taste P öffnet die Pause', active('PauseScene'));
+    key('keydown', 27); step(); key('keyup', 27); step(3);
+    check('ESC in der Pause spielt weiter', active('GameScene') && !active('PauseScene') && !active('MenuScene'));
+
+    // 11) Victory: B = zurück ins Menü
+    startScene('VictoryScene', { levelIndex: 0, collected: 1, total: 5 });
+    step(60); tap(padB, 1); step(40);
+    check('Victory: B → Menü', active('MenuScene'));
+
+    // 12) Konsole einschalten per Controller
+    startScene('IntroScene', { mode: 'logo' });
+    step(5); tap(padA, 0); step(2);
+    check('Startbildschirm: A schaltet ein', game.scene.getScene('IntroScene').phase !== 'off');
+
+    Object.defineProperty(navigator, 'getGamepads', { value: () => [], configurable: true });
   }
 
   /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
@@ -255,6 +387,7 @@
     try {
       for (let i = 0; i < LEVELS.length; i++) runLevel(i);
       runScenes();
+      runInputTests();
     } catch (e) {
       out.errors.push(`harness: ${e.stack || e}`);
     }

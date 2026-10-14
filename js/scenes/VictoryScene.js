@@ -45,7 +45,7 @@ class VictoryScene extends Phaser.Scene {
       this.tweens.add({ targets: s, y: s.y - 30, duration: 350, yoyo: true, repeat: -1, ease: 'Quad.out', delay: i * 175 });
     });
 
-    const prompt = text(GAME_HEIGHT - 40, 'SPRUNG = WEITER   ESC = MENÜ', 11, '#aab4cc');
+    const prompt = text(GAME_HEIGHT - 40, 'SPRUNG = WEITER   ESC / B = MENÜ', 11, '#aab4cc');
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
 
     this.input.keyboard.once('keydown-ESC', () => this.leave('MenuScene'));
@@ -78,6 +78,8 @@ class VictoryScene extends Phaser.Scene {
 
     if (this.inputs.some(i => i.justPressed('jump') || i.justPressed('start'))) {
       this.leave('GameScene', { levelIndex: this.levelIndex + 1 });
+    } else if (this.inputs.some(i => i.justPressed('back'))) {
+      this.leave('MenuScene');   // Controller: B = wie ESC
     }
   }
 

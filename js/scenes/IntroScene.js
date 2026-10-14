@@ -78,6 +78,11 @@ class IntroScene extends Phaser.Scene {
   powerOn() {
     if (this.phase !== 'off') return;
     this.phase = 'starting';
+    // Ton freischalten: Browser erlauben Audio erst nach einer Nutzer-Geste.
+    // Ein Tastendruck zählt immer, ein Controller-Knopf nicht in jedem Browser
+    // (Konsolen-Betrieb: Chromium mit --autoplay-policy=no-user-gesture-required).
+    const ctx = this.sound && this.sound.context;
+    if (ctx && ctx.state === 'suspended' && ctx.resume) ctx.resume().catch(() => {});
     this.led.setFillStyle(0xff2a2a);
     this.time.delayedCall(250, () => {
       this.powerScreen.destroy();

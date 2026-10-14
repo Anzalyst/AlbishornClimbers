@@ -3,8 +3,20 @@
 Ein Koop-Plattformer für 2 Spieler im Stil der SNES-Klassiker (Phaser 3): Zwei Geschwister wandern von Ebertswil hinauf aufs Albishorn – ein Geburtstagsgeschenk zum 30.
 
 ## Starten
-- Einfach `index.html` per Doppelklick im Browser öffnen. Es braucht keinen Build und keinen Server, nur Internet für Phaser und die Schrift vom CDN.
+- Einfach `index.html` per Doppelklick im Browser öffnen. Es braucht keinen Build, keinen Server und **kein Internet**: Phaser 3.80.1 (`js/lib/`) und die Schrift „Press Start 2P“ (`assets/fonts/`) liegen lokal im Projekt.
 - Alternativ mit lokalem Server: `python -m http.server` und dann http://localhost:8000 öffnen.
+
+## Konsolen-Betrieb (Linux-Mini-PC, offline)
+Empfohlen ist Chromium im Kiosk-Modus:
+
+```
+chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --disable-features=Translate \
+  file:///home/<benutzer>/AlbishornClimbers/index.html
+```
+
+- `--autoplay-policy=no-user-gesture-required` ist wichtig: Browser schalten den Ton sonst erst nach einem Tastendruck oder Mausklick frei. Ein Controller-Knopf zählt dafür nicht in jedem Browser.
+- Chromium meldet Xbox- und PlayStation-Pads unter Linux mit Standard-Mapping. Firefox liefert dort je nach Treiber eine abweichende Tastenbelegung. Deshalb empfehle ich Chromium.
+- Die Symbole ▶ ▼ ▲ ✔ enthält die Pixelschrift nicht. Sie kommen aus einer Systemschrift (z. B. `fonts-dejavu`, auf den meisten Distributionen vorinstalliert).
 
 ## Grafiken
 Das Spiel verwendet **keine Bilddateien**. Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
@@ -31,9 +43,12 @@ KES-Startlogo → Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 �
 |---|---|---|---|
 | Jessica (Spielerin 1) | A / D | Leertaste | W |
 | Simon (Spieler 2) | ← / → | Enter | ↑ |
-| Controller 1 / 2 | Linker Stick / D-Pad | A / Kreuz | Stick hoch |
+| Controller 1 / 2 | Linker Stick / D-Pad | A / Kreuz | Stick / D-Pad hoch |
 
-`ESC` = Menü, `R` = Level neu starten, `M` = Ton an/aus. Controller werden erst nach dem ersten Tastendruck auf dem Pad erkannt (Browser-Regel).
+Tastatur: `P` = Pause, `ESC` = Menü, `R` = Level neu starten, `M` = Ton an/aus.
+Controller: `START` / `OPTIONS` = Pausenmenü (Weiter, Level neu starten, Ton, Hauptmenü), `B` / `Kreis` = zurück. Tastatur und Controller funktionieren gleichzeitig. Das Spiel ist komplett ohne Tastatur bedienbar.
+
+Spieler 1 bekommt den ersten verbundenen Controller, Spieler 2 den zweiten, egal in welchem Browser-Slot sie stecken. Controller werden erst nach dem ersten Tastendruck auf dem Pad erkannt (Browser-Regel).
 
 ## Level & Passwörter
 | Level | Code | Neue Mechanik |
@@ -50,7 +65,9 @@ Geheim-Code **3030** springt direkt zur Geburtstagsfeier.
 
 ## Projektstruktur
 ```
-index.html                 Einstieg, lädt Phaser + Scripts
+index.html                 Einstieg, lädt Phaser + Scripts (alles lokal)
+js/lib/                    Phaser 3.80.1 (phaser.min.js) + Lizenz
+assets/fonts/              Schrift Press Start 2P (woff2) + Lizenz
 js/config.js               Physik, Steuerung, Namen, Dialoge, Abspann
 js/levels.js               Alle Level als ASCII-Karten (Legende im Dateikopf)
 js/input.js                Tastatur + Gamepad API → einheitliche Spieler-Eingabe
@@ -61,6 +78,7 @@ js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte,
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
 js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe
 js/scenes/GameScene.js     Gameplay-Szene: erzeugt die Module aus js/game/ und taktet sie
+js/scenes/PauseScene.js    Pausenmenü (START/P): Weiter, Neustart, Ton, Hauptmenü
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
 js/scenes/CreditsScene.js  Abspann
@@ -99,7 +117,7 @@ Für Entwickler (das Spiel selbst braucht weiterhin nur den Browser):
 node tools/run-tests.js
 ```
 
-Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an. Vorab prüft `tools/test-levels.js` die Leveldaten. JS-Fehler, fehlende Texturen und Level-Probleme lassen den Test scheitern.
+Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das Spiel headless und spielt jedes Level mit festem Zeitschritt und festem Eingabe-Drehbuch durch (laufen, springen, alle Schalter/Hebel/Farbtasten, Kisten schieben, Zufallsphase, Ziel). Alle 10 Frames wird der Zustand aller Objekte als Prüfsumme mit `tools/golden.json` verglichen. Danach laufen Intro, Menü, Victory, Finale und Abspann kurz an, und simulierte Controller prüfen die Eingabe (Zuordnung, Bewegung, Sprung, Pausenmenü, Menü, Tastatur parallel). Der Testbrowser hat kein Netzwerk: Lädt das Spiel etwas von aussen nach oder fehlt die Schrift, schlägt der Test fehl. Vorab prüft `tools/test-levels.js` die Leveldaten. JS-Fehler, fehlende Texturen und Level-Probleme lassen den Test scheitern.
 
 - Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
