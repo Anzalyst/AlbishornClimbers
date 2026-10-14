@@ -119,7 +119,6 @@ const Sfx = {
     conveyor: [{ from: 120, to: 240, dur: 0.3, type: 'sawtooth', vol: 0.03 }, { noise: true, dur: 0.3, vol: 0.05, filter: 'bandpass', freq: 900 }],
     bridgeDown: [{ noise: true, dur: 0.5, vol: 0.06, filter: 'bandpass', freq: 600, freqTo: 300 }, { from: 220, to: 110, dur: 0.5, type: 'triangle', vol: 0.05 }],
     bridgeThud: [{ noise: true, dur: 0.25, vol: 0.16, freq: 300, freqTo: 80 }, { from: 100, to: 50, dur: 0.2, type: 'sine', vol: 0.1 }],
-    pop: [{ from: 400, to: 900, dur: 0.08, type: 'triangle', vol: 0.06 }],
 
     checkpoint: [{ from: 660, dur: 0.08 }, { from: 880, dur: 0.08, delay: 0.08 }, { from: 1100, dur: 0.14, delay: 0.16 }],
     respawn:  [{ from: 700, to: 120, dur: 0.35, type: 'triangle', vol: 0.12 }],

@@ -8,8 +8,8 @@
  *               Hebel, Farbtasten, Aufzüge, Brücken, Förderbänder) auswerten,
  *               Feststecken auflösen, Checkpoints, Gefahren und Ziel prüfen
  *
- * Sprint 4: Die Spieler kollidieren NICHT mehr miteinander (keine
- * Räuberleiter). Koop entsteht nur noch über Mechaniken.
+ * Die Spieler kollidieren NICHT miteinander und können nicht
+ * aufeinander stehen. Koop entsteht nur über Mechaniken.
  *
  * Darstellung: Jeder Spieler hat einen unsichtbaren Physik-Körper
  * (p.sprite) und eine sichtbare Figur (p.view), die gestaucht/gestreckt
@@ -287,9 +287,8 @@ class GameScene extends Phaser.Scene {
       trigger.texUp = `plate_${trigger.owner || 'any'}_up`;
       trigger.texDown = `plate_${trigger.owner || 'any'}_down`;
       trigger.sprite = this.add.image(cx, bottom, trigger.texUp).setOrigin(0.5, 1).setDepth(DEPTH.OBJECT);
-      if (trigger.owner && !HD_ASSETS.tileset) {
+      if (trigger.owner) {
         // Initiale über dem Schalter: wer darf drauf? (J = Jessica, S = Simon)
-        // – im HD-Tileset steht der Buchstabe schon auf dem Schalter
         this.add.text(cx, bottom - 14, PLAYER_DEFS[trigger.owner - 1].name[0].toUpperCase(), {
           fontFamily: FONT, fontSize: '10px', color: PLAYER_DEFS[trigger.owner - 1].colorCss, stroke: '#000000', strokeThickness: 3
         }).setOrigin(0.5, 1).setDepth(DEPTH.OBJECT);

@@ -1,10 +1,10 @@
 /* =====================================================================
  * BootScene – Initialisierung & Assets
  *
- * Alle Grafiken werden prozedural erzeugt (Pixel-Art per Code). Figuren
- * entstehen hier, Gelände/Hintergründe/Mechaniken in art.js. Später kann man hier einfach echte Sprites laden:
- *   this.load.spritesheet('hiker1', 'assets/hiker1.png', { frameWidth: 24, frameHeight: 32 });
- * Solange die Texturen gleich heissen, muss der restliche Code nicht angepasst werden.
+ * Alle Grafiken werden zur Laufzeit per Code erzeugt (Phaser Graphics /
+ * Canvas) – es gibt keine Bilddateien. Figuren, Porträts, Schalter, Hebel,
+ * Fahnen und Deko entstehen hier, Gelände, Wasser, Kisten, Mechaniken und
+ * Hintergründe in art.js (Art.createAll).
  * ===================================================================== */
 
 // --- Pixel-Art der Wanderer (12×16 Pixel, wird 2× skaliert) ---------------
@@ -296,12 +296,7 @@ const EDELWEISS_PIXELS = [
   '...ww...'
 ];
 
-// --- HD-PNGs (Sprint 5) -------------------------------------------------
-// Welche Grafiken stammen aus den PNGs in assets/? (sonst: Code-Grafik)
-const HD_ASSETS = { characters: false, parents: false, sven: false, tileset: false, parallax: false };
-
-// Frame-Nummern von Jessica & Simon. Die Code-Grafik hat 4 Frames
-// (stehen, 2× gehen, Sprung), das HD-Sheet 9 (stehen, 6× laufen, Sprung, Fall).
+// Frame-Nummern von Jessica & Simon (4 Frames: stehen, 2× gehen, Sprung)
 const CHAR_FRAMES = {
   hiker1: { idle: 0, jump: 3, fall: 3, run: [1, 0, 2, 0], runRate: 10 },
   hiker2: { idle: 0, jump: 3, fall: 3, run: [1, 0, 2, 0], runRate: 10 }
@@ -317,21 +312,6 @@ class BootScene extends Phaser.Scene {
     super('BootScene');
   }
 
-  /**
-   * HD-PNGs aus assets/ laden – nur über einen Webserver möglich.
-   * Fehlen sie (oder läuft das Spiel per Doppelklick über file://),
-   * bleiben einfach die Code-Grafiken aktiv.
-   */
-  preload() {
-    this.missingAssets = [];
-    if (!location.protocol.startsWith('http')) {
-      console.info('[Assets] Ohne Webserver (file://) – es werden die Code-Grafiken verwendet.');
-      return;
-    }
-    this.load.on('loaderror', file => this.missingAssets.push(file.key));
-    Object.entries(ASSET_FILES).forEach(([name, path]) => this.load.image(`png_${name}`, path));
-  }
-
   create() {
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Lade …', {
       fontFamily: 'monospace', fontSize: '20px', color: '#ffffff'
@@ -339,11 +319,9 @@ class BootScene extends Phaser.Scene {
 
     this.createHikerTextures();
     this.createPeopleTextures();
-    this.createTileTextures();
     this.createObjectTextures();
     this.createDecoTextures();
-    Art.createAll(this);          // Sprint 4: feinere "Modern Pixel"-Grafiken (art.js)
-    this.applyHdAssets();         // Sprint 5: HD-PNGs ersetzen die Code-Grafik, falls vorhanden
+    Art.createAll(this);          // Gelände, Mechaniken & Hintergründe (art.js)
     this.createAnimations();
 
     // Auf die Pixel-Schrift warten (max. 1.5 s, sonst Fallback-Schrift),
@@ -490,191 +468,6 @@ class BootScene extends Phaser.Scene {
     });
   }
 
-  // ---------------------------------------------------------------------
-  // HD-PNGs einbinden (Aufbau siehe js/asset-layout.js)
-  // ---------------------------------------------------------------------
-  applyHdAssets() {
-    const has = name => this.textures.exists(`png_${name}`) && !this.missingAssets.includes(`png_${name}`);
-    const src = name => this.textures.get(`png_${name}`).getSourceImage();
-
-    // Bereich aus einem PNG als eigene Textur anlegen (optional in Frames geteilt)
-    const slice = (key, img, x, y, w, h, frameW = 0) => {
-      if (this.textures.exists(key)) this.textures.remove(key);
-      const tex = this.textures.createCanvas(key, w, h);
-      const ctx = tex.getContext();
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
-      if (frameW) for (let i = 0; i * frameW < w; i++) tex.add(i, 0, i * frameW, 0, frameW, h);
-      tex.refresh();
-      return tex;
-    };
-    // Porträt für die Dialogbox: Ausschnitt vergrössert auf hellem Grund
-    const portrait = (key, img, sx, sy, sw, sh, scale) => {
-      if (this.textures.exists(key)) this.textures.remove(key);
-      const SIZE = 72;
-      const tex = this.textures.createCanvas(key, SIZE, SIZE);
-      const ctx = tex.getContext();
-      ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#7f93c0';
-      ctx.fillRect(0, 0, SIZE, SIZE);
-      const w = sw * scale, h = sh * scale;
-      ctx.drawImage(img, sx, sy, sw, sh, Math.round((SIZE - w) / 2), SIZE - h, w, h);
-      tex.refresh();
-    };
-
-    // Jessica & Simon: 9 Frames (stehen, 6× laufen, Sprung, Fall)
-    [['jessica', 'hiker1'], ['simon', 'hiker2']].forEach(([name, key]) => {
-      if (!has(name)) return;
-      const img = src(name);
-      const { frameW, frameH, frames } = HIKER_SHEET;
-      slice(key, img, 0, 0, frameW * frames.length, frameH, frameW);
-      const idx = pose => frames.indexOf(pose);
-      CHAR_FRAMES[key] = {
-        idle: idx('idle'), jump: idx('jump'), fall: idx('fall'),
-        run: ['run1', 'run2', 'run3', 'run4', 'run5', 'run6'].map(idx), runRate: 12
-      };
-      portrait(`portrait_${key}`, img, 4, 0, 18, 18, 4);
-      HD_ASSETS.characters = true;
-    });
-
-    // Tante Edith & Onkel Kurt
-    if (has('parents')) {
-      const img = src('parents');
-      const { frameW, frameH, frames, rows } = PARENTS_SHEET;
-      Object.entries(rows).forEach(([name, row]) => {
-        slice(`person_${name}`, img, 0, row * frameH, frameW * frames.length, frameH, frameW);
-        portrait(`portrait_${name}`, img, 6, row * frameH, 22, 22, 3);
-      });
-      HD_ASSETS.parents = true;
-    }
-
-    // Sven mit Kraxe + Tochter (eigenes Sprite, wippt im Finale/Abspann)
-    if (has('sven_family')) {
-      const img = src('sven_family');
-      const S = SVEN_SHEET;
-      slice('person_sven', img, 0, 0, S.frameW * S.frames.length, S.frameH, S.frameW);
-      slice('svenDaughter', img, S.daughter.x, S.daughter.y, S.daughter.w, S.daughter.h);
-      // Porträt: Sven mit der Tochter, die über seine Schulter schaut
-      const comp = document.createElement('canvas');
-      comp.width = S.frameW; comp.height = 26;
-      const c = comp.getContext('2d');
-      c.imageSmoothingEnabled = false;
-      c.drawImage(img, S.daughter.x, S.daughter.y, S.daughter.w, S.daughter.h, DAUGHTER.col * 2, 0, S.daughter.w, S.daughter.h);
-      c.drawImage(img, 0, 0, S.frameW, 24, 0, -DAUGHTER.row * 2, S.frameW, 24);
-      portrait('portrait_sven', comp, 4, 0, 36, 26, 2);
-      HD_ASSETS.sven = true;
-    }
-
-    // Tileset: jede Kachel wird zur Textur mit dem gewohnten Namen
-    if (has('tileset')) {
-      const img = src('tileset');
-      Object.entries(TILESET_LAYOUT.tiles).forEach(([key, [x, y, w, h, frames]]) => {
-        slice(key, img, x, y, w, h, frames ? w / frames : 0);
-      });
-      // Wasser-Animation neu verknüpfen (die alte zeigte auf die ersetzte Textur)
-      if (this.anims.exists('water-wave')) this.anims.remove('water-wave');
-      this.anims.create({ key: 'water-wave', frames: [0, 1, 2, 3].map(frame => ({ key: 'waterTop', frame })), frameRate: 5, repeat: -1 });
-      HD_ASSETS.tileset = true;
-    }
-
-    // Parallax-Ebenen (Himmel, Alpen, Hügel, Wald)
-    if (has('parallax')) {
-      const img = src('parallax');
-      Object.entries(PARALLAX_LAYOUT.layers).forEach(([key, [x, y, w, h]]) => slice(key, img, x, y, w, h));
-      HD_ASSETS.parallax = true;
-    }
-
-    // Die Ladebilder selbst werden nicht mehr gebraucht
-    Object.keys(ASSET_FILES).forEach(name => { if (this.textures.exists(`png_${name}`)) this.textures.remove(`png_${name}`); });
-    console.info('[Assets] HD-PNGs aktiv:', JSON.stringify(HD_ASSETS));
-  }
-
-  // ---------------------------------------------------------------------
-  // Gelände-Kacheln (32×32)
-  // ---------------------------------------------------------------------
-  createTileTextures() {
-    // Deterministische "Zufalls"-Sprenkel, damit die Kacheln immer gleich aussehen
-    const speckles = (g, color, count, seed, yMin = 0) => {
-      g.fillStyle(color);
-      let s = seed;
-      for (let i = 0; i < count; i++) {
-        s = (s * 9301 + 49297) % 233280;
-        const x = Math.floor((s / 233280) * 30);
-        s = (s * 9301 + 49297) % 233280;
-        const y = yMin + Math.floor((s / 233280) * (30 - yMin));
-        g.fillRect(x, y, 2, 2);
-      }
-    };
-
-    // Erde
-    this.makeTexture('earth', TILE, TILE, g => {
-      g.fillStyle(0x8a5a2b).fillRect(0, 0, TILE, TILE);
-      speckles(g, 0x6e4520, 10, 7);
-      speckles(g, 0xa87440, 6, 3);
-    });
-
-    // Erde mit Gras oben
-    this.makeTexture('grass', TILE, TILE, g => {
-      g.fillStyle(0x8a5a2b).fillRect(0, 0, TILE, TILE);
-      speckles(g, 0x6e4520, 8, 11, 12);
-      g.fillStyle(0x4caf3a).fillRect(0, 0, TILE, 9);
-      g.fillStyle(0x3b8f2c).fillRect(0, 9, TILE, 2);
-      g.fillStyle(0x7ddc5a).fillRect(0, 0, TILE, 2);
-      // kleine Grasbüschel, die über die Kante hängen
-      g.fillStyle(0x4caf3a);
-      [3, 10, 17, 25].forEach(x => g.fillRect(x, 11, 3, 3));
-    });
-
-    // Fels (Felsband / Wand)
-    this.makeTexture('rock', TILE, TILE, g => {
-      g.fillStyle(0x7d7f86).fillRect(0, 0, TILE, TILE);
-      g.fillStyle(0x5c5e66);
-      g.fillRect(0, 15, TILE, 2);
-      g.fillRect(14, 0, 2, 15);
-      g.fillRect(6, 17, 2, 15);
-      g.fillRect(24, 17, 2, 15);
-      g.fillStyle(0x9a9ca3);
-      g.fillRect(1, 1, 12, 2);
-      g.fillRect(17, 1, 13, 2);
-      g.fillRect(9, 18, 13, 2);
-    });
-
-    // Holzplattform (nur 12 px hoch)
-    this.makeTexture('platform', TILE, 12, g => {
-      g.fillStyle(0x6b4220).fillRect(0, 0, TILE, 12);
-      g.fillStyle(0xb07a3a).fillRect(0, 0, TILE, 9);
-      g.fillStyle(0xd09a55).fillRect(0, 0, TILE, 2);
-      g.fillStyle(0x6b4220).fillRect(15, 0, 2, 9);
-      g.fillStyle(0x3a3a44).fillRect(4, 4, 2, 2).fillRect(26, 4, 2, 2);
-    });
-
-    // Wasser
-    this.makeTexture('water', TILE, TILE, g => {
-      g.fillStyle(0x2f7fd6, 0.85).fillRect(0, 0, TILE, TILE);
-      g.fillStyle(0x8fd0ff).fillRect(0, 0, TILE, 3);
-      g.fillStyle(0xc8ecff).fillRect(4, 0, 6, 2).fillRect(20, 0, 6, 2);
-      g.fillStyle(0x5aa6ee, 0.8).fillRect(6, 12, 8, 2).fillRect(18, 22, 8, 2);
-    });
-
-    // Holztor (Tür im Felsband)
-    this.makeTexture('door', TILE, TILE, g => {
-      g.fillStyle(0x5a3a1c).fillRect(0, 0, TILE, TILE);
-      g.fillStyle(0x7a5028);
-      [1, 9, 17, 25].forEach(x => g.fillRect(x, 0, 6, TILE));
-      g.fillStyle(0x3a3a44).fillRect(0, 6, TILE, 4).fillRect(0, 22, TILE, 4);
-      g.fillStyle(0xb0b0bc);
-      [3, 13, 23].forEach(x => { g.fillRect(x, 7, 2, 2); g.fillRect(x, 23, 2, 2); });
-    });
-
-    // Holzkiste (für "bridge"-Ziele: erscheinen per Schalter/Hebel)
-    this.makeTexture('crate', TILE, TILE, g => {
-      g.fillStyle(0x6b4220).fillRect(0, 0, TILE, TILE);
-      g.fillStyle(0xc08a45).fillRect(2, 2, TILE - 4, TILE - 4);
-      g.fillStyle(0x8a5a2b).fillRect(2, 14, TILE - 4, 4);
-      g.lineStyle(3, 0x8a5a2b).lineBetween(4, 4, 28, 28);
-      g.fillStyle(0xe0b070).fillRect(2, 2, TILE - 4, 2);
-    });
-  }
 
   // ---------------------------------------------------------------------
   // Interaktive Objekte
@@ -745,36 +538,6 @@ class BootScene extends Phaser.Scene {
     this.makeTexture('confetti', 4, 8, g => g.fillStyle(0xffffff).fillRect(0, 0, 4, 8));
     this.makeTexture('spark', 6, 6, g => {
       g.fillStyle(0xffffff).fillRect(2, 0, 2, 6).fillRect(0, 2, 6, 2);
-    });
-
-    // Schiebbare Holzkiste ('k') – mit Pfeilen, damit man sieht: schiebbar!
-    this.makeTexture('pushCrate', TILE, TILE, g => {
-      g.fillStyle(0x4a2c14).fillRect(0, 0, TILE, TILE);
-      g.fillStyle(0xd29a52).fillRect(3, 3, TILE - 6, TILE - 6);
-      g.fillStyle(0xb07a3a).fillRect(3, 10, TILE - 6, 2).fillRect(3, 20, TILE - 6, 2);
-      g.fillStyle(0x3a3a44).fillRect(0, 0, 5, 5).fillRect(27, 0, 5, 5).fillRect(0, 27, 5, 5).fillRect(27, 27, 5, 5);
-      g.fillStyle(0x4a2c14);   // Doppelpfeil ↔
-      g.fillRect(9, 15, 14, 2);
-      g.fillTriangle(6, 16, 10, 12, 10, 20);
-      g.fillTriangle(26, 16, 22, 12, 22, 20);
-    });
-
-    // Felsbrocken ('K', 2×2 Kacheln)
-    this.makeTexture('boulder', TILE * 2, TILE * 2, g => {
-      g.fillStyle(0x4f5058).fillRoundedRect(0, 4, 64, 60, 14);
-      g.fillStyle(0x7d7f86).fillRoundedRect(2, 4, 60, 54, 13);
-      g.fillStyle(0x9a9ca3).fillRoundedRect(8, 8, 30, 16, 7);
-      g.fillStyle(0x5c5e66).fillRect(36, 30, 14, 3).fillRect(14, 40, 10, 3);
-      g.fillStyle(0x4caf3a).fillRoundedRect(10, 2, 26, 7, 3);   // Moos obendrauf
-      g.fillStyle(0x7ddc5a).fillRect(14, 2, 12, 2);
-    });
-
-    // Bachstein ('o') – flacher, nasser Stein
-    this.makeTexture('stone', TILE, TILE, g => {
-      g.fillStyle(0x4f5058).fillRoundedRect(0, 2, TILE, TILE - 2, 8);
-      g.fillStyle(0x8a8c94).fillRoundedRect(1, 2, TILE - 2, 14, 7);
-      g.fillStyle(0xb8bac2).fillRect(6, 4, 10, 3);
-      g.fillStyle(0x3b8f2c).fillRect(20, 3, 6, 2);   // etwas Algen
     });
 
     // Partyhütchen & Ballon fürs Finale
@@ -875,43 +638,6 @@ class BootScene extends Phaser.Scene {
       g.fillStyle(0x5b2d1a).fillTriangle(10, 18, 40, 0, 70, 18);         // Dächlein
       g.fillStyle(0xdddddd).fillRect(39, 0, 2, 2);
     });
-
-    // Wolke
-    this.makeTexture('cloud', 120, 50, g => {
-      g.fillStyle(0xffffff, 0.9);
-      g.fillCircle(30, 32, 18).fillCircle(58, 22, 22).fillCircle(88, 30, 18).fillRect(30, 30, 58, 20);
-    });
-
-    // Berge & Hügel – horizontal kachelbar (Sinus mit ganzzahligen Perioden)
-    const ridge = (key, h, layers) => {
-      this.makeTexture(key, GAME_WIDTH, h, g => {
-        layers.forEach(({ color, base, waves, snow }) => {
-          const pts = [{ x: 0, y: h }];
-          for (let x = 0; x <= GAME_WIDTH; x += 8) {
-            let y = base;
-            waves.forEach(([amp, periods, phase]) => {
-              y -= amp * Math.sin((x / GAME_WIDTH) * Math.PI * 2 * periods + phase);
-            });
-            pts.push({ x, y });
-          }
-          pts.push({ x: GAME_WIDTH, y: h });
-          g.fillStyle(color).fillPoints(pts, true);
-          if (snow) {
-            // Schneekappen: nur auf den höchsten Stellen
-            g.fillStyle(0xffffff, 0.9);
-            pts.forEach(p => { if (p.y < base - snow) g.fillRect(p.x - 4, p.y, 9, 6); });
-          }
-        });
-      });
-    };
-    ridge('mountains', 300, [
-      { color: 0x8aa4c8, base: 170, waves: [[60, 3, 0.4], [35, 7, 1.3], [15, 13, 2.1]], snow: 70 },
-      { color: 0x6f8db8, base: 220, waves: [[40, 2, 2.0], [22, 5, 0.2], [10, 11, 1.0]] }
-    ]);
-    ridge('hills', 220, [
-      { color: 0x5aa046, base: 110, waves: [[30, 2, 0.8], [18, 5, 2.4]] },
-      { color: 0x478c37, base: 150, waves: [[25, 3, 1.7], [12, 7, 0.5]] }
-    ]);
   }
 }
 

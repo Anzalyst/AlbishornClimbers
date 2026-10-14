@@ -6,10 +6,12 @@ Ein Koop-Plattformer für 2 Spieler im Stil der SNES-Klassiker (Phaser 3): Zwei 
 - Einfach `index.html` per Doppelklick im Browser öffnen. Es braucht keinen Build und keinen Server, nur Internet für Phaser und die Schrift vom CDN.
 - Alternativ mit lokalem Server: `python -m http.server` und dann http://localhost:8000 öffnen.
 
-## HD-Grafiken (PNG)
-Im Ordner `assets/` liegen HD-Pixel-Art-PNGs (Figuren, Tileset, Parallax-Hintergrund). Das Spiel nutzt sie **nur über einen Webserver** (`python -m http.server`). Per Doppelklick (`file://`) oder wenn die Dateien fehlen, zeichnet es die Grafiken wie bisher selbst.
+## Grafiken
+Das Spiel verwendet **keine Bilddateien**. Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
+- `js/scenes/BootScene.js`: Figuren und Porträts (als Pixel-Raster im Code), Schalter, Hebel, Fahnen, Edelweiss, Deko (Haus, Tanne, Restaurant, Turm)
+- `js/art.js` (aufgerufen aus der BootScene): Gelände-Kacheln, Wasser, Kisten, Felsbrocken, Mechaniken (Aufzug, Förderband, Zugbrücke, Farbtasten) und der Parallax-Hintergrund
 
-Neu erzeugen: `generate-assets.html` im Browser öffnen. Die Seite zeichnet alle sechs PNGs und lädt sie automatisch herunter. Danach die Dateien aus dem Download-Ordner nach `assets/` verschieben. Mit `generate-assets.html?nodownload` gibt es nur die Vorschau. Das Raster der PNGs ist in `js/asset-layout.js` festgelegt, und Generator und Spiel lesen beide daraus.
+Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und verwendet sie im Spiel über diesen Schlüssel.
 
 ## Personalisierung
 Alle Namen und Texte stehen zentral in `js/config.js`:
@@ -49,16 +51,13 @@ Geheim-Code **3030** springt direkt zur Geburtstagsfeier.
 ## Projektstruktur
 ```
 index.html                 Einstieg, lädt Phaser + Scripts
-generate-assets.html       Zeichnet die HD-PNGs und lädt sie herunter
-assets/                    HD-PNGs (optional, nur mit Webserver aktiv)
 js/config.js               Physik, Steuerung, Namen, Dialoge, Abspann
 js/levels.js               Alle Level als ASCII-Karten (Legende im Dateikopf)
 js/input.js                Tastatur + Gamepad API → einheitliche Spieler-Eingabe
 js/sfx.js                  Retro-Sounds & Melodien per Web Audio
 js/dialog.js               Dialogbox mit Porträt & Schreibmaschinen-Text
-js/asset-layout.js         Raster der HD-PNGs (gemeinsam für Generator & Spiel)
 js/art.js                  Gelände, Mechaniken, Parallax-Hintergrund & Licht ("Modern Pixel")
-js/scenes/BootScene.js     Figuren (Pixel-Art) + Restaurant-Helfer, lädt art.js
+js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte, ruft art.js auf)
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
 js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe
 js/scenes/GameScene.js     Gameplay: Level-Aufbau, Physik, Koop-Mechaniken, HUD

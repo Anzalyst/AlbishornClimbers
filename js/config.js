@@ -13,8 +13,8 @@ const FONT = '"Press Start 2P", monospace';
 
 // --- Spielphysik ----------------------------------------------------------
 // Sprunghöhe ≈ JUMP_VELOCITY² / (2 · GRAVITY) ≈ 112 px ≈ 3.5 Kacheln.
-// Wände mit 4+ Kacheln Höhe schafft man nur mit "Räuberleiter" (auf dem Kopf
-// des anderen Spielers stehen).
+// Wände mit 4+ Kacheln Höhe schafft man nur über eine Mechanik (Aufzug,
+// Kiste, Brücke …) – die Spieler können nicht aufeinander stehen.
 const PHYSICS = {
   GRAVITY: 1400,
   RUN_SPEED: 200,          // maximale Laufgeschwindigkeit
@@ -137,7 +137,7 @@ const BIRTHDAY = {
   message: [
     'Vor vielen Jahren habt ihr diesen Weg gehasst.',
     'Heute habt ihr ihn gemeinsam bezwungen –',
-    'Schalter für Schalter, Räuberleiter für Räuberleiter.',
+    'Schalter für Schalter, Hebel für Hebel.',
     '',
     'Auf die nächsten 30 Jahre voller Gipfel,',
     'Abenteuer und Teamwork!',

@@ -7,7 +7,7 @@
  * Farbtasten) und ein mehrschichtiger Parallax-Hintergrund.
  *
  * Alles wird per Canvas gezeichnet (keine Bilddateien). Art.createAll()
- * läuft in der BootScene und überschreibt die älteren, flachen Texturen.
+ * läuft in der BootScene, nach den Figuren und Objekt-Texturen.
  * ===================================================================== */
 
 const Art = {
@@ -473,12 +473,9 @@ const Art = {
  * Gibt { update(camera, worldHeight, delta) } zurück.
  * ------------------------------------------------------------------- */
 function addBackdrop(scene, skyColors = [0x8ccbf0, 0xe4f3fb], { forest = true } = {}) {
-  // Himmel: HD-Bild (falls geladen), darüber leicht die Level-Farben für die Stimmung
-  if (scene.textures.exists('skyImage')) {
-    scene.add.image(0, 0, 'skyImage').setOrigin(0).setScrollFactor(0).setDepth(-101);
-  }
+  // Himmel: Verlauf in den Level-Farben
   const sky = scene.add.graphics().setScrollFactor(0).setDepth(-100);
-  sky.fillGradientStyle(skyColors[0], skyColors[0], skyColors[1], skyColors[1], scene.textures.exists('skyImage') ? 0.35 : 1);
+  sky.fillGradientStyle(skyColors[0], skyColors[0], skyColors[1], skyColors[1], 1);
   sky.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
   const sun = scene.add.image(GAME_WIDTH * 0.8, 70, 'sunGlow').setScrollFactor(0).setDepth(-99)
