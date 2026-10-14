@@ -32,6 +32,7 @@ class GameScene extends Phaser.Scene {
   create() {
     this.inputs = createPlayerInputs(this);
     this.fx = new Fx(this);
+    this.unstuck = new Unstuck(this);
     this.backdrop = addBackdrop(this, this.level.sky);
 
     this.buildLevel();
@@ -202,7 +203,8 @@ class GameScene extends Phaser.Scene {
       this.applyTargetState(group, false, true);
     });
 
-    this.createBlocks();
+    this.blockSystem = new BlockSystem(this, this.blockSpawns);
+    this.blocks = this.blockSystem.blocks;
 
     // Weltgrenzen: links/rechts/oben fest, unten offen (man kann herunterfallen)
     this.physics.world.setBounds(0, 0, this.worldWidth, this.worldHeight);
@@ -334,28 +336,6 @@ class GameScene extends Phaser.Scene {
     const cs = cells.map(c => c.c), rs = cells.map(c => c.r);
     const left = Math.min(...cs) * TILE, top = Math.min(...rs) * TILE;
     return new Phaser.Geom.Rectangle(left, top, (Math.max(...cs) + 1) * TILE - left, (Math.max(...rs) + 1) * TILE - top);
-  }
-
-  /** Schiebbare Kisten & Felsbrocken als dynamische Physik-Körper anlegen. */
-  createBlocks() {
-    this.blocks = this.blockSpawns.map(spawn => {
-      const block = this.physics.add.sprite(spawn.x, spawn.y, spawn.texture).setDepth(DEPTH.OBJECT);
-      // pushable = false: Spieler können den Block NICHT einfach wegdrücken –
-      // ob er sich bewegt, entscheidet updateBlocks() (genug Schieber?)
-      block.body.pushable = false;
-      block.body.setMaxVelocityY(PHYSICS.MAX_FALL);
-      block.setCollideWorldBounds(true);
-      block.spawn = spawn;
-      block.weight = spawn.weight;
-      block.wasOnGround = true;
-      block.pushSoundAt = 0;
-      block.stuckFrames = 0;
-      // "Zu schwer!"-Hinweis über dem Block
-      block.label = this.add.text(spawn.x, spawn.y, '', {
-        fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center'
-      }).setOrigin(0.5, 1).setDepth(DEPTH.FX);
-      return block;
-    });
   }
 
   createGoal(cx, bottom) {
@@ -548,12 +528,12 @@ class GameScene extends Phaser.Scene {
     if (!this.completed) {
       this.players.forEach(p => p.update(time, delta));
       this.limitPlayerSpread();
-      this.updateBlocks(time);
+      this.blockSystem.update(time);
       this.updateConveyors(delta);
       this.updateTriggers();
       this.updateTargets();
       this.updateLifts(delta);
-      this.resolveStuck();
+      this.unstuck.resolve();
       this.updateCheckpoints();
       this.updateGoal();
     }
@@ -702,7 +682,7 @@ class GameScene extends Phaser.Scene {
         if (instant) tile.y = y;
         else this.tweens.add({ targets: tile, y, duration: solid ? 180 : 450, ease: 'Quad.inOut' });
       });
-      if (solid && !instant) this.resolveStuck(true, 'side');
+      if (solid && !instant) this.unstuck.resolve(true, 'side');
       if (!instant) {
         Sfx.play(this, 'door');
         this.toast(active ? 'Das Tor ist offen!' : 'Das Tor schliesst sich …', active ? '#7dff9a' : '#ffb070');
@@ -716,7 +696,7 @@ class GameScene extends Phaser.Scene {
           this.tweens.add({ targets: tile, scale: 1, duration: 200, delay: i * 30, ease: 'Back.out' });
         }
       });
-      if (active && !instant) this.resolveStuck(true);       // niemand darf in einer neuen Kiste stecken
+      if (active && !instant) this.unstuck.resolve(true);       // niemand darf in einer neuen Kiste stecken
       if (!instant) {
         Sfx.play(this, active ? 'bridge' : 'door');
         if (active) this.toast('Die Kisten stehen bereit!', '#7dff9a');
@@ -782,7 +762,7 @@ class GameScene extends Phaser.Scene {
         targets: br.plank, angle: 0, duration: 900, ease: 'Bounce.out',
         onComplete: () => {
           br.hits.forEach(h => { h.body.enable = true; });
-          this.resolveStuck(true);
+          this.unstuck.resolve(true);
           Sfx.play(this, 'bridgeThud');
           this.cameras.main.shake(120, 0.004);
         }
@@ -857,145 +837,9 @@ class GameScene extends Phaser.Scene {
         if (!p.respawning && onBelt(b) && (b.blocked.down || b.touching.down)) p.sprite.x += cv.speed * delta / 1000;
       });
       this.blocks.forEach(block => {
-        if (onBelt(block.body)) block.body.velocity.x += cv.speed;   // nach updateBlocks() aufaddiert
+        if (onBelt(block.body)) block.body.velocity.x += cv.speed;   // nach BlockSystem.update() aufaddiert
       });
     });
-  }
-
-  // =====================================================================
-  // SCHIEBBARE BLÖCKE
-  // =====================================================================
-
-  /**
-   * Ein Block bewegt sich nur, wenn genug Spieler in dieselbe Richtung
-   * schieben. Mehrere Spieler zählen, wenn sie direkt am Block oder
-   * dicht hintereinander stehen.
-   */
-  updateBlocks(time) {
-    this.blocks.forEach(block => {
-      const bb = block.body;
-      const onGround = bb.blocked.down || bb.touching.down;
-      let dir = 0, bestCount = 0;
-
-      [-1, 1].forEach(d => {
-        const count = this.countPushers(block, d);
-        bestCount = Math.max(bestCount, count);
-        if (onGround && count >= block.weight) dir = d;
-      });
-
-      bb.setVelocityX(dir * BLOCKS.PUSH_SPEED);
-
-      // Schab-Geräusch beim Schieben, "Zu schwer!"-Hinweis wenn zu wenig Schieber
-      if (dir !== 0 && time > block.pushSoundAt) {
-        Sfx.play(this, 'push');
-        block.pushSoundAt = time + 160;
-        this.fx.dust(block.x - dir * block.displayWidth / 2, bb.bottom, 1);
-      }
-      const tooHeavy = dir === 0 && bestCount > 0 && bestCount < block.weight;
-      block.label.setText(tooHeavy ? 'ZU SCHWER!\nZU ZWEIT!' : '')
-        .setPosition(block.x, bb.top - 6);
-      if (tooHeavy && !block.wasTooHeavy) Sfx.play(this, 'tooHeavy');
-      block.wasTooHeavy = tooHeavy;
-
-      // Aufprall-Rumms nach einem Sturz (z. B. Kiste über die Kante geschubst)
-      if (onGround && !block.wasOnGround && block.fallSpeed > 200) {
-        Sfx.play(this, 'blockLand');
-        this.cameras.main.shake(100, 0.004 * block.weight);
-        this.fx.dust(block.x, bb.bottom, 8);
-      }
-      block.wasOnGround = onGround;
-      block.fallSpeed = bb.velocity.y;
-
-      // Aus der Welt gefallen → zurück an den Startplatz (und dort freischieben)
-      if (block.y > this.worldHeight + 64) {
-        bb.reset(block.spawn.x, block.spawn.y);
-        this.unstick(bb);
-        this.toast('Der Block ist wieder da!', '#ffffff');
-      }
-    });
-  }
-
-  /**
-   * Wie viele Spieler schieben den Block in Richtung d? Da die Spieler
-   * durcheinander durchlaufen, zählt jeder, der direkt am Block steht
-   * oder höchstens eine Körperbreite dahinter.
-   */
-  countPushers(block, d) {
-    const bb = block.body;
-    const edge = d > 0 ? bb.left : bb.right;
-    return this.players.filter(p => {
-      const b = p.sprite.body;
-      const pressing = d > 0 ? p.input.right : p.input.left;
-      if (!pressing || p.respawning || !(b.blocked.down || b.touching.down)) return false;
-      const face = d > 0 ? b.right : b.left;
-      const gap = (edge - face) * d;                    // 0 = direkt dran
-      const sameHeight = b.bottom > bb.top + 4 && b.top < bb.bottom;
-      return sameHeight && gap > -4 && gap <= 18;
-    }).length;
-  }
-
-  // =====================================================================
-  // FESTSTECKEN AUFLÖSEN ("Unstuck")
-  // =====================================================================
-
-  /** Gehört dieses Objekt zur festen Geometrie (Gelände, Tore, Kisten, Aufzüge, Blöcke)? */
-  isBlocking(go) {
-    if (!go || !go.body || !go.body.enable) return false;
-    return this.solids.contains(go) || this.gates.contains(go) ||
-      (this.liftSprites && this.liftSprites.has(go)) || (this.blocks && this.blocks.includes(go));
-  }
-
-  /** Feste Körper, die diesen Körper (leicht verkleinert) überlappen. */
-  embedding(body, inset = 3, ox = 0, oy = 0) {
-    const hits = this.physics.overlapRect(body.x + inset + ox, body.y + inset + oy,
-      body.width - inset * 2, body.height - inset * 2, true, true);
-    return hits.filter(h => h !== body && this.isBlocking(h.gameObject));
-  }
-
-  /** Nächste freie Position suchen: zuerst nach oben (oder seitlich), dann diagonal. */
-  freeOffset(body, prefer = 'up') {
-    for (let d = 4; d <= 6 * TILE; d += 4) {
-      const up = [[0, -d]], side = [[-d, 0], [d, 0]], diag = [[-d, -d], [d, -d]];
-      const order = prefer === 'side' ? side.concat(up, diag) : up.concat(side, diag);
-      for (const [ox, oy] of order) {
-        const x = body.x + ox, y = body.y + oy;
-        if (x < 0 || x + body.width > this.worldWidth || y < 0) continue;
-        if (this.embedding(body, 1, ox, oy).length === 0) return { x: ox, y: oy };
-      }
-    }
-    return null;
-  }
-
-  /** Körper sanft an die nächste freie Stelle setzen. */
-  unstick(body, prefer = 'up') {
-    const off = this.freeOffset(body, prefer);
-    if (!off) return false;
-    const go = body.gameObject;
-    body.reset(go.x + off.x, go.y + off.y);
-    body.setVelocity(0, 0);
-    const player = this.players && this.players.find(p => p.sprite === go);
-    if (player) { player.sx = 1.25; player.sy = 0.8; }
-    this.fx.dust(go.x, body.bottom, 5);
-    Sfx.play(this, 'pop');
-    return true;
-  }
-
-  /**
-   * Prüft Spieler & Blöcke. Normal erst nach 2 Frames im Fels (gegen
-   * Fehlalarme), mit now=true sofort – z. B. wenn gerade Kisten erschienen.
-   */
-  resolveStuck(now = false, prefer = 'up') {
-    const check = (body, holder) => {
-      if (!body.enable) return;
-      if (this.embedding(body).length) {
-        holder.stuckFrames = (holder.stuckFrames || 0) + 1;
-        if (now || holder.stuckFrames >= 2) { this.unstick(body, prefer); holder.stuckFrames = 0; }
-      } else {
-        holder.stuckFrames = 0;
-      }
-    };
-    this.players.forEach(p => { if (!p.respawning) check(p.sprite.body, p); });
-    (this.blocks || []).forEach(block => check(block.body, block));
   }
 
   // =====================================================================
