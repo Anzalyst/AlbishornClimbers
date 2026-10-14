@@ -3,7 +3,7 @@
  *
  * Die Einträge aus CREDITS (config.js) rollen von unten nach oben über
  * den Nachthimmel; unten wandert die ganze Familie vorbei.
- *   Sprung (gedrückt halten) = schneller   ESC / Sprung am Ende = Menü
+ *   Sprung (gedrückt halten) = schneller   ESC / Sprung am Ende = weiter zur EndScene
  * ===================================================================== */
 
 class CreditsScene extends Phaser.Scene {
@@ -102,7 +102,7 @@ class CreditsScene extends Phaser.Scene {
     this.roll.add([end, kes]);
     this.rollStopY = -(y + 40) + GAME_HEIGHT / 2 - 60;   // "ENDE" landet etwas über der Mitte
 
-    this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 16, 'SPRUNG = MENÜ', {
+    this.prompt = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 16, 'SPRUNG = WEITER', {
       fontFamily: FONT, fontSize: '9px', color: '#dddddd'
     }).setOrigin(0.5, 1).setDepth(30).setVisible(false);
   }
@@ -142,6 +142,6 @@ class CreditsScene extends Phaser.Scene {
     this.leaving = true;
     if (this.song) this.song.stop();
     this.cameras.main.fadeOut(600, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MenuScene'));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EndScene'));
   }
 }

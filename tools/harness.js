@@ -213,7 +213,8 @@
       ['MenuScene', undefined, 60],
       ['VictoryScene', { levelIndex: 0, collected: 2, total: 5 }, 120],
       ['FinaleScene', undefined, 900],
-      ['CreditsScene', undefined, 400]
+      ['CreditsScene', undefined, 400],
+      ['EndScene', undefined, 240]
     ];
     scenes.forEach(([key, data, frames], i) => {
       syncClock(LEVELS.length + 1 + i);
@@ -336,7 +337,22 @@
     step(60); tap(padB, 1); step(40);
     check('Victory: B → Menü', active('MenuScene'));
 
-    // 12) Konsole einschalten per Controller
+    // 12) Abspann → EndScene → Menü (Victory-Bild ist eingebettet und geladen)
+    check('Victory-Bild als Textur geladen', game.textures.exists('endscreen') &&
+      game.textures.get('endscreen').getSourceImage().width === 720);
+    startScene('CreditsScene');
+    const credits = game.scene.getScene('CreditsScene');
+    credits.roll.y = credits.rollStopY; step(80);   // Abspann vorspulen
+    tap(padA, 0); step(50);
+    check('Abspann → EndScene', active('EndScene'));
+    const end = game.scene.getScene('EndScene');
+    check('EndScene zeigt das Bild', end.children.list.some(o => o.texture && o.texture.key === 'endscreen'));
+    tap(padB, 0); step(5);
+    check('EndScene wartet kurz vor dem Weitermachen', active('EndScene'));
+    step(160); tap(padB, 0); step(50);
+    check('EndScene → Menü', active('MenuScene'));
+
+    // 13) Konsole einschalten per Controller
     startScene('IntroScene', { mode: 'logo' });
     step(5); tap(padA, 0); step(2);
     check('Startbildschirm: A schaltet ein', game.scene.getScene('IntroScene').phase !== 'off');

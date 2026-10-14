@@ -322,6 +322,8 @@ class BootScene extends Phaser.Scene {
     this.createObjectTextures();
     this.createDecoTextures();
     Art.createAll(this);          // Gelände, Mechaniken & Hintergründe (art.js)
+    // Einzige Bilddatei: Victory-Bild der EndScene (eingebettet, siehe tools/embed-images.js)
+    if (typeof ENDSCREEN_IMAGE !== 'undefined') this.textures.addBase64('endscreen', ENDSCREEN_IMAGE);
     this.createAnimations();
 
     // Auf die Pixel-Schrift warten (max. 1.5 s, sonst Fallback-Schrift),

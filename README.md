@@ -19,11 +19,13 @@ chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --dis
 - Die Symbole ▶ ▼ ▲ ✔ enthält die Pixelschrift nicht. Sie kommen aus einer Systemschrift (z. B. `fonts-dejavu`, auf den meisten Distributionen vorinstalliert).
 
 ## Grafiken
-Das Spiel verwendet **keine Bilddateien**. Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
+Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
 - `js/scenes/BootScene.js`: Figuren und Porträts (als Pixel-Raster im Code), Schalter, Hebel, Fahnen, Edelweiss, Deko (Haus, Tanne, Restaurant, Turm)
 - `js/art.js` (aufgerufen aus der BootScene): Gelände-Kacheln, Wasser, Kisten, Felsbrocken, Mechaniken (Aufzug, Förderband, Zugbrücke, Farbtasten) und der Parallax-Hintergrund
 
 Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und verwendet sie im Spiel über diesen Schlüssel.
+
+**Einzige Ausnahme:** das Victory-Bild der `EndScene` (`assets/images/endscreen.jpg`, 720×540). Per Doppelklick (`file://`) darf der Browser Bilddateien weder per XHR laden noch als WebGL-Textur nutzen. Deshalb wird das Bild als Base64 in `js/generated/endscreen-image.js` eingebettet und in der BootScene mit `textures.addBase64` angelegt. Nach einem Austausch des Bildes `node tools/embed-images.js` ausführen und die erzeugte Datei mitcommitten.
 
 ## Personalisierung
 Alle Namen und Texte stehen zentral in `js/config.js`:
@@ -36,7 +38,7 @@ Alle Namen und Texte stehen zentral in `js/config.js`:
 In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{AUNT}`, `{UNCLE}` und `{PARENTS}` automatisch durch die Namen ersetzt.
 
 ## Ablauf
-KES-Startlogo → Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 → Gipfel: Sven wartet am Aussichtsturm → Geburtstagsfeier → Abspann
+KES-Startlogo → Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 → Gipfel: Sven wartet am Aussichtsturm → Geburtstagsfeier → Abspann → „Danke fürs Spielen!“ (EndScene) → Menü
 
 ## Steuerung
 | | Bewegen | Springen | Hebel |
@@ -82,6 +84,9 @@ js/scenes/PauseScene.js    Pausenmenü (START/P): Weiter, Neustart, Ton, Hauptme
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
 js/scenes/CreditsScene.js  Abspann
+js/scenes/EndScene.js      Victory-Bild „Danke fürs Spielen!“ mit Konfetti & Sternen
+assets/images/             Quelle des Victory-Bilds (endscreen.jpg)
+js/generated/              Eingebettete Bilder (erzeugt von tools/embed-images.js)
 js/game/LevelParser.js     ASCII-Karte → Datenobjekt, prüft die Leveldaten (ohne Phaser)
 js/game/LevelBuilder.js    Datenobjekt → Gelände, Wasser, Deko, Collider
 js/game/Player.js          Spielfigur: Bewegung, Sprung, Animation, Respawn
