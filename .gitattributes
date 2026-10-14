@@ -1,0 +1,3 @@
+# Fremdbibliothek und Schrift byte-genau einchecken (Prüfsumme muss zum Original passen)
+js/lib/phaser.min.js -text -diff
+*.woff2 binary

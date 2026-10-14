@@ -15,7 +15,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const { pathToFileURL } = require('url');
 
 const args = process.argv.slice(2);
@@ -40,34 +40,39 @@ function findBrowser() {
   return found;
 }
 
-// Testseite: dieselben Scripts wie index.html, danach harness.js
+// Testseite = die echte index.html (gleiche Styles, Schrift, Scripts) –
+// per <base> auf den Spielordner bezogen, ergänzt um Optionen und harness.js
 function buildPage() {
   const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  const srcs = [...index.matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]);
-  const url = src => (/^https?:/.test(src) ? src : pathToFileURL(path.join(root, src)).href);
-  const scripts = srcs.map(src => `<script src="${url(src)}"></script>`).join('\n');
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
-<div id="game"></div><pre id="result"></pre>
-<script>window.TEST_OPTS = ${JSON.stringify({ dump })};</script>
-${scripts}
-<script src="${pathToFileURL(path.join(__dirname, 'harness.js')).href}"></script>
-</body></html>`;
+  const base = pathToFileURL(root + path.sep).href;
+  const harness = pathToFileURL(path.join(__dirname, 'harness.js')).href;
+  return index
+    .replace(/<head>/i, `<head>\n<base href="${base}">`)
+    .replace(/<script/i, `<script>window.TEST_OPTS = ${JSON.stringify({ dump })};</script>\n<script`)
+    .replace(/<\/body>/i, `<pre id="result" style="display:none"></pre>\n<script src="${harness}"></script>\n</body>`);
 }
 
 function run() {
   const page = path.join(os.tmpdir(), `albishorn-test-${process.pid}.html`);
   fs.writeFileSync(page, buildPage());
-  let dom;
+  let proc;
   try {
-    dom = execFileSync(findBrowser(), [
+    proc = spawnSync(findBrowser(), [
       '--headless=new', '--disable-gpu', '--mute-audio', '--allow-file-access-from-files',
+      // Kein Netzwerk: jede Namensauflösung schlägt fehl → das Spiel muss komplett offline laufen
+      '--host-resolver-rules=MAP * ~NOTFOUND',
+      '--enable-logging=stderr', '--v=0',
       '--virtual-time-budget=120000', '--dump-dom', pathToFileURL(page).href
-    ], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 10 * 60 * 1000, stdio: ['ignore', 'pipe', 'ignore'] });
+    ], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 10 * 60 * 1000 });
   } finally {
     fs.unlinkSync(page);
   }
-  const m = /<pre id="result">([^<]*)<\/pre>/.exec(dom);
-  if (!m || !m[1]) throw new Error('Kein Testergebnis – ist der Browser-Test abgebrochen?');
+  const m = /<pre id="result"[^>]*>([^<]*)<\/pre>/.exec(proc.stdout || '');
+  if (!m || !m[1]) {
+    // Browser-Konsole zeigen, damit man sieht, warum der Test abgebrochen ist
+    (proc.stderr || '').split('\n').filter(l => l.includes(':CONSOLE')).forEach(l => console.log(l.replace(/^.*?:CONSOLE:\d+\] /, '  Konsole: ')));
+    throw new Error('Kein Testergebnis – ist der Browser-Test abgebrochen?');
+  }
   return JSON.parse(Buffer.from(m[1], 'base64').toString('utf8'));
 }
 
@@ -90,6 +95,10 @@ if (fs.existsSync(path.join(root, 'js/game/LevelParser.js'))) {
   if (problems.length) failed = true;
 }
 
+if (result.offline) {
+  console.log(`  Offline: ${result.offline.external === 0 ? 'nur lokale Dateien' : `${result.offline.external} externe Ressourcen!`}, ` +
+    `Schrift ${result.offline.font ? 'geladen' : 'FEHLT'}`);
+}
 result.warnings.forEach(w => console.log(`  Warnung: ${w}`));
 if (result.errors.length) {
   failed = true;

@@ -37,10 +37,17 @@
   const setInput = (i, actions) => { scripted[i] = actions || {}; };
 
   // --- Spiel manuell takten ------------------------------------------------
-  // Tweens rechnen mit Date.now() → an die simulierte Spielzeit koppeln
+  // Tweens rechnen mit Date.now() → ab der Übernahme (takeControl) an die
+  // simulierte Spielzeit gekoppelt. Nicht früher: beim Booten braucht der
+  // Browser die echte Uhr (sonst wird z. B. die Schrift nie fertig geladen).
   let T = 0;
-  const realNow = Date.now();
-  Date.now = () => realNow + T;
+  // Fester Startwert statt echter Uhrzeit: bei ~1.7e12 ms hingen die
+  // Nachkommastellen der Tween-Berechnung sonst vom Startzeitpunkt ab.
+  const CLOCK_BASE = 1e9;
+  function takeControl() {
+    Date.now = () => CLOCK_BASE + T;
+    game.loop.sleep();
+  }
   function step(n = 1) {
     for (let k = 0; k < n; k++) {
       T += DT;
@@ -205,16 +212,46 @@
     });
   }
 
+  /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
+  function checkOffline() {
+    const external = performance.getEntriesByType('resource').map(e => e.name).filter(n => !n.startsWith('file:'));
+    external.forEach(n => out.errors.push(`Externe Ressource geladen: ${n}`));
+    const fontOk = document.fonts.check(`16px ${FONT}`) &&
+      [...document.fonts].some(f => f.family.replace(/["']/g, '') === 'Press Start 2P' && f.status === 'loaded');
+    if (!fontOk) out.errors.push('Schrift "Press Start 2P" ist nicht geladen');
+    out.offline = { external: external.length, font: fontOk };
+  }
+
   function finish() {
     const json = JSON.stringify(out);
     document.getElementById('result').textContent = btoa(unescape(encodeURIComponent(json)));
   }
 
-  // Warten, bis die BootScene alle Texturen erzeugt hat, dann selbst takten
+  // Warten, bis die BootScene alle Texturen erzeugt hat und die Schrift
+  // geladen ist (die BootScene wartet max. 1.5 s darauf), dann selbst takten.
+  // Nicht auf die Browser-Schleife verlassen: Headless-Chrome liefert unter
+  // virtueller Zeit nicht zuverlässig Animation-Frames.
+  const waitStart = performance.now();
   const wait = setInterval(() => {
-    if (!window.game || !game.scene || !game.scene.isActive('IntroScene')) return;
+    const elapsed = performance.now() - waitStart;
+    const booted = window.game && game.textures && game.textures.exists('hiker1');
+    if (!booted || (document.fonts.status !== 'loaded' && elapsed < 2000)) {
+      if (elapsed > 20000) {
+        clearInterval(wait);
+        out.errors.push(`Spiel startet nicht (nach 20 s): Texturen ${booted ? 'da' : 'fehlen'}, Schriften ${document.fonts.status}`);
+        finish();
+      }
+      return;
+    }
     clearInterval(wait);
-    game.loop.sleep();
+    takeControl();
+    for (let k = 0; k < 600 && !game.scene.isActive('IntroScene'); k++) step();
+    if (!game.scene.isActive('IntroScene')) {
+      out.errors.push(`BootScene wechselt nicht zur IntroScene: aktive Szenen [${game.scene.getScenes(true).map(s => s.sys.settings.key)}]`);
+      finish();
+      return;
+    }
+    checkOffline();
     try {
       for (let i = 0; i < LEVELS.length; i++) runLevel(i);
       runScenes();
