@@ -5,7 +5,7 @@
  *   parsed.cells      alle belegten Zellen in Lesereihenfolge (Zeile für Zeile):
  *                     { c, r, ch, kind }   kind = 'trigger' | 'board' | 'target' |
  *                     'terrain' | 'platform' | 'water' | 'spawn' | 'checkpoint' |
- *                     'collectible' | 'sign' | 'goal' | 'deco' | 'block' | 'unknown'
+ *                     'collectible' | 'sign' | 'goal' | 'deco' | 'block' | 'obstacle' | 'unknown'
  *   parsed.charAt(c, r), parsed.isTerrain(ch), parsed.isWater(ch)
  *   parsed.warnings   verständliche Hinweise auf Fehler in den Leveldaten
  *
@@ -23,7 +23,8 @@ const LevelParser = {
     '1': 'spawn', '2': 'spawn',
     'F': 'checkpoint', '*': 'collectible', 'i': 'sign', 'G': 'goal',
     'H': 'deco', 'T': 'deco', 'A': 'deco',
-    'k': 'block', 'K': 'block'
+    'k': 'block', 'K': 'block',
+    '=': 'obstacle', '&': 'obstacle', '>': 'obstacle', '<': 'obstacle', '@': 'obstacle'
   },
 
   /**
@@ -93,6 +94,11 @@ const LevelParser = {
       if (kindOf(ch) === 'balance' && t.partner && kindOf(t.partner) !== 'balance') {
         warnings.push(`${name}: Waage "${ch}" – Partnerschale "${t.partner}" fehlt oder ist keine Waage`);
       }
+    });
+    // Hindernisse: Baumstamm-Quellen brauchen Wasser darunter, Steinschlag-Höhlen Boden
+    cells.filter(cell => cell.kind === 'obstacle').forEach(({ c, r, ch }) => {
+      if ((ch === '>' || ch === '<') && !isWater(charAt(c, r + 1))) warnings.push(`${name}: Baumstamm-Quelle "${ch}" (Zeile ${r}, Spalte ${c}) hat kein Wasser darunter`);
+      if (ch === '@' && !isTerrain(charAt(c, r + 1))) warnings.push(`${name}: Steinschlag-Höhle "@" (Zeile ${r}, Spalte ${c}) steht nicht auf festem Boden`);
     });
     const partners = Object.values(targets).map(t => t.partner).filter(Boolean);
     Object.entries(targets).forEach(([ch, t]) => {

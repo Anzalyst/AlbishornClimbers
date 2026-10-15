@@ -319,6 +319,62 @@ const Art = {
         });
       });
     });
+    // --- Hindernisse (js/game/obstacles/) ---------------------------------
+    // Bröckel-Plattform: rissige Steinplatte
+    this.canvas(scene, 'crumbleTile', TILE, 12, ctx => {
+      this.vgrad(ctx, 0, 0, TILE, 12, [[0, '#c9b49a'], [1, '#8a7258']]);
+      this.rect(ctx, 0, 0, TILE, 1, '#e8d8c0');
+      this.rect(ctx, 0, 11, TILE, 1, '#5a4632');
+      ctx.strokeStyle = '#4a3a28'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(9, 1); ctx.lineTo(12, 6); ctx.lineTo(10, 11); ctx.moveTo(12, 6); ctx.lineTo(17, 7);
+      ctx.moveTo(23, 0); ctx.lineTo(21, 5); ctx.lineTo(25, 11); ctx.stroke();
+      [[4, 4], [28, 7], [16, 3]].forEach(([x, y]) => this.rect(ctx, x, y, 2, 2, '#6a5640'));
+    });
+    // Pendel: Schaukelbrett und Aufhängung
+    this.canvas(scene, 'swingPlank', TILE, 12, ctx => {
+      this.vgrad(ctx, 0, 0, TILE, 12, [[0, '#d49a5a'], [1, '#94602e']]);
+      this.rect(ctx, 0, 0, TILE, 1, '#f0c48a');
+      this.rect(ctx, 0, 11, TILE, 1, '#4e3016');
+      this.rect(ctx, 31, 0, 1, 12, '#6a4220');
+      this.rect(ctx, 0, 5, TILE, 1, '#a8703a');
+    });
+    this.canvas(scene, 'pivotBolt', 14, 14, ctx => {
+      ctx.fillStyle = '#3a3e46'; ctx.beginPath(); ctx.arc(7, 7, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#9aa0aa'; ctx.beginPath(); ctx.arc(7, 7, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3a3e46'; ctx.beginPath(); ctx.arc(7, 7, 2, 0, Math.PI * 2); ctx.fill();
+    });
+    // Baumstamm (wird als TileSprite gekachelt) und Schilf am Ufer
+    this.canvas(scene, 'logTile', TILE, 18, ctx => {
+      this.vgrad(ctx, 0, 0, TILE, 18, [[0, '#a8743e'], [0.5, '#7a4e26'], [1, '#4e3016']]);
+      this.rect(ctx, 0, 1, TILE, 1, '#c8945a');
+      [[3, 6, 10], [18, 10, 9], [10, 13, 7]].forEach(([x, y, w]) => this.rect(ctx, x, y, w, 1, '#5a3a1c'));
+      ctx.fillStyle = '#5a3a1c'; ctx.beginPath(); ctx.ellipse(26, 7, 2.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+      this.rect(ctx, 0, 16, TILE, 2, 'rgba(255,255,255,0.35)');   // Wasserlinie
+    });
+    this.canvas(scene, 'reeds', 28, 30, ctx => {
+      [[4, 30, 6], [9, 30, 0], [14, 30, 3], [19, 30, 8], [24, 30, 2]].forEach(([x, y, top]) => {
+        this.rect(ctx, x, top + 6, 2, y - top - 6, '#3f7a2a');
+        this.rect(ctx, x - 1, top, 4, 7, '#7a4e26');
+      });
+    });
+    // Steinschlag: Höhle im Fels und rollender Brocken
+    this.canvas(scene, 'rockChute', 56, 52, ctx => {
+      ctx.fillStyle = '#6a6e78'; ctx.beginPath(); ctx.ellipse(28, 34, 28, 28, 0, Math.PI, 0); ctx.lineTo(56, 52); ctx.lineTo(0, 52); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8a8e98'; ctx.beginPath(); ctx.ellipse(28, 34, 24, 24, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#16181c'; ctx.beginPath(); ctx.ellipse(28, 40, 17, 18, 0, Math.PI, 0); ctx.lineTo(45, 52); ctx.lineTo(11, 52); ctx.closePath(); ctx.fill();
+      [[6, 30], [44, 22], [20, 12], [36, 10]].forEach(([x, y]) => this.rect(ctx, x, y, 4, 2, '#5a5e68'));
+    });
+    this.canvas(scene, 'rollingRock', 44, 44, ctx => {
+      const g = ctx.createRadialGradient(17, 16, 2, 22, 22, 21);
+      [[0, '#b0b4bc'], [0.7, '#80848e'], [1, '#4a4e58']].forEach(([at, c]) => g.addColorStop(at, c));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(22, 22, 21, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#3a3e46'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(22, 22, 20, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(10, 14); ctx.lineTo(18, 20); ctx.lineTo(14, 30); ctx.moveTo(26, 8); ctx.lineTo(30, 18); ctx.lineTo(36, 22); ctx.stroke();
+      this.rect(ctx, 14, 9, 5, 3, 'rgba(255,255,255,0.45)');
+    });
+
     // Waagschale: Holzbrett mit Metallkante und Ösen für die Seile
     this.canvas(scene, 'scalePan', TILE, 16, ctx => {
       this.vgrad(ctx, 0, 2, TILE, 10, [[0, '#c48e52'], [1, '#8e5c2e']]);

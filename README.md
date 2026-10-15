@@ -70,13 +70,13 @@ Controller: `START` / `OPTIONS` = Pausenmenü (Weiter, Neu starten, Ton, Hauptme
 Spieler 1 bekommt den ersten verbundenen Controller, Spieler 2 den zweiten, egal in welchem Browser-Slot sie stecken. Controller werden erst nach dem ersten Tastendruck auf dem Pad erkannt (Browser-Regel).
 
 ## Level & Passwörter
-| Level | Code | Neue Mechanik |
-|---|---|---|
-| 1 Der Start in Ebertswil | 1291 | Schalter + Tor + Hebel (mit Infotafeln) |
-| 2 Der steile Waldaufstieg | 3842 | Kisten & Felsbrocken schieben (Brocken nur zu zweit) |
-| 3 Der Bachlauf | 7156 | Wasserstand absenken, Aufzug per Schalter |
-| 4 Die Felswand | 2468 | Aufzug mit zwei Schaltern, Farbtasten-Reihenfolge + Pendel-Plattform, Zugbrücke |
-| 5 Gipfelsturm Albishorn | 0909 | Alles kombiniert + Förderband mit Kiste → Geburtstags-Finale |
+| Level | Code | Neue Mechanik | Geschicklichkeit |
+|---|---|---|---|
+| 1 Der Start in Ebertswil | 1291 | Schalter + Tor + Hebel (mit Infotafeln) | Bröckel-Brättli über dem Weiher |
+| 2 Der steile Waldaufstieg | 3842 | Kisten & Felsbrocken schieben (Brocken nur zu zweit) | Türlersee mit treibenden Baumstämmen, Waldschaukeln über der Schlucht |
+| 3 Der Bachlauf | 7156 | Wasserstand absenken, Aufzug per Schalter | Wacklige Bachsteine (einzelne Bröckel-Platten) |
+| 4 Die Felswand | 2468 | Aufzug mit zwei Schaltern, Farbtasten-Reihenfolge + Pendel-Plattform, Zugbrücke | Steinschlag-Treppe mit Ausweich-Nischen |
+| 5 Gipfelsturm Albishorn | 0909 | Alles kombiniert + Förderband mit Kiste → Geburtstags-Finale | Schlucht: Bröckel-Platten → Pendel → Bröckel-Platten |
 
 **Chopfnüss** – zwei optionale, schwerere Rätsel-Level (Menüpunkt *CHOPFNÜSS* oder Passwort). Sie gehören nicht zur Geschichte: Nach Level 5 kommt weiterhin direkt die Gipfelfeier.
 
@@ -118,6 +118,7 @@ js/game/LevelBuilder.js    Datenobjekt → Gelände, Wasser, Deko, Collider
 js/game/Player.js          Spielfigur: Bewegung, Sprung, Animation, Respawn
 js/game/BlockSystem.js     Schiebbare Kisten & Felsbrocken
 js/game/mechanics/         MechanicsSystem + Register triggers.js / targets.js
+js/game/obstacles/         ObstacleSystem + Register obstacles.js (Bröckel, Pendel, Stämme, Steinschlag)
 js/game/Unstuck.js         Feststecken erkennen & freischieben
 js/game/CoopRules.js       Kamera, Spielerabstand, Checkpoints, Ziel
 js/game/Hud.js, Fx.js      Anzeigen und visuelle Effekte
@@ -139,6 +140,7 @@ In `js/levels.js` ein Objekt mit `map`, `password`, `triggers`, `targets` (und o
 - **Zeitschalter:** `timer: 5` an einem Auslöser → er bleibt nur 5 Sekunden aktiv (Bodenschalter und Lämpli: ab dem Loslassen). Ein Ring mit Sekunden zählt über dem Schalter und beim Ziel herunter, es tickt, in den letzten 3 Sekunden schneller.
 - **Farbeschloss:** `sequences: { S: { order, targets, board, hidden: true, timeLimit: 12 } }` – falscher Knopf = Fehler-Sound und alles zurück; `hidden` zeigt auf der Tafel nur "?", `timeLimit` startet ab dem ersten Treffer eine Uhr.
 - **Ziele:** Tore (`door`), Kisten-Stufen (`bridge`), Wasser (`water`), Aufzüge (`lift`, hält oder pendelt), Zugbrücken (`drawbridge`), Förderbänder (`conveyor`), Waagen (`balance`: zwei verbundene Schalen, proportional zum Gewichts-Unterschied, optional mit Sandsack). Mit `all: true` braucht ein Ziel ALLE seine Auslöser gleichzeitig (UND statt ODER).
+- **Hindernisse** (immer aktiv, Geschicklichkeit statt Rätsel): `=` Bröckel-Plattform, `&` Pendel-Aufhängung, `>`/`<` Baumstamm-Quelle über Wasser, `@` Steinschlag-Höhle. Feintuning pro Level mit `obstacles: { '&': { period: 3200 } }` – alle Optionen stehen in der Legende von `levels.js`.
 - **Infotafeln** (`i` + `hints`) gibt es in Level 1 und in den Chopfnüss. Die lustigen Kindheits-Erinnerungen stehen als `anecdote` in der Einblendung zum Levelstart.
 - **Bonus-Level:** `bonus: true`, am Ende der Liste – sie erscheinen als "CHOPFNUSS n".
 
@@ -147,6 +149,7 @@ Fehler in den Leveldaten (unbekannte Zeichen, fehlender Start/Ziel, Verweise auf
 ## Neue Mechanik bauen
 Jeder Mechanik-Typ ist ein Eintrag in einem Register, die GameScene muss dafür nicht angefasst werden:
 - **Neuer Auslöser** (z. B. Waagen-Lämpli): Eintrag in `TRIGGER_TYPES` (`js/game/mechanics/triggers.js`) mit `create(sys, trigger, cfg)` und `update(sys, trigger)`, der `trigger.active` setzt.
+- **Neues Hindernis** (z. B. Feder-Trampolin): Eintrag in `OBSTACLE_TYPES` (`js/game/obstacles/obstacles.js`) mit `create` / `update` / `render` und ein Kartenzeichen in `OBSTACLE_CHARS` + `LevelParser.CHAR_KINDS`.
 - **Neues Ziel** (z. B. Federbrett): Eintrag in `TARGET_TYPES` (`js/game/mechanics/targets.js`) mit `cell` / `create` / `apply` / `update` – die Bedeutung jeder Funktion steht im Dateikopf.
 - Danach in `levels.js` verwenden (`{ type: '…' }` bzw. `{ kind: '…' }`) und eine Textur in `art.js` anlegen.
 - Neue Script-Dateien in `index.html` vor `js/scenes/` eintragen.
@@ -162,6 +165,7 @@ Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das 
 
 - Bei einer Abweichung zeigt `--dump <Level>:<Messpunkt>` den kompletten Zustand an dieser Stelle.
 - `--gameplay` vergleicht nur den Spielablauf (ohne Texte und HUD). Damit lässt sich nach Übersetzungen oder Textänderungen beweisen, dass sich am Spiel selbst nichts geändert hat.
+- **Hindernis-Test** (`tools/harness-puzzles.js`): Bots überwinden jeden neuen Abschnitt in Level 1–5 mit echten Sprüngen (beide Figuren) und prüfen: Bröckel-Platten sacken weg und kommen wieder, Baumstämme nehmen mit und gehen am Ende unter, Wasser → Checkpoint, Pendel-Schwung beim Absprung, Felsbrocken rollen über die Nischen, Treffer → Checkpoint, die Fels-Schwelle hält die Brocken auf.
 - **Rätsel-Test** (`tools/harness-puzzles.js`): Zwei Bots lösen beide Chopfnüss nur mit normalen Eingaben (laufen, springen, Hebel/Knöpfe) bis ins Ziel und prüfen dabei jede Mechanik: Countdown und Ticken, Tor zu nach Ablauf, UND-Tor, falsche Reihenfolge/Zeitlimit beim Farbeschloss, Waage proportional, Gleichgewichts-Lämpli, Ablauf Victory → nächste Chopfnuss → Menü.
 - Geprüft werden ausserdem: fehlende Texturen in jeder Szene, die ganze Familie auf dem Gipfel und im Abspann, und die Fairness bei Pedalo-Power (8 Zufalls-Layouts, ein Bot muss allen Enten ausweichen können).
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.

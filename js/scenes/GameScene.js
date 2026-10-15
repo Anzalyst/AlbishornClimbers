@@ -9,6 +9,7 @@
  *   Player        Spielfigur: Bewegung, Sprung, Animation, Respawn
  *   BlockSystem   schiebbare Kisten & Felsbrocken
  *   mechanics/    MechanicsSystem + Register TRIGGER_TYPES / TARGET_TYPES
+ *   obstacles/    ObstacleSystem + Register OBSTACLE_TYPES (Pendel, Stämme …)
  *   Unstuck       Feststecken erkennen & freischieben
  *   CoopRules     Kamera, Abstand, Checkpoints, Ziel
  *   Hud / Fx      Anzeigen / visuelle Effekte
@@ -85,7 +86,10 @@ class GameScene extends Phaser.Scene {
       if (p.sprite.y > this.worldHeight + 48) p.respawn(); // aus der Welt gefallen
     });
 
+    // Hindernisse bewegen sich immer (auch beim Jubeln am Ziel)
+    this.obstacles.update(delta);
     this.mechanics.render();
+    this.obstacles.render();
     this.players.forEach(p => p.updateView(time, delta));
     this.hud.updateInfoSigns(this.infoSigns, this.players);
     this.hud.update(this.players);

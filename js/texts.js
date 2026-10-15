@@ -54,6 +54,7 @@ const TXT = {
   andPartial: '{n} vo {m} – de Rescht au, gschwind!',
   ballastDown: 'De Sandsack gaht abe!',
   balanced: 'Gliichgwicht!',
+  boulderHit: 'Steischlag – autsch!',
   ballastUp: 'De Sandsack gaht ufe!',
   doorOpen: 'S Tor isch offe!',
   doorClose: 'S Tor gaht zue …',

@@ -8,7 +8,8 @@
  * Legt auf der Szene an:
  *   Physik-Gruppen  solids, oneWays, gates, water, flowers
  *   Logik           spawns, checkpoints, infoSigns, goal, totalEdelweiss,
- *                   mechanics (MechanicsSystem), blockSystem/blocks, liftSprites
+ *                   mechanics (MechanicsSystem), obstacles (ObstacleSystem),
+ *                   blockSystem/blocks, liftSprites
  *   Welt            rows, cols, worldWidth, worldHeight
  *
  * Wird später eine Phaser-Tilemap eingeführt, ändert sich nur diese Datei.
@@ -58,6 +59,9 @@ class LevelBuilder {
     // Schalter, Hebel, Farbtasten & ihre Ziele (js/game/mechanics/)
     scene.mechanics = new MechanicsSystem(scene, parsed.level);
     const mech = scene.mechanics;
+
+    // Geschicklichkeits-Hindernisse (js/game/obstacles/)
+    scene.obstacles = new ObstacleSystem(scene, parsed);
 
     const terrain = [];            // alle festen Geländekacheln (Kanten-Culling & Licht)
     const hash = (c, r) => ((c * 73856093) ^ (r * 19349663)) >>> 0;
@@ -125,6 +129,9 @@ class LevelBuilder {
         }
         case 'goal':
           this.createGoal(cx, bottom);
+          break;
+        case 'obstacle':
+          scene.obstacles.add(ch, c, r);
           break;
         case 'deco':
           if (ch === 'H') scene.add.image(cx, bottom, 'house').setOrigin(0.5, 1).setDepth(DEPTH.DECO);
@@ -250,5 +257,7 @@ class LevelBuilder {
     physics.add.collider(scene.blocks, scene.blocks);
     physics.add.collider(scene.blocks, liftSprites);
     physics.add.collider(sprites, scene.blocks);
+
+    scene.obstacles.setupCollisions(players);
   }
 }

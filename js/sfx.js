@@ -118,6 +118,13 @@ const Sfx = {
     liftStop: [{ noise: true, dur: 0.1, vol: 0.07, freq: 500, freqTo: 150 }, { from: 140, to: 90, dur: 0.1, type: 'square', vol: 0.03 }],
     conveyor: [{ from: 120, to: 240, dur: 0.3, type: 'sawtooth', vol: 0.03 }, { noise: true, dur: 0.3, vol: 0.05, filter: 'bandpass', freq: 900 }],
     bridgeDown: [{ noise: true, dur: 0.5, vol: 0.06, filter: 'bandpass', freq: 600, freqTo: 300 }, { from: 220, to: 110, dur: 0.5, type: 'triangle', vol: 0.05 }],
+    // Hindernisse: Bröckeln, Steinschlag, Baumstamm geht unter
+    crumble:     [{ noise: true, dur: 0.5, vol: 0.05, filter: 'bandpass', freq: 900, freqTo: 500 }],
+    crumbleFall: [{ noise: true, dur: 0.35, vol: 0.1, freq: 400, freqTo: 120 }],
+    rumble:      [{ noise: true, dur: 0.8, vol: 0.08, freq: 180, freqTo: 90 }, { from: 60, to: 45, dur: 0.7, type: 'sawtooth', vol: 0.03 }],
+    rockSmash:   [{ noise: true, dur: 0.3, vol: 0.12, freq: 500, freqTo: 100 }],
+    boulderHit:  [{ noise: true, dur: 0.15, vol: 0.14, freq: 300, freqTo: 100 }, { from: 220, to: 80, dur: 0.25, type: 'square', vol: 0.06 }],
+    logSink:     [{ noise: true, dur: 0.4, vol: 0.05, filter: 'highpass', freq: 900, freqTo: 400 }],
     // Rätsel-Mechaniken: Zeitschalter-Ticken, Zeit abgelaufen, Waage, Sandsack
     tick:       [{ from: 1400, dur: 0.03, type: 'square', vol: 0.035 }],
     tickFast:   [{ from: 2100, dur: 0.03, type: 'square', vol: 0.05 }],

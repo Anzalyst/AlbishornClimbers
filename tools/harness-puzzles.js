@@ -1,5 +1,6 @@
 /* =====================================================================
- * harness-puzzles.js – Lösungs-Test der Chopfnuss-Level (Rätsel-Mechaniken)
+ * harness-puzzles.js – Lösungs-Test der Chopfnüss (Rätsel) und der
+ *                       Geschicklichkeits-Hindernisse in Level 1–5
  *
  * Wird von run-tests.js vor harness.js geladen; harness.js ruft
  * runPuzzleTests(api) nach den anderen Tests auf.
@@ -14,6 +15,11 @@
 window.runPuzzleTests = function (H) {
   const { step, setInput, startScene, out } = H;
   out.puzzles = {};
+  out.skills = {};
+  const checkSkill = (name, ok, detail = '') => {
+    out.skills[name] = !!ok;
+    if (!ok) out.errors.push(`Hindernis-Test "${name}" fehlgeschlagen ${detail} [Respawns: ${respawnLog.slice(-3).join("; ")}]`);
+  };
   const check = (name, ok, detail = '') => {
     out.puzzles[name] = !!ok;
     if (!ok) out.errors.push(`Rätsel-Test "${name}" fehlgeschlagen ${detail}`);
@@ -24,6 +30,14 @@ window.runPuzzleTests = function (H) {
   const realPlay = Sfx.play;
   Sfx.play = function (scene, name, ...rest) { sfx.push(name); return realPlay.call(this, scene, name, ...rest); };
   const sfxSince = (mark, ...names) => sfx.slice(mark).filter(n => names.includes(n)).length;
+
+  // Wer ist wo und warum zurückgesetzt worden? (für verständliche Fehlermeldungen)
+  const respawnLog = [];
+  const realRespawn = Player.prototype.respawn;
+  Player.prototype.respawn = function (reason) {
+    if (!this.respawning) respawnLog.push(`${this.def.name} ${reason || "fall"} @${this.sprite.x.toFixed(0)}/${this.sprite.body.bottom.toFixed(0)}`);
+    return realRespawn.call(this, reason);
+  };
 
   let sc = null;
   const P = i => sc.players[i];
@@ -38,6 +52,7 @@ window.runPuzzleTests = function (H) {
     const g = goals[i];
     if (!g || !game.scene.isActive('GameScene')) return {};
     const p = P(i), b = p.sprite.body;
+    if (g.follow) g.x = g.follow();          // bewegtes Ziel (Pendel, Baumstamm)
     const dx = g.x - p.sprite.x;
     const onGround = b.blocked.down || b.touching.down;
     const a = {};
@@ -49,11 +64,11 @@ window.runPuzzleTests = function (H) {
     if (jumpHold[i] > 0) { jumpHold[i]--; a.jump = true; if (!jumpHold[i]) jumpCool[i] = 4; return a; }
     if (jumpCool[i] > 0) { jumpCool[i]--; return a; }
     const blocked = dx > 0 ? (b.blocked.right || b.touching.right) : (b.blocked.left || b.touching.left);
-    const atTakeoff = g.jumpAtX !== undefined && !g.jumped && onGround &&
-      (dx > 0 ? p.sprite.x >= g.jumpAtX : p.sprite.x <= g.jumpAtX);
-    if (onGround && Math.abs(dx) > 8 && ((blocked && !g.noJump) || atTakeoff)) {
+    const atTakeoff = !g.jumped && onGround && (g.jumpNow || (g.jumpAtX !== undefined &&
+      (dx > 0 ? p.sprite.x >= g.jumpAtX : p.sprite.x <= g.jumpAtX)));
+    if (onGround && (Math.abs(dx) > 8 || g.jumpNow) && ((blocked && !g.noJump) || atTakeoff)) {
       if (atTakeoff) g.jumped = true;
-      jumpHold[i] = 26;
+      jumpHold[i] = g.hold || 26;           // kurz halten = kleiner Hüpfer
       a.jump = true;
     }
     return a;
@@ -266,7 +281,241 @@ window.runPuzzleTests = function (H) {
     return ok && game.scene.isActive(nextScene);
   }
 
+  // =====================================================================
+  // GESCHICKLICHKEIT – die neuen Hindernisse in Level 1–5, mit echten Sprüngen
+  // =====================================================================
+  const cellsOf = (li, ch) => {
+    const list = [];
+    LEVELS[li].map.forEach((row, r) => [...row].forEach((c2, c) => { if (c2 === ch) list.push({ c, r }); }));
+    return list;
+  };
+  /** Zusammenhängende Bröckel-Platten → Spannen in Pixeln (von links). */
+  const spansOf = cells => {
+    const spans = [];
+    cells.slice().sort((a, b) => a.c - b.c).forEach(({ c }) => {
+      const last = spans[spans.length - 1];
+      if (last && last.cEnd === c - 1) { last.cEnd = c; last.r = (c + 1) * TILE; } else spans.push({ cEnd: c, l: c * TILE, r: (c + 1) * TILE });
+    });
+    return spans.map(sp => Object.assign(sp, { mid: (sp.l + sp.r) / 2 }));
+  };
+  const tp = (i, x, bottom) => { P(i).sprite.body.reset(x, bottom - 16); P(i).checkpoint = { x, y: bottom - 16 }; };
+  const deaths = mark => sfxSince(mark, 'splash', 'respawn');
+  const onGround = i => P(i).sprite.body.blocked.down || P(i).sprite.body.touching.down;
+  const standsOnBody = (i, body) => sc.obstacles.standsOn(P(i), body);
+  const solidAt = (map, c, r) => map[r] && (map[r][c] === '#' || map[r][c] === 'R');
+
+  /** Von Spanne zu Spanne hüpfen (Absprung kurz vor jeder Kante), am Schluss aufs Ufer. */
+  function hop(i, spans, bankLeft, bankRight, mark) {
+    let edge = bankLeft;
+    for (const sp of spans) {
+      go(i, sp.mid, { jumpAtX: edge - 6, tol: 4 });
+      const f = run(() => goals[i].jumped && onGround(i) && P(i).sprite.x > sp.l && P(i).sprite.x < sp.r, 4 * 60);
+      if (f < 0 || deaths(mark)) { goals[i] = null; return false; }
+      edge = sp.r;
+    }
+    go(i, bankRight + 40, { jumpAtX: edge - 6 });
+    const f = run(() => goals[i].jumped && onGround(i) && P(i).sprite.x > bankRight + 8, 4 * 60);
+    goals[i] = null;
+    return f >= 0 && deaths(mark) === 0;
+  }
+
+  /** Auf ein bewegtes Objekt springen und mitfahren, bis until() → true. */
+  function boardAndRide(i, body, until, max = 15 * 60) {
+    go(i, body.x + body.width / 2, { follow: () => body.x + body.width / 2, jumpNow: true, tol: 6 });
+    const f = run(() => goals[i].jumped && standsOnBody(i, body), 3 * 60);
+    if (f < 0) { goals[i] = null; return false; }
+    return run(until, max) >= 0;
+  }
+
+  /** Abspringen (sofort) und auf dem Ufer bzw. der Plattform jenseits von x landen. */
+  function leapTo(i, x, past) {
+    go(i, x, { jumpNow: true, tol: 4 });
+    run(() => goals[i].jumped && onGround(i) && P(i).sprite.x > past, 3 * 60);
+    goals[i] = null;
+  }
+
+  function skillLevel1() {
+    startLevel(0);
+    const cr = cellsOf(0, '=');
+    const spans = spansOf(cr);
+    const c0 = Math.min(...cr.map(k => k.c)), c1 = Math.max(...cr.map(k => k.c));
+    const water = cellsOf(0, '~').filter(w => w.r === cr[0].r + 1 && w.c > c0 - 4 && w.c < c1 + 4);   // nur dieser Weiher
+    const bankL = Math.min(...water.map(w => w.c)) * TILE, bankR = (Math.max(...water.map(w => w.c)) + 1) * TILE;
+    const ground = (cr[0].r + 1) * TILE;
+    tp(0, bankL - 40, ground); tp(1, bankL - 80, ground); wait(30);
+    const mark = sfx.length;
+    checkSkill('L1 Bröckel-Brättli: Jessica hüpft trocken über den Weiher', hop(0, spans, bankL, bankR, mark), where());
+    const crumbles = sc.obstacles.items.filter(it => it.kind === 'crumble');
+    run(() => crumbles.some(it => it.state === 'gone'), 90);
+    checkSkill('L1 Bröckel-Brättli: sacken nach dem Betreten weg', crumbles.some(it => it.state === 'gone') && sfxSince(mark, 'crumbleFall') > 0);
+    run(() => crumbles.every(it => it.state === 'idle'), 6 * 60);
+    checkSkill('L1 Bröckel-Brättli: sind nach ein paar Sekunden wieder da', crumbles.every(it => it.state === 'idle' && it.sprite.body.enable));
+    checkSkill('L1 Bröckel-Brättli: Simon kommt auch rüber', hop(1, spans, bankL, bankR, sfx.length), where());
+  }
+
+  function skillLevel2() {
+    startLevel(1);
+    const O = sc.obstacles;
+    // A) Türlersee: auf einen frischen Stamm springen, mitfahren, ans andere Ufer
+    const L = O.items.find(it => it.kind === 'logs');
+    const bankL = L.from, bankR = L.to + L.len, ground = L.top + 8;
+    tp(0, bankL - 24, ground); tp(1, bankL - 60, ground); wait(20);
+    let mark = sfx.length;
+    const fresh = () => L.logs.find(l => !l.sinking && l.body.x >= bankL - 2 && l.body.x <= bankL + 40);
+    run(() => fresh(), 4 * 60);
+    const log = fresh();
+    let carried = null;
+    const rode = !!log && boardAndRide(0, log.body, () => {
+      if (carried === null && standsOnBody(0, log.body)) {
+        const p0 = P(0).sprite.x, l0 = log.body.x;
+        goals[0] = null; wait(60);
+        carried = Math.abs((P(0).sprite.x - p0) - (log.body.x - l0)) < 3 && log.body.x - l0 > 50;
+        go(0, 0, { follow: () => log.body.x + log.body.width / 2, tol: 6 });
+      }
+      return log.body.right >= bankR - 24;
+    });
+    checkSkill('L2 Türlersee: Stamm nimmt Jessica mit', rode && carried, where());
+    leapTo(0, bankR + 40, bankR + 4);
+    checkSkill('L2 Türlersee: Jessica springt trocken ans andere Ufer', P(0).sprite.x > bankR && deaths(mark) === 0, where());
+    run(() => !log.active, 3 * 60);
+    checkSkill('L2 Türlersee: Stamm geht am Ende der Strecke unter', !log.active && sfxSince(mark, 'logSink') > 0);
+    // Wer ins Wasser fällt, landet beim Checkpoint
+    mark = sfx.length;
+    go(1, bankL + 20); run(() => sfxSince(mark, 'splash') > 0, 3 * 60); goals[1] = null; wait(60);
+    checkSkill('L2 Türlersee: ins Wasser gefallen → zurück zum Checkpoint', sfxSince(mark, 'splash') === 1 && P(1).sprite.x < bankL, where());
+    mark = sfx.length;
+    run(() => fresh(), 4 * 60);
+    const log2 = fresh();
+    const rode2 = !!log2 && boardAndRide(1, log2.body, () => log2.body.right >= bankR - 24);
+    leapTo(1, bankR + 40, bankR + 4);
+    checkSkill('L2 Türlersee: Simon kommt auch rüber', rode2 && P(1).sprite.x > bankR && deaths(mark) === 0, where());
+
+    // B) Waldschaukeln: Ufer → Pendel 1 → Pendel 2 → Ufer
+    const [P1, P2] = O.items.filter(it => it.kind === 'pendulum').sort((a, b) => a.c - b.c);
+    const map = LEVELS[1].map;
+    let rowS = P1.r; while (!solidAt(map, P1.c - 4, rowS)) rowS++;
+    let cl = P1.c; while (!solidAt(map, cl, rowS)) cl--;
+    let cr2 = P2.c; while (!solidAt(map, cr2, rowS)) cr2++;
+    const edgeL = (cl + 1) * TILE, edgeR = cr2 * TILE, top = rowS * TILE;
+    tp(0, edgeL - 20, top); tp(1, edgeL - 60, top); wait(20);
+    mark = sfx.length;
+    const b1 = P1.sprite.body, b2 = P2.sprite.body;
+    run(() => b1.x <= edgeL + 6 && onGround(0), 6 * 60);
+    const onP1 = boardAndRide(0, b1, () => b1.velocity.x > 20 && b2.x - b1.right < 110 && b2.x - b1.right > 20, 8 * 60);
+    checkSkill('L2 Waldschaukel: Jessica springt aufs erste Pendel', onP1 && deaths(mark) === 0, where());
+    const onP2 = onP1 && boardAndRide(0, b2, () => b2.right >= edgeR - 6, 8 * 60);
+    checkSkill('L2 Waldschaukel: weiter aufs zweite Pendel', onP2 && deaths(mark) === 0, where());
+    leapTo(0, edgeR + 40, edgeR + 4);
+    checkSkill('L2 Waldschaukel: Jessica erreicht das andere Ufer', P(0).sprite.x > edgeR && deaths(mark) === 0, where());
+
+    // Schwung: Simon springt vom schwingenden Pendel senkrecht hoch → fliegt mit
+    run(() => b1.x <= edgeL + 6 && onGround(1), 6 * 60);
+    boardAndRide(1, b1, () => Math.abs(b1.velocity.x) > 70, 6 * 60);
+    goals[1] = null;
+    const x0 = P(1).sprite.x, v = b1.velocity.x;
+    extra[1] = { jump: true }; wait(20); extra[1] = {};
+    const flew = P(1).sprite.x - x0;
+    checkSkill('L2 Waldschaukel: Absprung übernimmt den Schwung', Math.sign(flew) === Math.sign(v) && Math.abs(flew) > 25,
+      `(Pendel ${v.toFixed(0)} px/s, in 20 Frames ${flew.toFixed(0)} px)`);
+  }
+
+  function skillLevel3() {
+    startLevel(2);
+    const cr = cellsOf(2, '=');
+    const spans = spansOf(cr);
+    const c0 = Math.min(...cr.map(k => k.c)), c1 = Math.max(...cr.map(k => k.c));
+    const water = cellsOf(2, '~').filter(w => w.r === cr[0].r + 1 && w.c > c0 - 4 && w.c < c1 + 4);
+    const bankL = Math.min(...water.map(w => w.c)) * TILE, bankR = (Math.max(...water.map(w => w.c)) + 1) * TILE;
+    const ground = (cr[0].r + 1) * TILE;
+    tp(0, bankL - 30, ground); tp(1, bankL - 70, ground); wait(30);
+    checkSkill('L3 Wacklige Bachsteine: Jessica hüpft über alle vier', hop(0, spans, bankL, bankR, sfx.length), where());
+    wait(5 * 60);
+    checkSkill('L3 Wacklige Bachsteine: Simon hinterher', hop(1, spans, bankL, bankR, sfx.length), where());
+  }
+
+  function skillLevel4() {
+    startLevel(3);
+    const B = sc.obstacles.items.find(it => it.kind === 'boulders');
+    const map = LEVELS[3].map;
+    const flag = cellsOf(3, 'F').filter(f => f.c < B.c && f.c > B.c - 30)[0];
+    const surface = c => { let r = 0; while (!solidAt(map, c, r)) r++; return r; };
+    // Nischen: Löcher in den Stufen (tiefer als beide Nachbarn)
+    const niches = [];
+    for (let c = flag.c + 3; c < B.c - 4; c++) {
+      if (surface(c) > surface(c - 1) && surface(c) > surface(c + 1)) niches.push({ c, bottom: surface(c) * TILE });
+    }
+    const safeX = X(B.c - 1);   // unter dem Felsdach – hier rollt nichts mehr
+    tp(0, X(flag.c), (flag.r + 1) * TILE); tp(1, X(flag.c) - 16, (flag.r + 1) * TILE); wait(20);
+    let mark = sfx.length;
+    const rocks = () => sc.rollers.getChildren();
+    /** In die Nische, warten bis ein Brocken darüber hinweggerollt ist. */
+    const duck = (i, n) => {
+      const inNiche = arrive({ [i]: X(n.c) }, 6 * 60) && Math.abs(P(i).sprite.body.bottom - n.bottom) < 3;
+      let seen = null;
+      const f = run(() => {
+        const r = rocks().find(k => k.x > X(n.c) && k.x < X(n.c) + 120);
+        if (r) seen = r;
+        return !!seen && (!seen.active || seen.x < X(n.c) - 50);
+      }, 8 * 60);
+      return inNiche && f >= 0;
+    };
+    let ok = niches.length === 2;
+    niches.forEach(n => { ok = ok && duck(0, n); });
+    checkSkill('L4 Steinschlag: Brocken rollen über die Nischen hinweg', ok && deaths(mark) === 0, `(${niches.length} Nischen) ${where()}`);
+    ok = arrive({ 0: safeX }, 6 * 60);
+    checkSkill('L4 Steinschlag: Jessica schafft es unters Felsdach', ok && deaths(mark) === 0, where());
+    wait(4 * 60);
+    checkSkill('L4 Steinschlag: unter dem Felsdach sicher', deaths(mark) === 0);
+    checkSkill('L4 Steinschlag: Fels-Schwelle hält die Brocken auf', sfxSince(mark, 'rockSmash') > 0 && rocks().every(k => k.x > (flag.c + 1) * TILE));
+    // Wer stehen bleibt, wird getroffen → Checkpoint
+    mark = sfx.length;
+    go(1, X(niches[1].c + 3)); run(() => sfxSince(mark, 'boulderHit') > 0, 10 * 60); goals[1] = null;
+    wait(40);
+    checkSkill('L4 Steinschlag: Treffer → zurück zum Checkpoint', sfxSince(mark, 'boulderHit') === 1 && Math.abs(P(1).sprite.x - X(flag.c)) < 20, where());
+    mark = sfx.length;
+    ok = niches.every(n => duck(1, n)) && arrive({ 1: safeX - 20 }, 6 * 60);
+    checkSkill('L4 Steinschlag: Simon schafft es auch', ok && deaths(mark) === 0, where());
+  }
+
+  function skillLevel5() {
+    startLevel(4);
+    const pend = sc.obstacles.items.find(it => it.kind === 'pendulum');
+    const cr = cellsOf(4, '=');
+    const [s1, s2] = spansOf(cr);
+    const map = LEVELS[4].map;
+    const rowS = cr[0].r + 1;
+    let cl = s1.l / TILE - 1; while (!solidAt(map, cl, rowS)) cl--;
+    let cr2 = s2.r / TILE; while (!solidAt(map, cr2, rowS)) cr2++;
+    const edgeL = (cl + 1) * TILE, edgeR = cr2 * TILE, ground = rowS * TILE;
+    const b = pend.sprite.body;
+    [0, 1].forEach(i => {
+      const mark = sfx.length;
+      tp(i, edgeL - 20, ground); wait(20);
+      // erst los, wenn das Pendel auf die Bröckel-Platte zuschwingt
+      // Zeit bis zum linken Umkehrpunkt des Pendels (θ = −Amplitude)
+      const toLeftmost = () => {
+        const cyc = sc.obstacles.time / pend.cfg.period + pend.cfg.phase / (2 * Math.PI);
+        return (((0.75 - cyc) % 1) + 1) % 1 * pend.cfg.period;
+      };
+      run(() => toLeftmost() > 450 && toLeftmost() < 700, 8 * 60);
+      go(i, s1.mid, { jumpAtX: edgeL - 6, tol: 4, hold: 5 });
+      run(() => goals[i].jumped && onGround(i) && P(i).sprite.x > s1.l, 2 * 60);
+      run(() => b.x <= s1.r + 24, 2 * 60);
+      const onP = boardAndRide(i, b, () => b.right >= s2.l - 24 && b.velocity.x < 40, 6 * 60);
+      leapTo(i, s2.mid, s2.l);
+      go(i, edgeR + 40, { jumpAtX: s2.r - 6 });
+      run(() => goals[i].jumped && onGround(i) && P(i).sprite.x > edgeR + 4, 3 * 60);
+      goals[i] = null;
+      checkSkill(`L5 Schlucht: ${i ? 'Simon' : 'Jessica'} schafft Bröckel → Pendel → Bröckel`, onP && P(i).sprite.x > edgeR && deaths(mark) === 0, where());
+      wait(5 * 60);
+    });
+  }
+
   try {
+    [skillLevel1, skillLevel2, skillLevel3, skillLevel4, skillLevel5].forEach(fn => {
+      try { fn(); } catch (e) { out.errors.push(`Hindernis-Test ${fn.name} abgebrochen: ${e.stack || e}`); }
+      goals[0] = goals[1] = null; extra[0] = {}; extra[1] = {};
+    });
     bonus1();
     check('Chopfnuss 1 → Victory mit Passwort → Chopfnuss 2', afterBonus(false, 'GameScene') &&
       game.scene.getScene('GameScene').levelIndex === STORY_LEVELS + 1);
@@ -284,6 +533,7 @@ window.runPuzzleTests = function (H) {
     out.errors.push(`Rätsel-Test abgebrochen: ${e.stack || e}`);
   } finally {
     Sfx.play = realPlay;
+    Player.prototype.respawn = realRespawn;
     goals[0] = goals[1] = null;
     setInput(0); setInput(1);
   }

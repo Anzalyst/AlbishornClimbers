@@ -39,6 +39,8 @@ class Player {
     this.prevVy = 0;
     this.nextDust = 0;
     this.stuckFrames = 0;
+    this.ridingVx = 0;         // Geschwindigkeit der Plattform, auf der man steht (setzt das ObstacleSystem)
+    this.airVx = 0;            // mitgenommener Schwung in der Luft (Pendel, Baumstamm)
   }
 
   /** Bewegung, Sprung & Animation. */
@@ -49,6 +51,12 @@ class Player {
 
     const onGround = body.blocked.down || body.touching.down;
     this.onGround = onGround;
+
+    // Schwung von bewegten Plattformen: am Boden merken, in der Luft mitnehmen
+    const riding = this.ridingVx;
+    this.ridingVx = 0;
+    if (onGround || body.blocked.left || body.blocked.right) this.airVx = onGround ? riding : 0;
+    else if (this.airVx) sprite.x += this.airVx * delta / 1000;
 
     // Coyote Time & Jump Buffer → Sprünge fühlen sich fair an
     this.coyote = onGround ? PHYSICS.COYOTE_MS : this.coyote - delta;
