@@ -91,7 +91,7 @@ const SspParty = {
 
   fadeTo(scene, key, data) {
     scene.cameras.main.fadeOut(350, 0, 0, 0);
-    scene.cameras.main.once('camerafadeoutcomplete', () => scene.scene.start(key, data));
+    scene.cameras.main.once('camerafadeoutcomplete', () => startWithLoading(scene, key, data));   // Minispiele: mit Dia-Show
   }
 };
 

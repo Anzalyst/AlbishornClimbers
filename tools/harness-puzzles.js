@@ -283,7 +283,7 @@ window.runPuzzleTests = function (H) {
     const ok = game.scene.isActive('VictoryScene') && vs.isBonus && vs.allDone === expectAllDone;
     wait(70);
     extra[0] = { jump: true }; wait(2); extra[0] = {};
-    run(() => game.scene.isActive(nextScene), 3 * 60);
+    run(() => game.scene.isActive(nextScene), 9 * 60);   // vor dem Level: Ladebildschirm (Dia-Show)
     return ok && game.scene.isActive(nextScene);
   }
 
@@ -627,7 +627,7 @@ window.runPuzzleTests = function (H) {
     wait(30);
     menu.selected = 2; menu.refresh();
     extra[0] = { jump: true }; wait(2); extra[0] = {};
-    run(() => game.scene.isActive('GameScene'), 3 * 60);
+    run(() => game.scene.isActive('GameScene'), 9 * 60);
     check('Menü "CHOPFNÜSS" startet Chopfnuss 1', game.scene.isActive('GameScene') &&
       game.scene.getScene('GameScene').levelIndex === STORY_LEVELS && TXT.menuItems[2] === 'CHOPFNÜSS');
   } catch (e) {

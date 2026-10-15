@@ -83,6 +83,19 @@ const TXT = {
   bonusAllDone: 'ALLI CHOPFNÜSS GKNACKT!\nIhr sind es Superteam!',
   victoryWriteDown: 'Guet ufschriibe!',
 
+  // Ladebildschirm (Dia-Show mit Familienfotos, LoadingScene)
+  loading: 'LADET',
+  loadingChill: 'CHILL MAL EN MOMENT',
+  loadingSkip: 'GUMP = WIITER',
+  loadingSlides: {
+    dreck: 'CHILL MAL... FRÜENER HÄT MER AU DÖRFE IM DRÄCK SPIELE UND D ELTERE HÄND NÖD GRAD D KRISE BECHO!',
+    muetze: 'DE SPILER 2, WENN D RÄTSEL SCHWERER WERDET...',
+    clowns: 'AM CAMPING-FESTIVAL GITS AMIGS AU KULTURELLES... BITTE GEDULD!',
+    hochzeit: 'BEVOR S ABENTÜÜR GESTARTET ISCH... DAHINDE STECKED D GRÜNDER!',
+    badewanne: 'NACH EM WANDERE GITS NUR EIS: AB ID WANNE!',
+    kinderwagen: 'ZWEI-SPIELER-MODUS VOR EINIGE JAHRE... NO OHNE CONTROLLER!'
+  },
+
   // Finale, Abspann, Endbild
   finaleTitle: 'HAPPY BIRTHDAY!',
   finaleGreeting: 'Alles Gueti zum {age}. Geburtstag,\n{who}!',

@@ -8,7 +8,7 @@
  *    aller Objekte der GameScene (Position, Textur, Physik …) als Prüfsumme
  *    festgehalten. Gleiche Prüfsummen = gleiches Verhalten.
  * 2. Smoke-Test: Intro, Menü, Victory, Finale und Abspann laufen kurz an.
- * 3. Eingabe-, Minispiel- und Rätsel-Tests (harness-puzzles.js).
+ * 3. Eingabe-, Minispiel-, Ladebildschirm- und Rätsel-Tests (harness-puzzles.js).
  *
  * Ergebnis: Base64-JSON in <pre id="result"> (liest run-tests.js aus).
  * ===================================================================== */
@@ -624,7 +624,9 @@
     // 6) Freier Modus: ein Minispiel wählen → danach direkt Siegerehrung
     tapIn(0, 'down'); tapIn(0, 'jump'); step(5);   // MINISPIEL WÄHLEN
     tapIn(0, 'down'); tapIn(0, 'jump'); step(40);  // WASSER-MARSCH!
-    check('Freier Modus: Minispiel startet', active('SspWasser'));
+    const viaLoading = active('LoadingScene');
+    for (let k = 0; k < 9 * 60 && !active('SspWasser'); k++) step();   // Dia-Show läuft ab
+    check('Freier Modus: Minispiel startet (nach dem Ladebildschirm)', viaLoading && active('SspWasser'));
     const w = game.scene.getScene('SspWasser');
     w.startCountdown();
     const wm = {};
@@ -634,6 +636,102 @@
     }
     setInput(1);
     check('Freier Modus: Siegerehrung für Simon', active('SspAwardScene') && SspParty.state.mode === 'single' && SspParty.champion() === 2);
+  }
+
+  // --- Ladebildschirme: Dia-Show mit Familienfotos (LoadingScene) ----------
+  function runLoadingTests() {
+    syncClock(LEVELS.length + 50);
+    reseed(4242);
+    PlayerInput.prototype.update = scriptedInputUpdate;
+    setInput(0); setInput(1);
+    out.loading = {};
+    const check = (name, ok, detail = '') => {
+      out.loading[name] = !!ok;
+      if (!ok) out.errors.push(`Ladebildschirm-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+    const active = k => game.scene.isActive(k);
+    const ls = () => game.scene.getScene('LoadingScene');
+    const tapJump = () => { setInput(0, { jump: true }); step(); setInput(0); step(); };
+    const until = (cond, max) => { let f = 0; while (!cond() && f < max) { step(); f++; } return f; };
+    const missing = sc => sc.children.list.filter(o => o.texture && o.texture.key === '__MISSING').length;
+    const keys = Object.keys(TXT.loadingSlides);
+
+    // 1) Fotos eingebettet und geladen, alle im 4:3-Format, jedes mit Spruch
+    const sizes = keys.map(k => {
+      const img = game.textures.exists(`loading_${k}`) && game.textures.get(`loading_${k}`).getSourceImage();
+      return img ? `${img.width}x${img.height}` : 'fehlt';
+    });
+    check('6 Familienfotos eingebettet und geladen (256×192 = 4:3)', keys.length === 6 &&
+      keys.every(k => LOADING_IMAGES[k]) && sizes.every(s => s === '256x192'), `(${keys.map((k, i) => `${k}: ${sizes[i]}`)})`);
+
+    // 2) Victory → Ladebildschirm → nächstes Level, ohne Eingabe nach 4–5 s
+    LoadingScene.bag = []; LoadingScene.last = null;
+    startScene('VictoryScene', { levelIndex: 0, collected: 1, total: 5 });
+    step(70); tapJump();
+    until(() => active('LoadingScene'), 60);
+    check('Victory → Ladebildschirm vor Level 2', active('LoadingScene') && ls().next === 'GameScene' && ls().nextData.levelIndex === 1);
+    let frames = 1;
+    step(5); frames += 5;
+    const sc = ls();
+    check('Zeigt Foto (2× skaliert), Spruch, Ginny und "LADET..."', sc.photo && sc.photo.texture.key === `loading_${sc.slide}` &&
+      sc.photo.scaleX === 2 && sc.fullText === TXT.loadingSlides[sc.slide] && sc.ginny && sc.ginny.anims.isPlaying &&
+      sc.label.text.startsWith(TXT.loading) && missing(sc) === 0, `(Dia ${sc.slide})`);
+    tapJump(); frames += 2;
+    check('GUMP in den ersten 1.5 s wird ignoriert', active('LoadingScene') && !sc.leaving);
+    step(120); frames += 120;
+    const typed = sc.caption.text.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+    check('Spruch fertig getippt, höchstens 2 Zeilen', typed === sc.fullText && sc.lines.length <= 2, `("${typed}")`);
+    check('"CHILL MAL EN MOMENT..." im Wechsel mit "LADET..."', sc.label.text.startsWith(TXT.loadingChill), `("${sc.label.text}")`);
+    let fading = false;
+    while (!active('GameScene') && frames < 9 * 60) {
+      step(); frames++;
+      if (sc.leaving && sc.sys.isActive() && sc.cameras.main.fadeEffect.isRunning) fading = true;
+    }
+    const secs = frames / 60;
+    check('Nach 4–5 s weich ausgeblendet → Level 2 startet', fading && active('GameScene') &&
+      game.scene.getScene('GameScene').levelIndex === 1 && secs >= 4.4 && secs <= 5.2, `(${secs.toFixed(2)} s, Ausblenden ${fading})`);
+
+    // 3) Abkürzen nach 1.5 s
+    startScene('LoadingScene', { next: 'GameScene', data: { levelIndex: 2 } });
+    step(100); tapJump();
+    const f3 = until(() => active('GameScene'), 120);
+    check('Ab 1.5 s: GUMP kürzt ab', active('GameScene') && game.scene.getScene('GameScene').levelIndex === 2 && f3 < 40, `(${f3} Bilder)`);
+
+    // 4) Magazin: jedes Foto einmal, dann neu gemischt, nie zweimal hintereinander
+    LoadingScene.bag = []; LoadingScene.last = null;
+    const shown = [];
+    for (let k = 0; k < 18; k++) {
+      startScene('LoadingScene', { next: 'GameScene', data: { levelIndex: 0 } });
+      shown.push(ls().slide);
+    }
+    const rounds = [0, 6, 12].map(i => new Set(shown.slice(i, i + 6)).size === 6);
+    check('Zufällige Reihenfolge: alle 6 Fotos pro Runde, keine direkte Wiederholung',
+      rounds.every(Boolean) && shown.every((s, i) => !i || s !== shown[i - 1]) && shown.slice(0, 6).join() !== keys.join(), `(${shown})`);
+
+    // 5) Spielstart: Menü → Passwort-Level und Intro → Level 1 über den Ladebildschirm
+    startScene('MenuScene'); step(30);
+    game.scene.getScene('MenuScene').startLevel(3);
+    until(() => active('LoadingScene'), 60);
+    check('Menü/Passwort → Ladebildschirm → Level', active('LoadingScene') && ls().nextData.levelIndex === 3);
+    startScene('IntroScene', { mode: 'story' }); step(10);
+    game.scene.getScene('IntroScene').leave('GameScene', { levelIndex: 0 });
+    until(() => active('LoadingScene'), 60);
+    check('Intro → Ladebildschirm → Level 1', active('LoadingScene') && ls().nextData.levelIndex === 0);
+    until(() => active('GameScene'), 9 * 60);
+    check('… und Level 1 startet', active('GameScene') && game.scene.getScene('GameScene').levelIndex === 0);
+
+    // 6) Super Sempach Party: vor dem Minispiel die Dia-Show, Zwischenstand/Menü direkt
+    startScene('SspMenuScene'); step(20);
+    SspParty.startSingle(game.scene.getScene('SspMenuScene'), 'SspPedalo');
+    until(() => active('LoadingScene'), 60);
+    check('SSP: Ladebildschirm vor dem Minispiel', active('LoadingScene') && ls().next === 'SspPedalo' && missing(ls()) === 0);
+    until(() => active('SspPedalo'), 9 * 60);
+    check('SSP: danach startet das Minispiel', active('SspPedalo'));
+    check('Kein Ladebildschirm für Menüs, Zwischenstand & Siegerehrung',
+      !wantsLoading('SspMenuScene') && !wantsLoading('SspScoreScene') && !wantsLoading('SspAwardScene') &&
+      !wantsLoading('MenuScene') && !wantsLoading('VictoryScene') && wantsLoading('GameScene') &&
+      SSP.minigames.every(m => wantsLoading(m.key)));
+    setInput(0); setInput(1);
   }
 
   /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
@@ -681,6 +779,7 @@
       await runScenes();
       runInputTests();
       runSspTests();
+      try { runLoadingTests(); } catch (e) { out.errors.push(`Ladebildschirm-Test abgebrochen: ${e.stack || e}`); }
       // Chopfnüss: Lösungs-Test mit echten Eingaben (tools/harness-puzzles.js)
       syncClock(LEVELS.length + 60);
       PlayerInput.prototype.update = scriptedInputUpdate;

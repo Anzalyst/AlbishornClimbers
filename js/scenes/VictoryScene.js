@@ -93,6 +93,6 @@ class VictoryScene extends Phaser.Scene {
     this.leaving = true;
     Sfx.play(this, 'select');
     this.cameras.main.fadeOut(300, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(sceneKey, data));
+    this.cameras.main.once('camerafadeoutcomplete', () => startWithLoading(this, sceneKey, data));
   }
 }

@@ -137,6 +137,8 @@ const Sfx = {
     checkpoint: [{ from: 660, dur: 0.08 }, { from: 880, dur: 0.08, delay: 0.08 }, { from: 1100, dur: 0.14, delay: 0.16 }],
     respawn:  [{ from: 700, to: 120, dur: 0.35, type: 'triangle', vol: 0.12 }],
     select:   [{ from: 660, dur: 0.05, vol: 0.05 }],
+    slideClack: [{ noise: true, dur: 0.06, vol: 0.12, filter: 'highpass', freq: 1800 }, { from: 140, to: 70, dur: 0.08, type: 'square', vol: 0.05, delay: 0.02 },
+      { noise: true, dur: 0.05, vol: 0.08, filter: 'bandpass', freq: 900, delay: 0.12 }],
     error:    [{ from: 160, dur: 0.12 }, { from: 120, dur: 0.2, delay: 0.12 }],
     levelStart: [
       { from: 392, dur: 0.1 }, { from: 523, dur: 0.1, delay: 0.1 }, { from: 659, dur: 0.1, delay: 0.2 },

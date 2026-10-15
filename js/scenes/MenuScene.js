@@ -254,6 +254,6 @@ class MenuScene extends Phaser.Scene {
     if (this.starting) return;
     this.starting = true;
     this.cameras.main.fadeOut(300, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(key, data));
+    this.cameras.main.once('camerafadeoutcomplete', () => startWithLoading(this, key, data));
   }
 }

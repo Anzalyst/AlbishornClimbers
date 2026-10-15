@@ -22,7 +22,7 @@ const gameConfig = {
   },
   scene: [BootScene, IntroScene, GameSelectScene, MenuScene, GameScene, VictoryScene, FinaleScene, CreditsScene, EndScene,
     SspMenuScene, PedaloScene, WasserScene, GrillScene, RundkursScene, BrennesselScene, SspScoreScene, SspAwardScene,
-    PauseScene]   // zuletzt: wird über der pausierten Szene gezeichnet
+    LoadingScene, PauseScene]   // zuletzt: wird über der pausierten Szene gezeichnet
 };
 
 const game = new Phaser.Game(gameConfig);

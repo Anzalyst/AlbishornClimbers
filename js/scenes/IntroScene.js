@@ -43,7 +43,7 @@ class IntroScene extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(sceneKey, data));
+    this.cameras.main.once('camerafadeoutcomplete', () => startWithLoading(this, sceneKey, data));
   }
 
   // =====================================================================
