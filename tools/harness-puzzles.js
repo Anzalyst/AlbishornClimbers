@@ -13,10 +13,16 @@
  * (Zeitschalter, UND-Tor, verdecktes Farbeschloss, Waage) wie geplant wirken.
  * ===================================================================== */
 window.runPuzzleTests = function (H) {
-  const { step, setInput, startScene, out } = H;
+  const { step, stepDt, setInput, startScene, out } = H;
+  // Bildraten-Muster der "Konsole": unregelmässige Bilddauern → pro Bild 0, 1 oder
+  // 2 Physik-Schritte (so ruckelte das Pendel auf dem echten Gerät)
+  const CONSOLE_FRAMES = [13.3, 13.3, 13.4, 20, 16.7, 33.3, 10, 13.3, 25, 8.3];
+  let frameTimes = null, frameNo = 0, suffix = '';
+  const frame = () => { if (frameTimes) stepDt(frameTimes[frameNo++ % frameTimes.length]); else step(); };
   out.puzzles = {};
   out.skills = {};
-  const checkSkill = (name, ok, detail = '') => {
+  const checkSkill = (name0, ok, detail = '') => {
+    const name = name0 + suffix;
     out.skills[name] = !!ok;
     if (!ok) out.errors.push(`Hindernis-Test "${name}" fehlgeschlagen ${detail} [Respawns: ${respawnLog.slice(-3).join("; ")}]`);
   };
@@ -78,7 +84,7 @@ window.runPuzzleTests = function (H) {
     for (let f = 0; f < max; f++) {
       if (cond()) return f;
       [0, 1].forEach(i => setInput(i, Object.assign(botInput(i), extra[i])));
-      step();
+      frame();
     }
     return cond() ? max : -1;
   }
@@ -301,7 +307,12 @@ window.runPuzzleTests = function (H) {
   const tp = (i, x, bottom) => { P(i).sprite.body.reset(x, bottom - 16); P(i).checkpoint = { x, y: bottom - 16 }; };
   const deaths = mark => sfxSince(mark, 'splash', 'respawn');
   const onGround = i => P(i).sprite.body.blocked.down || P(i).sprite.body.touching.down;
-  const standsOnBody = (i, body) => sc.obstacles.standsOn(P(i), body);
+  // steht auf diesem Körper: haftend (bewegte Plattform) oder per Kontakt (Bröckel-Platte)
+  const standsOnBody = (i, body) => {
+    const b = P(i).sprite.body;
+    const onTop = Math.abs(b.bottom - body.top) < 2 && b.right > body.left + 1 && b.left < body.right - 1;
+    return (P(i).onPlatform && onTop) || sc.obstacles.standsOn(P(i), body);
+  };
   const solidAt = (map, c, r) => map[r] && (map[r][c] === '#' || map[r][c] === 'R');
 
   /** Von Spanne zu Spanne hüpfen (Absprung kurz vor jeder Kante), am Schluss aufs Ufer. */
@@ -332,6 +343,91 @@ window.runPuzzleTests = function (H) {
     go(i, x, { jumpNow: true, tol: 4 });
     run(() => goals[i].jumped && onGround(i) && P(i).sprite.x > past, 3 * 60);
     goals[i] = null;
+  }
+
+  /** Zeit (ms) bis das Pendel ganz links (θ = −Amplitude) bzw. rechts ankommt. */
+  const toExtreme = (pend, side = -1) => {
+    const cyc = sc.obstacles.stepTime / pend.cfg.period + pend.cfg.phase / (2 * Math.PI);
+    return ((((side < 0 ? 0.75 : 0.25) - cyc) % 1) + 1) % 1 * pend.cfg.period;
+  };
+
+  /**
+   * Stabilität: Figur steht ohne Eingabe auf einer bewegten Plattform. Gemessen wird
+   * jedes Bild: Abstand zur Plattform (darf sich nicht ändern), Füsse auf der
+   * Oberkante, zählt als Boden, und beim Pendel die exakte Lage laut Formel.
+   */
+  function rideStill(i, body, frames, pendItem) {
+    goals[i] = null;
+    const rel0 = P(i).sprite.body.x - body.x;
+    const m = { slip: 0, gap: 0, formula: 0, air: 0 };
+    const mark = sfx.length;
+    for (let k = 0; k < frames; k++) {
+      setInput(0, extra[0]); setInput(1, extra[1]);
+      frame();
+      const b = P(i).sprite.body;
+      m.slip = Math.max(m.slip, Math.abs(b.x - body.x - rel0));
+      m.gap = Math.max(m.gap, Math.abs(b.bottom - body.top));
+      if (!P(i).onPlatform) m.air++;
+      if (pendItem) {
+        const p = OBSTACLE_TYPES.pendulum.pos(sc.obstacles, pendItem, sc.obstacles.stepTime);
+        m.formula = Math.max(m.formula, Math.abs(body.x - p.x), Math.abs(body.y - p.y));
+      }
+    }
+    m.deaths = deaths(mark);
+    return m;
+  }
+  const fmt = m => `(Rutschen ${m.slip.toFixed(2)} px, Spalt ${m.gap.toFixed(2)} px, ohne Boden ${m.air} Bilder${m.formula !== undefined ? `, Abweichung Formel ${m.formula.toFixed(2)} px` : ''}, Respawns ${m.deaths})`;
+
+  function skillStability() {
+    // Pendel in Level 2: zwei volle Schwünge stillstehen
+    startLevel(1);
+    const P1 = sc.obstacles.items.filter(it => it.kind === 'pendulum').sort((a, b) => a.c - b.c)[0];
+    const map = LEVELS[1].map;
+    let rowS = P1.r; while (!solidAt(map, P1.c - 4, rowS)) rowS++;
+    let cl = P1.c; while (!solidAt(map, cl, rowS)) cl--;
+    const edgeL = (cl + 1) * TILE, b1 = P1.sprite.body;
+    tp(0, edgeL - 20, rowS * TILE); tp(1, edgeL - 60, rowS * TILE); wait(20);   // beide in der Nähe (max. Abstand)
+    run(() => toExtreme(P1) > 200 && toExtreme(P1) < 320 && onGround(0), 6 * 60);   // kurz vor dem Umkehrpunkt los
+    const on = boardAndRide(0, b1, () => true, 1);
+    wait(10);
+    const m = rideStill(0, b1, Math.round(2 * P1.cfg.period / 16.7), P1);
+    checkSkill('Pendel: Figur steht zwei Schwünge lang stabil (kein Rutschen, kein Durchfallen)',
+      on && m.deaths === 0 && m.slip < 1 && m.gap < 1 && m.air === 0, fmt(m));
+    checkSkill('Pendel: Plattform folgt exakt der Pendel-Formel', m.formula < 0.5, fmt(m));
+    // Baumstamm in Level 2: 2 Sekunden stillstehen
+    startLevel(1);
+    const L = sc.obstacles.items.find(it => it.kind === 'logs');
+    tp(0, L.from - 24, L.top + 8); tp(1, L.from - 60, L.top + 8); wait(20);
+    const fresh = () => L.logs.find(l => !l.sinking && l.body.x >= L.from - 2 && l.body.x <= L.from + 40);
+    run(() => fresh(), 4 * 60);
+    const log = fresh();
+    const onLog = !!log && boardAndRide(0, log.body, () => true, 1);
+    wait(10);
+    const m2 = rideStill(0, log.body, 120);
+    delete m2.formula;
+    checkSkill('Baumstamm: Figur fährt stabil mit', onLog && m2.deaths === 0 && m2.slip < 1 && m2.gap < 1 && m2.air === 0, fmt(m2));
+  }
+
+  function skillRocks() {
+    // Felsbrocken drehen sich passend zur Rollstrecke, Licht dreht nicht mit
+    startLevel(3);
+    let rock = null;
+    run(() => (rock = sc.rollers.getChildren().find(r => r.body.blocked.down || r.body.touching.down)), 10 * 60);
+    if (!rock) { checkSkill('Felsbrocken: rollen und drehen sich', false, '(kein Brocken gefunden)'); return; }
+    let turned = 0, prevA = rock.angle;
+    const x0 = rock.body.center.x;
+    let shadeOk = true;
+    for (let k = 0; k < 30 && rock.active; k++) {
+      frame();
+      let d = rock.angle - prevA; if (d > 180) d -= 360; if (d < -180) d += 360;
+      turned += d; prevA = rock.angle;
+      shadeOk = shadeOk && rock.shade.angle === 0 && Math.abs(rock.shade.x - rock.body.center.x) < 1;
+    }
+    const rolled = rock.body.center.x - x0;
+    const expected = Phaser.Math.RadToDeg(rolled / 21);
+    checkSkill('Felsbrocken: drehen sich passend zu Tempo und Richtung', Math.abs(turned) > 60 && Math.sign(turned) === Math.sign(rolled) &&
+      Math.abs(turned - expected) < 3, `(${rolled.toFixed(0)} px gerollt, ${turned.toFixed(0)}° gedreht, erwartet ${expected.toFixed(0)}°)`);
+    checkSkill('Felsbrocken: Licht & Schatten drehen nicht mit (plastisch)', shadeOk);
   }
 
   function skillLevel1() {
@@ -367,9 +463,9 @@ window.runPuzzleTests = function (H) {
     let carried = null;
     const rode = !!log && boardAndRide(0, log.body, () => {
       if (carried === null && standsOnBody(0, log.body)) {
-        const p0 = P(0).sprite.x, l0 = log.body.x;
+        const p0 = P(0).sprite.body.x, l0 = log.body.x;
         goals[0] = null; wait(60);
-        carried = Math.abs((P(0).sprite.x - p0) - (log.body.x - l0)) < 3 && log.body.x - l0 > 50;
+        carried = Math.abs((P(0).sprite.body.x - p0) - (log.body.x - l0)) < 1 && log.body.x - l0 > 40;
         go(0, 0, { follow: () => log.body.x + log.body.width / 2, tol: 6 });
       }
       return log.body.right >= bankR - 24;
@@ -494,7 +590,7 @@ window.runPuzzleTests = function (H) {
       // erst los, wenn das Pendel auf die Bröckel-Platte zuschwingt
       // Zeit bis zum linken Umkehrpunkt des Pendels (θ = −Amplitude)
       const toLeftmost = () => {
-        const cyc = sc.obstacles.time / pend.cfg.period + pend.cfg.phase / (2 * Math.PI);
+        const cyc = sc.obstacles.stepTime / pend.cfg.period + pend.cfg.phase / (2 * Math.PI);
         return (((0.75 - cyc) % 1) + 1) % 1 * pend.cfg.period;
       };
       run(() => toLeftmost() > 450 && toLeftmost() < 700, 8 * 60);
@@ -512,10 +608,15 @@ window.runPuzzleTests = function (H) {
   }
 
   try {
-    [skillLevel1, skillLevel2, skillLevel3, skillLevel4, skillLevel5].forEach(fn => {
-      try { fn(); } catch (e) { out.errors.push(`Hindernis-Test ${fn.name} abgebrochen: ${e.stack || e}`); }
+    const runSkill = fn => {
+      try { fn(); } catch (e) { out.errors.push(`Hindernis-Test ${fn.name}${suffix} abgebrochen: ${e.stack || e}`); }
       goals[0] = goals[1] = null; extra[0] = {}; extra[1] = {};
-    });
+    };
+    [skillLevel1, skillLevel2, skillLevel3, skillLevel4, skillLevel5, skillStability, skillRocks].forEach(runSkill);
+    // Dasselbe nochmals wie auf der Konsole: unregelmässige Bildrate
+    frameTimes = CONSOLE_FRAMES; frameNo = 0; suffix = ' [Konsole: unregelmässige Bildrate]';
+    [skillStability, skillLevel2, skillLevel5].forEach(runSkill);
+    frameTimes = null; suffix = '';
     bonus1();
     check('Chopfnuss 1 → Victory mit Passwort → Chopfnuss 2', afterBonus(false, 'GameScene') &&
       game.scene.getScene('GameScene').levelIndex === STORY_LEVELS + 1);

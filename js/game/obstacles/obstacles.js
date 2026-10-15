@@ -19,9 +19,13 @@
  *   defaults                 Standard-Einstellungen
  *   create(sys, item)        Sprites & Physik anlegen (item: ch, c, r, x, y, cfg, index)
  *   update(sys, item, delta) jeden Frame (auch nach dem Levelende – rein Bewegung)
+ *   step(sys, item, dtMs)    in JEDEM Physik-Schritt (1/60 s): bewegte Plattformen.
+ *                            Nicht pro Bild – sonst ruckelt es, sobald die Bildrate
+ *                            nicht genau 60 Hz ist (0 oder 2 Physik-Schritte pro Bild).
  *   render(sys, item)        rein optische Nachführung (Seile …)
  *
- * sys = ObstacleSystem (sys.scene = GameScene, sys.time = Spielzeit in ms).
+ * sys = ObstacleSystem (sys.scene = GameScene, sys.time = Spielzeit in ms pro Bild,
+ * sys.stepTime = Physik-Zeit in ms).
  * ===================================================================== */
 
 const OBSTACLE_CHARS = { '=': 'crumble', '&': 'pendulum', '>': 'logs', '<': 'logs', '@': 'boulders' };
@@ -81,8 +85,9 @@ const OBSTACLE_TYPES = {
   // -------------------------------------------------------------------
   // Pendel-Plattform: hängt an zwei Seilen unter der Aufhängung und schwingt
   //   θ(t) = angle · sin(2π t / period + phase)
-  // Die Plattform nimmt Mitfahrer mit (ObstacleSystem.carryRiders);
-  // wer abspringt, behält den Schwung (Player.airVx).
+  // Die Plattform folgt der Formel exakt im Physik-Takt (step); Mitfahrer
+  // haften daran (ObstacleSystem.carryRiders), wer abspringt, behält den
+  // Schwung (Player.airVx).
   // length = Abstand Aufhängung → Plattform-Oberkante (Kacheln), width in Kacheln.
   // -------------------------------------------------------------------
   pendulum: {
@@ -96,31 +101,29 @@ const OBSTACLE_TYPES = {
       scene.add.image(it.pivot.x, it.pivot.y, 'pivotBolt').setDepth(DEPTH.MECH + 0.2);
       it.ropes = scene.add.graphics().setDepth(DEPTH.MECH - 0.1);
       it.sprite = scene.add.tileSprite(0, 0, it.w, 12, 'swingPlank').setOrigin(0).setDepth(DEPTH.MECH);
-      scene.movingPlatforms.add(it.sprite);
-      it.sprite.body.setAllowGravity(false).setImmovable(true);
-      it.sprite.body.pushable = false;
-      oneWay(it.sprite.body);
-      const p = this.pos(sys, it, sys.time);
+      sys.addPlatform(it.sprite);
+      const p = this.pos(sys, it, sys.stepTime);
       it.sprite.body.reset(p.x, p.y);
+      this.step(sys, it, 0);
     },
     /** Linke obere Ecke der Plattform zur Zeit t. */
     pos(sys, it, t) {
       const theta = it.amp * Math.sin((t / it.cfg.period) * Math.PI * 2 + it.cfg.phase);
       return { x: it.pivot.x + Math.sin(theta) * it.len - it.w / 2, y: it.pivot.y + Math.cos(theta) * it.len };
     },
-    update(sys, it, delta) {
-      // Geschwindigkeit so setzen, dass die Plattform im nächsten Physik-Schritt
-      // genau dort ist, wo das Pendel dann sein soll (korrigiert sich selbst)
-      const next = this.pos(sys, it, sys.time + delta);
-      const b = it.sprite.body, dt = delta / 1000;
-      b.setVelocity((next.x - b.x) / dt, (next.y - b.y) / dt);
-      sys.carryRiders(b);
+    /** Pro Physik-Schritt: Geschwindigkeit so, dass die Plattform nach dem nächsten
+     *  (festen) Schritt exakt an der Pendel-Position liegt – kein Nachlaufen, kein Zittern. */
+    step(sys, it) {
+      const b = it.sprite.body;
+      const next = this.pos(sys, it, sys.stepTime + sys.stepMs);
+      b.setVelocity((next.x - b.x) / (sys.stepMs / 1000), (next.y - b.y) / (sys.stepMs / 1000));
     },
     render(sys, it) {
-      const s = it.sprite;
+      // Seile am Physik-Körper festmachen: der Sprite wird erst nach dem Update nachgezogen
+      const b = it.sprite.body;
       it.ropes.clear().lineStyle(2, 0xc8a46a, 1)
-        .lineBetween(it.pivot.x, it.pivot.y, s.x + 4, s.y + 2)
-        .lineBetween(it.pivot.x, it.pivot.y, s.x + it.w - 4, s.y + 2);
+        .lineBetween(it.pivot.x, it.pivot.y, b.x + 4, b.y + 2)
+        .lineBetween(it.pivot.x, it.pivot.y, b.x + it.w - 4, b.y + 2);
     }
   },
 
@@ -153,11 +156,10 @@ const OBSTACLE_TYPES = {
     spawn(sys, it, x, alpha = 0) {
       const scene = sys.scene;
       const log = scene.add.tileSprite(x, it.top, it.len, 18, 'logTile').setOrigin(0).setDepth(DEPTH.WATER + 0.2).setAlpha(alpha);
-      scene.movingPlatforms.add(log);
-      log.body.setAllowGravity(false).setImmovable(true).setSize(it.len, 14).setOffset(0, 2);
-      log.body.pushable = false;
-      oneWay(log.body);
+      sys.addPlatform(log);
+      log.body.setSize(it.len, 14).setOffset(0, 2);
       log.body.reset(x, it.top);
+      log.body.setVelocity(it.dir * it.cfg.speed, 0);
       log.sinking = 0;
       it.logs.push(log);
     },
@@ -173,7 +175,7 @@ const OBSTACLE_TYPES = {
           b.setVelocity(it.dir * it.cfg.speed * 0.4, 18);
           log.setAlpha(Math.max(0, 1 - log.sinking / 600));
           if (log.sinking > 350) b.enable = false;
-          if (log.sinking >= 600) log.destroy();
+          if (log.sinking >= 600) { sys.removePlatform(log); log.destroy(); }
           return;
         }
         b.setVelocity(it.dir * it.cfg.speed, 0);
@@ -182,7 +184,6 @@ const OBSTACLE_TYPES = {
           log.sinking = 1;
           Sfx.play(scene, 'logSink');
         }
-        sys.carryRiders(b);
       });
       it.logs = it.logs.filter(l => l.active);
     }
@@ -203,6 +204,7 @@ const OBSTACLE_TYPES = {
         .setFlipX(it.cfg.dir > 0);
       it.timer = it.cfg.first;
       it.warned = false;
+      it.spawned = 0;
     },
     update(sys, it, delta) {
       const scene = sys.scene;
@@ -218,8 +220,16 @@ const OBSTACLE_TYPES = {
         it.warned = false;
         const rock = scene.rollers.create(it.x, it.y + TILE - 22, 'rollingRock').setDepth(DEPTH.OBJECT + 0.2);
         rock.body.setSize(40, 40).setOffset(2, 2).setMaxVelocityY(PHYSICS.MAX_FALL);
+        rock.body.allowRotation = false;          // Drehung macht updateRollers (aus der Rollstrecke)
         rock.dir = it.cfg.dir;
         rock.speed = it.cfg.speed;
+        rock.lastX = rock.x;
+        rock.setAngle((it.index * 47 + it.spawned * 83) % 360);   // jeder Brocken liegt anders
+        it.spawned = (it.spawned || 0) + 1;
+        // Licht von links oben dreht NICHT mit → wirkt plastisch, auch wenn er rollt
+        rock.shade = scene.add.image(rock.x, rock.y, 'rockShade').setDepth(DEPTH.OBJECT + 0.3);
+        rock.shadow = scene.add.image(rock.x, rock.body.bottom, 'rockShadow').setDepth(DEPTH.SHADOW).setAlpha(0);
+        rock.nextDust = 0;
       }
     }
   }

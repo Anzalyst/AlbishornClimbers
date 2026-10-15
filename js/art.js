@@ -364,15 +364,45 @@ const Art = {
       ctx.fillStyle = '#16181c'; ctx.beginPath(); ctx.ellipse(28, 40, 17, 18, 0, Math.PI, 0); ctx.lineTo(45, 52); ctx.lineTo(11, 52); ctx.closePath(); ctx.fill();
       [[6, 30], [44, 22], [20, 12], [36, 10]].forEach(([x, y]) => this.rect(ctx, x, y, 4, 2, '#5a5e68'));
     });
+    // Rollender Felsbrocken: unregelmässiger Umriss, Facetten, Risse, Moos –
+    // so sieht man das Rollen. Licht & Schatten kommen aus 'rockShade', das
+    // NICHT mitdreht (Licht bleibt oben links → plastisch).
     this.canvas(scene, 'rollingRock', 44, 44, ctx => {
-      const g = ctx.createRadialGradient(17, 16, 2, 22, 22, 21);
-      [[0, '#b0b4bc'], [0.7, '#80848e'], [1, '#4a4e58']].forEach(([at, c]) => g.addColorStop(at, c));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(22, 22, 21, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#3a3e46'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(22, 22, 20, 0, Math.PI * 2); ctx.stroke();
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(10, 14); ctx.lineTo(18, 20); ctx.lineTo(14, 30); ctx.moveTo(26, 8); ctx.lineTo(30, 18); ctx.lineTo(36, 22); ctx.stroke();
-      this.rect(ctx, 14, 9, 5, 3, 'rgba(255,255,255,0.45)');
+      const radii = [20, 19, 21, 18, 20, 21, 19, 20, 18, 21, 20, 19];
+      const pt = (i, k = 1) => {
+        const a = (i / radii.length) * Math.PI * 2;
+        return [22 + Math.cos(a) * radii[i % radii.length] * k, 22 + Math.sin(a) * radii[i % radii.length] * k];
+      };
+      const outline = k => { ctx.beginPath(); radii.forEach((_, i) => ctx.lineTo(...pt(i, k))); ctx.closePath(); };
+      outline(1); ctx.fillStyle = '#26282e'; ctx.fill();                       // dunkle Kontur
+      outline(0.9); ctx.fillStyle = '#7c7468'; ctx.fill();                     // Grundton (warmes Grau)
+      // Facetten: hellere und dunklere Flächen
+      [[0, 2, '#948a7c'], [3, 5, '#665e54'], [6, 8, '#8a8174'], [9, 11, '#5a534a']].forEach(([a, b, c]) => {
+        ctx.beginPath(); ctx.moveTo(22, 22);
+        for (let i = a; i <= b; i++) ctx.lineTo(...pt(i, 0.88));
+        ctx.closePath(); ctx.fillStyle = c; ctx.fill();
+      });
+      outline(0.55); ctx.fillStyle = 'rgba(140,130,118,0.55)'; ctx.fill();
+      // Risse
+      ctx.strokeStyle = '#2e2a26'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(8, 16); ctx.lineTo(17, 21); ctx.lineTo(14, 31); ctx.lineTo(19, 37);
+      ctx.moveTo(26, 6); ctx.lineTo(29, 15); ctx.lineTo(38, 19); ctx.moveTo(29, 15); ctx.lineTo(27, 24);
+      ctx.moveTo(30, 33); ctx.lineTo(36, 30); ctx.stroke();
+      // Moos & Flechten
+      ctx.fillStyle = '#4f7a34'; ctx.beginPath(); ctx.ellipse(13, 9, 5, 3, -0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6f9a44'; ctx.beginPath(); ctx.ellipse(12, 8, 2.5, 1.5, -0.5, 0, Math.PI * 2); ctx.fill();
+      [[33, 36], [9, 27], [24, 34]].forEach(([x, y]) => this.rect(ctx, x, y, 2, 2, '#c8c070'));
+    });
+    this.canvas(scene, 'rockShade', 44, 44, ctx => {
+      ctx.beginPath(); ctx.arc(22, 22, 19, 0, Math.PI * 2); ctx.clip();
+      const g = ctx.createLinearGradient(6, 6, 38, 38);
+      g.addColorStop(0, 'rgba(255,250,235,0.42)'); g.addColorStop(0.45, 'rgba(255,255,255,0)');
+      g.addColorStop(0.7, 'rgba(0,0,0,0.15)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 44, 44);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(14, 12, 4, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    });
+    this.canvas(scene, 'rockShadow', 40, 10, ctx => {
+      ctx.fillStyle = 'rgba(0,0,0,1)'; ctx.beginPath(); ctx.ellipse(20, 5, 19, 4, 0, 0, Math.PI * 2); ctx.fill();
     });
 
     // Waagschale: Holzbrett mit Metallkante und Ösen für die Seile

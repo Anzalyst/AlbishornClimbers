@@ -3,13 +3,15 @@
  *
  *   beim Kartenaufbau  add(ch, c, r)            (LevelBuilder, Zeichen = > < & @)
  *   nach den Spielern  setupCollisions(players) Collider & Treffer
- *   jeden Frame        update(delta)            Bewegung, Zustände, rollende Brocken
+ *   jeden Frame        update(delta)            Zustände, Erscheinen/Untergehen, rollende Brocken
+ *   jeder Physik-Schritt onStep()               bewegte Plattformen + Mitfahrer (1/60 s,
+ *                                               unabhängig von der Bildrate des Bildschirms)
  *                      render()                 Seile & Co.
  *
  * Physik-Gruppen auf der Szene:
  *   crumbles         Bröckel-Plattformen (statisch, nur von oben fest)
  *   movingPlatforms  Pendel-Plattformen & Baumstämme (immovable, bewegt per
- *                    Geschwindigkeit; Mitfahrer verschiebt carryRiders)
+ *                    Geschwindigkeit im Physik-Schritt; Mitfahrer: carryRiders)
  *   rollers          rollende Felsbrocken
  * ===================================================================== */
 
@@ -19,11 +21,45 @@ class ObstacleSystem {
     this.parsed = parsed;
     this.cfg = parsed.level.obstacles || {};
     this.time = 0;                 // Spielzeit in ms (deterministisch, unabhängig von der Uhr)
+    this.stepTime = 0;             // Physik-Zeit in ms (zählt nur echte Physik-Schritte)
+    this.stepMs = 1000 / scene.physics.world.fps;
     this.items = [];
     this.counts = {};
+    this.platforms = [];           // bewegte Plattformen: { body, lastX }
     scene.crumbles = scene.physics.add.staticGroup();
     scene.movingPlatforms = scene.physics.add.group({ allowGravity: false, immovable: true });
     scene.rollers = scene.physics.add.group();
+    // Bewegte Plattformen laufen im Takt der Physik, nicht im Takt der Bilder
+    const world = scene.physics.world;
+    world.on('worldstep', this.onStep, this);
+    scene.events.once('shutdown', () => world.off('worldstep', this.onStep, this));
+  }
+
+  /** Bewegte Plattform anmelden (Pendel, Baumstamm): immovable, nur von oben fest. */
+  addPlatform(sprite) {
+    this.scene.movingPlatforms.add(sprite);
+    const b = sprite.body;
+    b.setAllowGravity(false).setImmovable(true).setFriction(0, 0);
+    b.pushable = false;
+    oneWay(b);
+    this.platforms.push({ sprite, body: b, lastX: null });
+  }
+
+  removePlatform(sprite) {
+    this.platforms = this.platforms.filter(p => p.sprite !== sprite);
+  }
+
+  /**
+   * Nach JEDEM Physik-Schritt (Arcade: fest 1/60 s, auch mehrmals pro Bild):
+   * Mitfahrer mitnehmen, dann die Plattformen für den nächsten Schritt einstellen.
+   */
+  onStep() {
+    this.carryRiders();
+    this.stepTime += this.stepMs;
+    this.items.forEach(it => {
+      const type = OBSTACLE_TYPES[it.kind];
+      if (type.step) type.step(this, it);
+    });
   }
 
   /** Hindernis für ein Kartenzeichen anlegen. */
@@ -75,14 +111,28 @@ class ObstacleSystem {
     });
   }
 
-  /** Rollende Brocken: konstante Geschwindigkeit, drehen sich, zerbrechen an Wänden. */
+  /**
+   * Rollende Brocken: konstante Geschwindigkeit, zerbrechen an Wänden.
+   * Die Drehung kommt aus der tatsächlich gerollten Strecke (Winkel = Weg / Radius),
+   * dazu nicht mitdrehendes Licht, ein Bodenschatten und Staub beim Rollen.
+   */
   updateRollers(delta) {
-    this.scene.rollers.getChildren().slice().forEach(rock => {
+    const scene = this.scene;
+    scene.rollers.getChildren().slice().forEach(rock => {
       const b = rock.body;
       const blocked = rock.dir < 0 ? (b.blocked.left || b.touching.left) : (b.blocked.right || b.touching.right);
-      if (blocked || rock.y > this.scene.worldHeight + 64) { this.smash(rock); return; }
+      if (blocked || rock.y > scene.worldHeight + 64) { this.smash(rock); return; }
       b.setVelocityX(rock.dir * rock.speed);
-      rock.angle += rock.dir * rock.speed * (delta / 1000) * (180 / Math.PI) / 21;
+      const x = b.center.x, y = b.center.y;
+      rock.angle += Phaser.Math.RadToDeg((x - rock.lastX) / 21);
+      rock.lastX = x;
+      rock.shade.setPosition(x, y);
+      const grounded = b.blocked.down || b.touching.down;
+      rock.shadow.setPosition(x, b.bottom + 1).setAlpha(grounded ? 0.35 : 0);
+      if (grounded && this.time > rock.nextDust) {
+        scene.fx.dust(x - rock.dir * 16, b.bottom, 1);
+        rock.nextDust = this.time + 140;
+      }
     });
   }
 
@@ -92,6 +142,8 @@ class ObstacleSystem {
     if (splash) scene.fx.splash(rock.x, rock.y);
     else if (rock.y < scene.worldHeight) scene.fx.dust(rock.x, rock.body.bottom, 8);
     if (rock.y < scene.worldHeight) Sfx.play(scene, 'rockSmash');
+    if (rock.shade) rock.shade.destroy();
+    if (rock.shadow) rock.shadow.destroy();
     rock.destroy();
   }
 
@@ -104,16 +156,34 @@ class ObstacleSystem {
   }
 
   /**
-   * Mitfahrer mitnehmen: Wer oben steht, wird um die Strecke verschoben, die die
-   * Plattform im letzten Physik-Schritt zurückgelegt hat, und merkt sich deren
-   * Tempo (Schwung beim Absprung, siehe Player.airVx).
+   * Mitfahrer haften an bewegten Plattformen: Wer mit den Füssen an der
+   * Oberkante ist (und nicht gerade abspringt), wird um den Weg der Plattform
+   * in diesem Schritt verschoben und genau auf die Oberkante gesetzt. Dazu
+   * merkt sich der Spieler "steht auf Plattform" (zählt als Boden zum
+   * Springen) und deren Tempo (Schwung beim Absprung, Player.airVx).
    */
-  carryRiders(body) {
-    const dx = body.deltaX();
-    this.scene.players.forEach(p => {
-      if (!this.standsOn(p, body)) return;
-      p.sprite.x += dx;
-      p.ridingVx = body.velocity.x;
+  carryRiders() {
+    const players = this.scene.players || [];
+    players.forEach(p => { p.onPlatform = false; p.ridingVx = 0; });
+    this.platforms.forEach(pl => {
+      const pb = pl.body;
+      const dx = pl.lastX === null ? 0 : pb.x - pl.lastX;
+      pl.lastX = pb.x;
+      if (!pb.enable) return;
+      players.forEach(p => {
+        const b = p.sprite.body;
+        if (p.respawning || !b.enable || p.onPlatform) return;
+        const overlapX = b.right > pb.left + 1 && b.left < pb.right - 1;
+        const dy = b.bottom - pb.top;
+        // Absprung = schneller nach oben als die Plattform (nicht: Plattform schwingt hoch)
+        const jumping = b.velocity.y - pb.velocity.y < -60;
+        if (!overlapX || dy < -6 || dy > 10 || jumping) return;
+        b.position.x += dx;
+        b.position.y = pb.top - b.height;
+        b.velocity.y = pb.velocity.y;                // fährt im nächsten Schritt gleich mit
+        p.onPlatform = true;
+        p.ridingVx = pb.velocity.x;
+      });
     });
   }
 

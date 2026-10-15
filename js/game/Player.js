@@ -39,7 +39,8 @@ class Player {
     this.prevVy = 0;
     this.nextDust = 0;
     this.stuckFrames = 0;
-    this.ridingVx = 0;         // Geschwindigkeit der Plattform, auf der man steht (setzt das ObstacleSystem)
+    this.ridingVx = 0;         // Tempo der bewegten Plattform unter den Füssen (setzt das ObstacleSystem)
+    this.onPlatform = false;   // steht auf Pendel/Baumstamm (zählt als Boden, setzt das ObstacleSystem)
     this.airVx = 0;            // mitgenommener Schwung in der Luft (Pendel, Baumstamm)
   }
 
@@ -49,12 +50,11 @@ class Player {
     const body = sprite.body;
     if (this.respawning) return;
 
-    const onGround = body.blocked.down || body.touching.down;
+    const onGround = body.blocked.down || body.touching.down || this.onPlatform;
     this.onGround = onGround;
 
     // Schwung von bewegten Plattformen: am Boden merken, in der Luft mitnehmen
     const riding = this.ridingVx;
-    this.ridingVx = 0;
     if (onGround || body.blocked.left || body.blocked.right) this.airVx = onGround ? riding : 0;
     else if (this.airVx) sprite.x += this.airVx * delta / 1000;
 

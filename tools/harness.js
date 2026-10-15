@@ -684,7 +684,9 @@
       // Chopfnüss: Lösungs-Test mit echten Eingaben (tools/harness-puzzles.js)
       syncClock(LEVELS.length + 60);
       PlayerInput.prototype.update = scriptedInputUpdate;
-      if (window.runPuzzleTests) window.runPuzzleTests({ step, setInput, startScene, out });
+      // stepDt: ein Bild mit beliebiger Dauer (simuliert z. B. einen 50/75-Hz-Fernseher)
+      const stepDt = dt => { T += dt; try { game.step(T, dt); } catch (e) { out.errors.push(`step: ${e.stack || e}`); } };
+      if (window.runPuzzleTests) window.runPuzzleTests({ step, stepDt, setInput, startScene, out });
     } catch (e) {
       out.errors.push(`harness: ${e.stack || e}`);
     }
