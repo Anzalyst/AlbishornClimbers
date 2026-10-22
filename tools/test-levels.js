@@ -19,15 +19,16 @@ function checkLevels(root) {
   const sandbox = { console };
   vm.createContext(sandbox);
   files.forEach(f => vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f }));
-  const { LEVELS, LevelParser, BIRTHDAY } = vm.runInContext('({ LEVELS, LevelParser, BIRTHDAY })', sandbox);
+  const { LEVELS, LevelParser, BIRTHDAY, AVATARS, CHEATS } = vm.runInContext('({ LEVELS, LevelParser, BIRTHDAY, AVATARS, CHEATS })', sandbox);
 
   const problems = [];
   LEVELS.forEach((level, i) => {
     const parsed = LevelParser.parse(level);
     parsed.warnings.forEach(w => problems.push(`Level ${i + 1}: ${w}`));
-    if (!/^\d{4}$/.test(level.password)) problems.push(`Level ${i + 1}: Passwort "${level.password}" ist nicht 4-stellig`);
+    const ok = Array.isArray(level.password) && level.password.length === 4 && level.password.every(k => AVATARS.some(a => a.key === k));
+    if (!ok) problems.push(`Level ${i + 1}: Passwort "${level.password}" sind nicht 4 Avatare`);
   });
-  const codes = LEVELS.map(l => l.password).concat(BIRTHDAY.secretCode);
+  const codes = LEVELS.map(l => l.password).concat([BIRTHDAY.secretCode, CHEATS.credits]).map(c => String(c));
   codes.forEach((code, i) => { if (codes.indexOf(code) !== i) problems.push(`Passwort ${code} ist doppelt vergeben`); });
 
   // Selbsttest: ein absichtlich kaputtes Level muss Warnungen liefern

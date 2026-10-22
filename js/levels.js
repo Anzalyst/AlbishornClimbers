@@ -96,7 +96,7 @@ const LEVELS = [
   // -------------------------------------------------------------------
   {
     name: 'De Start z Ebertswil',
-    password: '1291',
+    password: ['jessica', 'simon', 'sven', 'angi'],
     sky: [0x8ccbf0, 0xe4f3fb],
     anecdote: '{PARENTS} händ behauptet: "Es isch nüme wiit!" – Das isch glogge gsi.',
     triggers: {
@@ -145,7 +145,7 @@ const LEVELS = [
   // -------------------------------------------------------------------
   {
     name: 'De stotzig Waldufstieg',
-    password: '3842',
+    password: ['edith', 'kurt', 'jessica', 'simon'],
     sky: [0x9fd8cc, 0xeefaf4],
     anecdote: 'Für de {UNCLE} isch das do "nume es chliises Hügeli". S Vermässigsamt seit: Nei.',
     triggers: {
@@ -192,7 +192,7 @@ const LEVELS = [
   // -------------------------------------------------------------------
   {
     name: 'De Bachlauf',
-    password: '7156',
+    password: ['ginny', 'sven', 'hannah', 'angi'],
     sky: [0xa4d4f2, 0xf2f9ff],
     anecdote: 'Wer nassi Füess überchunnt, dörf glich NÖD umchehre. – Underschribe: {AUNT}',
     triggers: {
@@ -245,7 +245,7 @@ const LEVELS = [
   // -------------------------------------------------------------------
   {
     name: 'D Felswand',
-    password: '2468',
+    password: ['peter', 'kurt', 'edith', 'ginny'],
     sky: [0xb0d8f4, 0xfff2de],
     anecdote: '"Lueged doch emal di schöni Ussicht aa!" – D Ussicht: e Felswand.',
     triggers: {
@@ -317,7 +317,7 @@ const LEVELS = [
   // -------------------------------------------------------------------
   {
     name: 'Gipfelsturm Albishorn',
-    password: '0909',
+    password: ['simon', 'jessica', 'hannah', 'sven'],
     sky: [0xf4b07a, 0xffe9cc],
     anecdote: 'Fascht obe! (Dasmal stimmts würkli. Ehrlich. Vertraued eus.)',
     triggers: {
@@ -382,7 +382,7 @@ const LEVELS = [
   {
     name: 'S Farbeschloss',
     bonus: true,
-    password: '4711',
+    password: ['kurt', 'peter', 'ginny', 'edith'],
     sky: [0xb8a8e8, 0xfdf0ff],
     anecdote: '{UNCLE}: "Das isch kei Rätsel, das isch Logik!" – {AUNT}: "Dänn lös dus doch!"',
     triggers: {
@@ -450,7 +450,7 @@ const LEVELS = [
   {
     name: 'D Waag vom Albis',
     bonus: true,
-    password: '2525',
+    password: ['hannah', 'angi', 'peter', 'jessica'],
     sky: [0x9ec8e8, 0xfff4e0],
     anecdote: 'Was isch schwärer: es Kilo Stei oder es Kilo Edelwiiss? {COUSIN} studiert hüt no dra ume.',
     triggers: {

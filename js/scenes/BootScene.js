@@ -755,6 +755,47 @@ class BootScene extends Phaser.Scene {
     Object.keys(HIKER_STYLES).forEach(key => {
       this.makePortrait(`portrait_${key}`, paletteColors(hikerFrame(key, 'idle').slice(0, 24), HIKER_STYLES[key].palette), 3);
     });
+
+    this.createAvatarTextures();
+  }
+
+  /**
+   * Avatare fürs Passwort (AVATARS in config.js): die Köpfe aus den fertigen
+   * Figuren, ganzzahlig vergrössert in einer 60×60-Textur "avatar_<key>".
+   * area = [x0, x1, y0, y1] in Pixeln der Figur, darin wird der Kopf
+   * automatisch eng zugeschnitten.
+   */
+  createAvatarTextures() {
+    const person = key => familyPixels(this.buildPersonGrid(PEOPLE[key]), PEOPLE[key].palette, PEOPLE[key].hiRes);
+    const hiker = key => paletteColors(hikerFrame(key, 'idle'), HIKER_STYLES[key].palette);
+    const sources = {
+      edith: [person('edith'), [0, 32, 0, 20]],
+      kurt: [person('kurt'), [0, 32, 0, 20]],
+      sven: [person('sven'), [19, 40, 0, 15]],                   // ohne Kraxe
+      jessica: [hiker('hiker1'), [0, 24, 0, 12]],               // nur Kopf, ohne Rucksack
+      simon: [hiker('hiker2'), [0, 24, 0, 12]],
+      angi: [person('angi'), [0, 32, 0, 20]],
+      peter: [person('peter'), [0, 32, 6, 22]],
+      hannah: [familyPixels(DAUGHTER.pixels, DAUGHTER.palette, DAUGHTER.hiRes), [0, 16, 0, 13]],
+      ginny: [familyPixels(GINNY.body.concat(GINNY.legs.sit), GINNY.palette), [16, 32, 0, 16]]
+    };
+    const SIZE = 60;
+    AVATARS.forEach(({ key }) => {
+      const [colors, [x0, x1, y0, y1]] = sources[key];
+      let minX = Infinity, maxX = -1, minY = Infinity, maxY = -1;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          if (!colors[y] || !colors[y][x]) continue;
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        }
+      }
+      const crop = colors.slice(minY, maxY + 1).map(row => row.slice(minX, maxX + 1));
+      const w = crop[0].length, h = crop.length;
+      const scale = Math.max(1, Math.floor(Math.min((SIZE - 2) / w, (SIZE - 2) / h)));
+      const tex = this.textures.createCanvas(`avatar_${key}`, SIZE, SIZE);
+      this.drawColors(tex.getContext(), crop, scale, Math.round((SIZE - w * scale) / 2), Math.round((SIZE - h * scale) / 2));
+      tex.refresh();
+    });
   }
 
   /** Porträt für die Dialogbox: Kopf + Schultern, gross skaliert, mit Hintergrund. */

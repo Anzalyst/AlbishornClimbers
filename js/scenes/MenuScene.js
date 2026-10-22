@@ -5,10 +5,12 @@
  *   Hoch/Runter  Menüpunkt wählen        Sprung / Start  bestätigen
  *   Menüpunkte: Spiel starten, Passwort, Chopfnüss (Bonus-Rätsel), Hauptmenü
  *   ESC / Controller-B                   zurück zur Spielauswahl
- * Passwort-Modus (wie bei Aladdin auf dem SNES):
- *   Links/Rechts Stelle wechseln         Hoch/Runter     Ziffer ändern
- *   Ziffern 0–9  direkt tippen           Sprung          Code prüfen
- *   ESC / Backspace / Controller-B       zurück bzw. Ziffer löschen
+ * Passwort-Modus (wie bei Aladdin auf dem SNES, aber mit der Familie):
+ *   4 Stellen, jede zeigt einen Avatar (AVATARS in config.js)
+ *   Links/Rechts Stelle wechseln         Hoch/Runter     Avatar durchschalten
+ *   Tasten 1–9   Avatar direkt wählen    Sprung          Code prüfen
+ *   ESC / Backspace / Controller-B       zurück bzw. Stelle zurücksetzen
+ *   Geheim: 4× Ginny → Abspann, BIRTHDAY.secretCode → Geburtstagsfeier
  * ===================================================================== */
 
 class MenuScene extends Phaser.Scene {
@@ -22,7 +24,7 @@ class MenuScene extends Phaser.Scene {
     this.mode = 'main';          // 'main' | 'password'
     this.starting = false;
     this.selected = 0;
-    this.digits = [0, 0, 0, 0];
+    this.code = [0, 0, 0, 0];   // Index in AVATARS je Stelle
     this.cursor = 0;
 
     this.createTitle();
@@ -31,7 +33,7 @@ class MenuScene extends Phaser.Scene {
     this.createFooter();
     this.refresh();
 
-    // Direkte Zifferneingabe per Tastatur
+    // Direkte Eingabe per Tastatur (1–9 = Avatar)
     this.onKey = event => this.handleKey(event);
     this.input.keyboard.on('keydown', this.onKey);
     this.events.once('shutdown', () => this.input.keyboard.off('keydown', this.onKey));
@@ -73,34 +75,37 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
   }
 
+  /** Passwort-Feld: 4 Kästchen mit Avatar-Kopf und Namen, Pfeile über/unter der aktiven Stelle. */
   createPasswordPanel() {
     const cx = GAME_WIDTH / 2;
-    this.pwPanel = this.add.container(cx, 300);
-    this.pwPanel.add(this.add.rectangle(0, 0, 440, 210, 0x10131c, 0.9).setStrokeStyle(3, 0xf7d117));
-    this.pwPanel.add(this.add.text(0, -78, TXT.passwordTitle, {
+    this.pwPanel = this.add.container(cx, 310);
+    this.pwPanel.add(this.add.rectangle(0, 0, 480, 250, 0x10131c, 0.9).setStrokeStyle(3, 0xf7d117));
+    this.pwPanel.add(this.add.text(0, -102, TXT.passwordTitle, {
       fontFamily: FONT, fontSize: '14px', color: '#f7d117'
     }).setOrigin(0.5));
 
-    this.digitBoxes = [];
-    this.digitTexts = [];
+    this.avatarBoxes = [];
+    this.avatarImages = [];
+    this.avatarNames = [];
     for (let i = 0; i < 4; i++) {
-      const x = (i - 1.5) * 76;
-      const box = this.add.rectangle(x, -6, 60, 72, 0x22283a).setStrokeStyle(3, 0x5a6480);
-      const txt = this.add.text(x, -4, '0', { fontFamily: FONT, fontSize: '32px', color: '#ffffff' }).setOrigin(0.5);
-      this.pwPanel.add([box, txt]);
-      this.digitBoxes.push(box);
-      this.digitTexts.push(txt);
+      const x = (i - 1.5) * 100;
+      const box = this.add.rectangle(x, -16, 76, 76, 0x7f93c0).setStrokeStyle(3, 0x5a6480);
+      const img = this.add.image(x, -16, `avatar_${AVATARS[0].key}`);
+      const name = this.add.text(x, 32, '', { fontFamily: FONT, fontSize: '8px', color: '#ffffff' }).setOrigin(0.5);
+      this.pwPanel.add([box, img, name]);
+      this.avatarBoxes.push(box);
+      this.avatarImages.push(img);
+      this.avatarNames.push(name);
     }
-    this.pwArrows = this.add.text(0, -6, '▲\n\n\n\n▼', {
-      fontFamily: FONT, fontSize: '10px', color: '#f7d117', align: 'center', lineSpacing: 2
-    }).setOrigin(0.5);
+    const arrow = { fontFamily: FONT, fontSize: '10px', color: '#f7d117' };
+    this.pwArrows = [this.add.text(0, -66, '▲', arrow).setOrigin(0.5), this.add.text(0, 46, '▼', arrow).setOrigin(0.5)];
     this.pwPanel.add(this.pwArrows);
 
-    this.pwMessage = this.add.text(0, 58, '', {
+    this.pwMessage = this.add.text(0, 76, '', {
       fontFamily: FONT, fontSize: '10px', color: '#ff8080'
     }).setOrigin(0.5);
     this.pwPanel.add(this.pwMessage);
-    this.pwPanel.add(this.add.text(0, 86, TXT.passwordHelp, {
+    this.pwPanel.add(this.add.text(0, 106, TXT.passwordHelp, {
       fontFamily: FONT, fontSize: '8px', color: '#aab4cc'
     }).setOrigin(0.5));
   }
@@ -128,9 +133,12 @@ class MenuScene extends Phaser.Scene {
     this.menuArrow.setPosition(sel.x - sel.width / 2 - 30, sel.y);
 
     this.pwPanel.setVisible(!inMain);
-    this.digitTexts.forEach((t, i) => t.setText(String(this.digits[i])));
-    this.digitBoxes.forEach((b, i) => b.setStrokeStyle(3, i === this.cursor ? 0xf7d117 : 0x5a6480));
-    this.pwArrows.setX((this.cursor - 1.5) * 76);
+    this.code.forEach((a, i) => {
+      this.avatarImages[i].setTexture(`avatar_${AVATARS[a].key}`);
+      this.avatarNames[i].setText(AVATARS[a].name).setColor(i === this.cursor ? '#f7d117' : '#ffffff');
+    });
+    this.avatarBoxes.forEach((b, i) => b.setStrokeStyle(3, i === this.cursor ? 0xf7d117 : 0x5a6480));
+    this.pwArrows.forEach(a => a.setX((this.cursor - 1.5) * 100));
   }
 
   // ---------------------------------------------------------------------
@@ -173,21 +181,21 @@ class MenuScene extends Phaser.Scene {
   updatePassword() {
     if (this.anyPressed('left')) this.moveCursor(-1);
     if (this.anyPressed('right')) this.moveCursor(1);
-    if (this.anyPressed('up')) this.changeDigit(1);
-    if (this.anyPressed('down')) this.changeDigit(-1);
+    if (this.anyPressed('up')) this.changeAvatar(1);
+    if (this.anyPressed('down')) this.changeAvatar(-1);
     if (this.anyPressed('back')) this.closePassword();
     if (this.anyPressed('jump') || this.anyPressed('start')) this.submitPassword();
   }
 
-  /** Tastatur-Events (Ziffern, Backspace, ESC). */
+  /** Tastatur-Events (1–9 = Avatar, Backspace, ESC). */
   handleKey(event) {
-    if (/^[0-9]$/.test(event.key)) {
+    if (/^[1-9]$/.test(event.key)) {
       if (this.mode !== 'password') this.openPassword();
-      this.digits[this.cursor] = Number(event.key);
+      this.code[this.cursor] = Number(event.key) - 1;
       this.moveCursor(1);
     } else if (event.key === 'Backspace' && this.mode === 'password') {
       this.moveCursor(-1);
-      this.digits[this.cursor] = 0;
+      this.code[this.cursor] = 0;
       this.refresh();
     } else if (event.key === 'Escape' && this.mode === 'password') {
       this.closePassword();
@@ -217,15 +225,29 @@ class MenuScene extends Phaser.Scene {
     this.refresh();
   }
 
-  changeDigit(step) {
-    this.digits[this.cursor] = (this.digits[this.cursor] + step + 10) % 10;
+  changeAvatar(step) {
+    const n = AVATARS.length;
+    this.code[this.cursor] = (this.code[this.cursor] + step + n) % n;
     Sfx.play(this, 'select');
     this.refresh();
   }
 
+  /** Eingegebene Avatar-Folge als Schlüssel, z. B. ['edith', 'jessica', 'sven', 'ginny']. */
+  enteredCode() {
+    return this.code.map(i => AVATARS[i].key);
+  }
+
   submitPassword() {
-    const code = this.digits.join('');
-    if (code === BIRTHDAY.secretCode) {
+    if (this.starting) return;
+    const code = this.enteredCode();
+    if (Passwords.same(code, CHEATS.credits)) {
+      // Geheim-Code 4× Ginny: direkt in den Abspann
+      this.pwMessage.setColor('#ff7ad9').setText(TXT.passwordCredits);
+      Sfx.play(this, 'win');
+      this.time.delayedCall(900, () => this.startScene('CreditsScene'));
+      return;
+    }
+    if (Passwords.same(code, BIRTHDAY.secretCode)) {
       // Geheim-Code: direkt zur Geburtstagsfeier
       this.pwMessage.setColor('#ff7ad9').setText(TXT.passwordSecret);
       Sfx.play(this, 'win');

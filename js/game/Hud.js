@@ -83,7 +83,7 @@ class Hud {
       fontFamily: FONT, fontSize: '22px', color: '#f7d117'
     }).setOrigin(0.5));
     banner.add(scene.add.text(0, top + 68, this.level.name, { fontFamily: FONT, fontSize: '14px', color: '#ffffff' }).setOrigin(0.5));
-    banner.add(scene.add.text(0, top + 96, `${TXT.passwordLabel}: ${this.level.password}`, {
+    banner.add(scene.add.text(0, top + 96, `${TXT.passwordLabel}: ${Passwords.label(this.level.password)}`, {
       fontFamily: FONT, fontSize: '9px', color: '#aab4cc'
     }).setOrigin(0.5));
     if (anecdote) {

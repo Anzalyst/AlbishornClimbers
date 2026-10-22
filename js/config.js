@@ -146,7 +146,7 @@ const STORY = {
 const BIRTHDAY = {
   names: [CAST.player1.first, CAST.player2.first],
   age: 30,
-  secretCode: '3030',      // Passwort, das direkt zur Geburtstagsfeier springt
+  secretCode: ['sven', 'angi', 'hannah', 'ginny'],   // Passwort (Svens Familie) → direkt zur Geburtstagsfeier
   message: [
     'Vor vilne Jahr händ ihr dä Wäg ghasst.',
     'Hüt händ ihr ne zäme packt –',
@@ -173,15 +173,47 @@ const CREDITS = [
 ];
 
 // --- Passwort-System ------------------------------------------------------
-// Jedes Level hat einen 4-stelligen Code. Die Codes stehen bei den Levels
-// in levels.js (Feld "password"). Hier nur die Helferfunktionen.
+// Ein Passwort besteht aus 4 Avataren (Köpfe der Familie, Textur
+// "avatar_<key>", erzeugt in der BootScene), z. B. Edith – Jessica – Sven –
+// Ginny. Die Codes stehen bei den Levels in levels.js (Feld "password").
+// Reihenfolge = Reihenfolge beim Durchschalten mit Hoch/Runter (Taste 1–9).
+const AVATARS = [
+  { key: 'edith', name: 'EDITH' },
+  { key: 'kurt', name: 'KURT' },
+  { key: 'sven', name: 'SVEN' },
+  { key: 'jessica', name: 'JESSICA' },
+  { key: 'simon', name: 'SIMON' },
+  { key: 'angi', name: 'ANGI' },
+  { key: 'peter', name: 'PETER' },
+  { key: 'hannah', name: 'HANNAH' },
+  { key: 'ginny', name: 'GINNY' }
+];
+
+// Geheim-Codes: direkt in den Abspann (mit Gedenk-Zeile und Dankesbild)
+const CHEATS = {
+  credits: ['ginny', 'ginny', 'ginny', 'ginny'],                          // Passwort-Eingabe
+  konami: ['up', 'up', 'down', 'down', 'left', 'right', 'a', 'b']          // Spielauswahl (Controller/Tastatur)
+};
+
 const Passwords = {
+  /** Gleiche Avatar-Folge? */
+  same(a, b) {
+    return !!a && !!b && a.length === b.length && a.every((k, i) => k === b[i]);
+  },
   /** Liefert den Level-Index (0-basiert) zu einem Code – oder -1. */
   findLevel(code) {
-    return LEVELS.findIndex(l => l.password === code);
+    return LEVELS.findIndex(l => this.same(l.password, code));
   },
   /** Code für einen Level-Index. */
   forLevel(index) {
     return LEVELS[index] ? LEVELS[index].password : null;
+  },
+  /** Avatar-Eintrag zu einem Schlüssel. */
+  avatar(key) {
+    return AVATARS.find(a => a.key === key);
+  },
+  /** Lesbare Form, z. B. "EDITH · JESSICA · SVEN · GINNY". */
+  label(code) {
+    return code.map(k => this.avatar(k).name).join(' · ');
   }
 };

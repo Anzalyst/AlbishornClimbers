@@ -887,6 +887,131 @@
     setInput(0); setInput(1);
   }
 
+  // --- Passwort mit Familien-Avataren + Geheim-Codes für den Abspann -------
+  function runPasswordTests() {
+    syncClock(LEVELS.length + 57);
+    reseed(5757);
+    PlayerInput.prototype.update = scriptedInputUpdate;
+    setInput(0); setInput(1);
+    out.password = {};
+    const check = (name, ok, detail = '') => {
+      out.password[name] = !!ok;
+      if (!ok) out.errors.push(`Passwort-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+    const active = k => game.scene.isActive(k);
+    const until = (cond, max) => { let f = 0; while (!cond() && f < max) { step(); f++; } return f; };
+    const tapIn = (i, action) => { setInput(i, { [action]: true }); step(); setInput(i); step(); };
+    const typeKey = (key, k) => { game.scene.getScene(key).input.keyboard.emit('keydown', { key: k }); step(); };
+    const menu = () => game.scene.getScene('MenuScene');
+    const shown = () => menu().avatarImages.map(img => img.texture.key.replace('avatar_', ''));
+    const openPw = () => { startScene('MenuScene'); step(20); tapIn(0, 'down'); tapIn(0, 'jump'); step(2); };
+    const keys = AVATARS.map(a => a.key);
+
+    // 1) Avatare: 9 Köpfe, jeder sichtbar und verschieden
+    const pics = keys.map(k => {
+      const t = game.textures.exists(`avatar_${k}`) && game.textures.get(`avatar_${k}`).getSourceImage();
+      if (!t) return null;
+      const d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data;
+      let px = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i]) px++;
+      return { w: t.width, h: t.height, px, url: t.toDataURL() };
+    });
+    check('9 Avatare (Edith, Kurt, Sven, Jessica, Simon, Angi, Peter, Hannah, Ginny), sichtbar und verschieden',
+      keys.join() === 'edith,kurt,sven,jessica,simon,angi,peter,hannah,ginny' &&
+      pics.every(p => p && p.w === 60 && p.h === 60 && p.px > 600) && new Set(pics.map(p => p.url)).size === 9,
+      `(${pics.map((p, i) => `${keys[i]}: ${p ? p.px : 'fehlt'}`)})`);
+    const codes = LEVELS.map(l => l.password);
+    check('Alle Level-Passwörter: 4 Avatare, eindeutig, keine Geheim-Codes',
+      codes.every(c => c.length === 4 && c.every(k => keys.includes(k))) &&
+      new Set(codes.concat([BIRTHDAY.secretCode, CHEATS.credits]).map(String)).size === codes.length + 2);
+
+    // 2) Controller: Avatare per Hoch/Runter wählen, Stelle per Links/Rechts → Level 3
+    openPw();
+    check('Passwort-Feld zeigt 4 Avatar-Kästchen', menu().mode === 'password' && shown().join() === 'edith,edith,edith,edith' &&
+      menu().avatarNames[0].text === 'EDITH');
+    tapIn(0, 'down');
+    check('Runter von Edith → Ginny (rundherum)', shown()[0] === 'ginny');
+    tapIn(0, 'up');
+    const target = Passwords.forLevel(2);
+    target.forEach((k, i) => {
+      for (let n = 0; n < keys.indexOf(k); n++) tapIn(i % 2, 'up');   // beide Spieler dürfen tippen
+      if (i < 3) tapIn(0, 'right');
+    });
+    check('Controller: Avatare der Reihe nach gewählt', shown().join() === target.join(), `(${shown()})`);
+    tapIn(1, 'jump');
+    until(() => active('LoadingScene'), 90);
+    check('Richtiges Avatar-Passwort → Level 3 (über den Ladebildschirm)',
+      active('LoadingScene') && game.scene.getScene('LoadingScene').nextData.levelIndex === 2);
+
+    // 3) Falsches Passwort: bleibt im Passwort-Feld
+    openPw();
+    tapIn(0, 'jump'); step(5);
+    check('Falsches Passwort (4× Edith) → Meldung, kein Start',
+      menu().mode === 'password' && menu().pwMessage.text === TXT.passwordWrong && !menu().starting);
+
+    // 4) Tastatur 1–9 + Backspace; Geburtstags-Code → Gipfelfeier
+    openPw();
+    ['9', '9', 'Backspace'].forEach(k => typeKey('MenuScene', k));
+    check('Tastatur: 1–9 wählt Avatar, Backspace setzt zurück', shown().join() === 'ginny,edith,edith,edith' && menu().cursor === 1);
+    typeKey('MenuScene', 'Backspace');
+    BIRTHDAY.secretCode.forEach(k => typeKey('MenuScene', String(keys.indexOf(k) + 1)));
+    tapIn(0, 'jump');
+    until(() => active('FinaleScene'), 150);
+    check('Sven · Angi · Hannah · Ginny → Gipfelfeier', active('FinaleScene'));
+
+    // 5) Geheim-Code 4× Ginny → Abspann mit Gedenk-Zeile → Dankesbild
+    openPw();
+    ['9', '9', '9', '9'].forEach(k => typeKey('MenuScene', k));
+    tapIn(0, 'jump'); step(3);
+    check('4× Ginny: Meldung', menu().pwMessage.text === TXT.passwordCredits);
+    until(() => active('CreditsScene'), 150);
+    const cs = game.scene.getScene('CreditsScene');
+    check('4× Ginny → Abspann mit Gedenk-Zeile', active('CreditsScene') && !active('LoadingScene') &&
+      cs.memorialTexts && cs.memorialTexts[1].text === TXT.memorialRoll[1]);
+    cs.roll.y = cs.rollStopY; step(80);
+    tapIn(0, 'jump');
+    until(() => active('EndScene'), 120);
+    check('… und danach das Dankesbild', active('EndScene'));
+
+    // 6) Spielauswahl: Hoch, Hoch, Runter, Runter, Links, Rechts, A, B → Abspann
+    const gs = () => game.scene.getScene('GameSelectScene');
+    startScene('GameSelectScene'); step(20);
+    ['up', 'up', 'down', 'down', 'left', 'right', 'jump'].forEach(a => tapIn(0, a));
+    step(10);
+    check('Code: das A im Code startet kein Spiel', active('GameSelectScene') && !gs().leaving && gs().konami === 7);
+    tapIn(0, 'back');
+    check('Code: Meldung', gs().cheatText && gs().cheatText.text === TXT.konamiCredits);
+    until(() => active('CreditsScene'), 120);
+    check('Controller: ↑↑↓↓←→ A B → Abspann', active('CreditsScene'));
+
+    // … mit der Tastatur (Pfeile = Spieler 2, A = Enter, B = Taste B)
+    startScene('GameSelectScene'); step(20);
+    ['up', 'up', 'down', 'down', 'left', 'right'].forEach(a => tapIn(1, a));
+    gs().input.keyboard.emit('keydown-ENTER'); step();
+    gs().input.keyboard.emit('keydown-B'); step();
+    until(() => active('CreditsScene'), 120);
+    check('Tastatur: ↑↑↓↓←→ Enter B → Abspann', active('CreditsScene'));
+
+    // Falsche Folge: A startet ganz normal das gewählte Spiel
+    startScene('GameSelectScene'); step(20);
+    ['up', 'up', 'jump'].forEach(a => tapIn(0, a));
+    until(() => active('MenuScene'), 60);
+    check('Ohne vollständigen Code: A startet wie gewohnt', active('MenuScene') && !active('CreditsScene'));
+
+    // 7) Victory und Level-Banner zeigen das Avatar-Passwort
+    startScene('VictoryScene', { levelIndex: 0, collected: 1, total: 5 }); step(10);
+    const vic = game.scene.getScene('VictoryScene').children.list.filter(o => o.texture && o.texture.key.startsWith('avatar_'))
+      .map(o => o.texture.key.replace('avatar_', ''));
+    check('Victory: Passwort fürs nächste Level als 4 Avatare', vic.join() === Passwords.forLevel(1).join(), `(${vic})`);
+    startScene('GameScene', { levelIndex: 1 }); step(5);
+    const banner = [];
+    const scan = o => { if (o.type === 'Text') banner.push(o.text); if (o.list) o.list.forEach(scan); };
+    game.scene.getScene('GameScene').children.list.forEach(scan);
+    check('Level-Banner: Passwort mit Namen', banner.includes(`${TXT.passwordLabel}: ${Passwords.label(LEVELS[1].password)}`) &&
+      Passwords.label(LEVELS[1].password) === 'EDITH · KURT · JESSICA · SIMON');
+    setInput(0); setInput(1);
+  }
+
   /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
   function checkOffline() {
     const external = performance.getEntriesByType('resource').map(e => e.name).filter(n => !n.startsWith('file:'));
@@ -934,6 +1059,7 @@
       runSspTests();
       try { runLoadingTests(); } catch (e) { out.errors.push(`Ladebildschirm-Test abgebrochen: ${e.stack || e}`); }
       try { runBoulderTests(); } catch (e) { out.errors.push(`Felsbrocken-Test abgebrochen: ${e.stack || e}`); }
+      try { runPasswordTests(); } catch (e) { out.errors.push(`Passwort-Test abgebrochen: ${e.stack || e}`); }
       // Chopfnüss: Lösungs-Test mit echten Eingaben (tools/harness-puzzles.js)
       syncClock(LEVELS.length + 60);
       PlayerInput.prototype.update = scriptedInputUpdate;

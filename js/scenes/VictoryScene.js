@@ -59,18 +59,21 @@ class VictoryScene extends Phaser.Scene {
     this.time.delayedCall(800, () => { this.ready = true; });
   }
 
-  /** Passwort für das nächste Level in vier SNES-artigen Kästchen. */
+  /** Passwort für das nächste Level: vier SNES-artige Kästchen mit den Avatar-Köpfen. */
   showPassword(cx) {
     const code = Passwords.forLevel(this.levelIndex + 1);
     this.add.text(cx, 245, tx(TXT.victoryPassword, { label: levelLabel(this.levelIndex + 1) }), {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
-    code.split('').forEach((digit, i) => {
-      const x = cx + (i - 1.5) * 70;
-      this.add.rectangle(x, 300, 56, 64, 0x10131c, 0.9).setStrokeStyle(3, 0xf7d117);
-      this.add.text(x, 302, digit, { fontFamily: FONT, fontSize: '28px', color: '#f7d117' }).setOrigin(0.5);
+    code.forEach((key, i) => {
+      const x = cx + (i - 1.5) * 84;
+      this.add.rectangle(x, 300, 70, 70, 0x7f93c0).setStrokeStyle(3, 0xf7d117);
+      this.add.image(x, 300, `avatar_${key}`);
+      this.add.text(x, 344, Passwords.avatar(key).name, {
+        fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5);
     });
-    this.add.text(cx, 348, TXT.victoryWriteDown, {
+    this.add.text(cx, 368, TXT.victoryWriteDown, {
       fontFamily: FONT, fontSize: '9px', color: '#dddddd', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
   }

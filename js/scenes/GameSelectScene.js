@@ -6,6 +6,8 @@
  *   BILDERGALLERIE         → Familienbilder mit Sprüchen (GalleryScene)
  * Bedienung: Links/Rechts wählt das Spiel, Runter die Bildergalerie, Hoch
  * zurück zu den Spielen; A / START / ENTER bestätigen, M = Ton an/aus.
+ * Geheim: Hoch, Hoch, Runter, Runter, Links, Rechts, A, B (CHEATS.konami;
+ * Tastatur: A = Leertaste/Enter, B = Taste B) → direkt in den Abspann.
  * Aus jedem Spiel führt die Pause → "HAUPTMENÜ" hierher.
  * ===================================================================== */
 
@@ -51,9 +53,37 @@ class GameSelectScene extends Phaser.Scene {
 
     this.enterPressed = false;
     this.input.keyboard.on('keydown-ENTER', () => { this.enterPressed = true; });
+    this.konami = 0;              // wie weit der Geheim-Code schon eingegeben ist
+    this.bPressed = false;
+    this.input.keyboard.on('keydown-B', () => { this.bPressed = true; });
     this.footer = this.add.text(cx, GAME_HEIGHT - 20, '', { fontFamily: FONT, fontSize: '9px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5);
     this.input.keyboard.on('keydown-M', () => Sfx.toggleMute());
     this.refresh();
+  }
+
+  /**
+   * Geheim-Code (CHEATS.konami) mitverfolgen. Gibt true zurück, wenn ein
+   * A-Druck zum Code gehört hat (dann startet er kein Spiel).
+   */
+  feedKonami(any, a, b) {
+    const token = ['up', 'down', 'left', 'right'].find(d => any(d)) || (a ? 'a' : b ? 'b' : null);
+    if (!token) return false;
+    const seq = CHEATS.konami;
+    if (token === seq[this.konami]) this.konami++;
+    else this.konami = token === seq[0] ? 1 : 0;
+    if (this.konami === seq.length) {
+      this.konami = 0;
+      this.leaving = true;
+      Sfx.play(this, 'win');
+      this.cheatText = this.add.text(GAME_WIDTH / 2, 100, TXT.konamiCredits, {
+        fontFamily: FONT, fontSize: '12px', color: '#ff7ad9', stroke: '#000000', strokeThickness: 4
+      }).setOrigin(0.5);
+      this.time.delayedCall(700, () => {
+        this.cameras.main.fadeOut(300, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('CreditsScene'));
+      });
+    }
+    return token === 'a' && this.konami === seq.indexOf('a') + 1;
   }
 
   /** Mini-Bild: Berg mit Schweizerfahne und den beiden Wanderern. */
@@ -114,10 +144,13 @@ class GameSelectScene extends Phaser.Scene {
     if (this.leaving) return;
 
     const any = a => this.inputs.some(i => i.justPressed(a));
+    const enter = this.enterPressed, b = this.bPressed;
+    this.enterPressed = this.bPressed = false;
+    // Geheim-Code: ein gedrücktes A, das zum Code gehört, startet kein Spiel
+    const aForCode = this.feedKonami(any, enter || any('jump'), b || any('back'));
+    if (this.leaving) return;
     this.move(any);
-    const enter = this.enterPressed;
-    this.enterPressed = false;
-    if (enter || any('jump') || any('start')) {
+    if (!aForCode && (enter || any('jump') || any('start'))) {
       this.leaving = true;
       Sfx.play(this, 'select');
       const target = this.selected === 2 ? 'GalleryScene' : this.cards[this.selected].scene;

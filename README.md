@@ -34,6 +34,10 @@ Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und v
 **Bildergalerie:** Im Hauptmenü (Spielauswahl) führt „BILDERGALLERIE“ (Runter, dann A / ENTER) zur `GalleryScene`: dieselben Bilder gross, darunter der Spruch, als letztes, ehrendes Bild das Gedenkbild für Kurt & Peter; Links/Rechts blättert, B / ESC führt zurück.
 
 **Gedenken an Kurt & Peter:** Im Abspann-Lauftext der `CreditsScene` steht vor dem „ÄNDI“ ein hervorgehobener Abschnitt: „In liebevoller Erinnerig an“ / **KURT & PETER** (gross, golden, zwischen zwei Edelweiss) / „Ihr sind immer Teil vo üsem Abentüür!“ (Texte: `TXT.memorialRoll`). Danach folgt wie gewohnt das Dankesbild. Das Gedenkbild (`assets/images/loading/peterkurt.jpg`, eingebettet wie die Ladebilder) ist das 7. und letzte Bild der Bildergalerie. In der zufälligen Auswahl der Ladebildschirme erscheint es bewusst nicht.
+
+**Passwörter mit Familien-Avataren:** Ein Passwort besteht aus 4 Köpfen der Familie (`AVATARS` in `js/config.js`: Edith, Kurt, Sven, Jessica, Simon, Angi, Peter, Hannah, Ginny), z. B. Edith · Kurt · Jessica · Simon für Level 2. Im Passwort-Feld schaltet Hoch/Runter den Avatar durch, Links/Rechts wechselt die Stelle, die Tasten 1–9 wählen direkt (Reihenfolge wie oben). Die Victory-Szene zeigt das Passwort fürs nächste Level als 4 Avatare, das Level-Banner mit Namen. Die Köpfe erzeugt die BootScene aus den fertigen Figuren (`avatar_<key>`). Codes stehen bei den Levels in `js/levels.js` (`password`).
+
+**Geheim-Codes:** 4× Ginny im Passwort-Feld → direkt in den Abspann (mit Gedenk-Zeile und Dankesbild). In der Spielauswahl dasselbe mit Hoch, Hoch, Runter, Runter, Links, Rechts, A, B (Tastatur: A = Leertaste/Enter, B = Taste B). Sven · Angi · Hannah · Ginny → direkt zur Geburtstagsfeier (`BIRTHDAY.secretCode`, `CHEATS` in `js/config.js`).
 - Originale: `assets/images/loading/` (Pixel-Art, 4:3 bzw. breiter)
 - `node tools/embed-images.js` schneidet mittig auf 4:3 zu und verkleinert auf 512×384 (im Canvas eines headless Chrome/Edge, ohne npm-Paket). Ergebnis: `js/generated/loading-images.js` (JPEG als Base64). Mit `--preview <Ordner>` werden die verkleinerten Bilder zusätzlich abgelegt.
 - Die Zuordnung Datei → Schlüssel steht in `SLIDES` im Script, die Sprüche (und die Reihenfolge der Galerie) in `TXT.loadingSlides` (`js/texts.js`). Für ein neues Bild: Datei ablegen, in `SLIDES` eintragen, Spruch mit gleichem Schlüssel ergänzen, Script ausführen.
@@ -112,7 +116,7 @@ js/dialog.js               Dialogbox mit Porträt & Schreibmaschinen-Text
 js/art.js                  Gelände, Mechaniken, Parallax-Hintergrund & Licht ("Modern Pixel")
 js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte, ruft art.js auf)
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
-js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe
+js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe mit Familien-Avataren
 js/scenes/GameScene.js     Gameplay-Szene: erzeugt die Module aus js/game/ und taktet sie
 js/scenes/PauseScene.js    Pausenmenü für alle Spiele (START/ESC/P): Weiter, Neustart, Ton, Hauptmenü
 js/scenes/GameSelectScene.js  Hauptmenü: Albishorn Climbers, Super Sempach Party oder Bildergalerie
@@ -182,6 +186,7 @@ Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das 
 - **Galerie-Test**: Hauptmenü → Runter wählt BILDERGALLERIE (Hoch zurück zur letzten Karte) → A bzw. ENTER öffnet die Galerie; Rechts blättert durch alle 6 Bilder (mit Spruch) und zum Schluss das Gedenkbild, am Ende wieder von vorne, Links zurück; B bzw. ESC → Hauptmenü.
 - **Gedenk-Test**: Abschnitt „In liebevoller Erinnerig an / KURT & PETER / Ihr sind immer Teil vo üsem Abentüür!“ steht im Lauftext direkt vor „ÄNDI“, hervorgehoben (gross, golden, Edelweiss), zieht beim Rollen durchs Bild; kein Standbild mehr im Abspann; Gedenkbild bleibt 7. Bild der Galerie.
 - **Felsbrocken-Test**: Allein schieben → Brocken bleibt liegen und dreht sich nicht; zu zweit nach rechts → rollt im Uhrzeigersinn, Winkel passt zur Strecke (Weg / Radius); nach links → gegen den Uhrzeigersinn; Licht dreht nicht mit; Physik-Körper bleibt ein 64×64-Rechteck; Kisten rollen nicht.
+- **Passwort-Test**: 9 Avatare sichtbar und verschieden; alle Level-Passwörter 4 Avatare und eindeutig; Controller wählt per Hoch/Runter/Links/Rechts das Passwort von Level 3 → Ladebildschirm → Level 3; falsches Passwort → Meldung; Tastatur 1–9 und Backspace; Geburtstags-Code → Gipfelfeier; 4× Ginny → Abspann mit Gedenk-Zeile → Dankesbild; ↑↑↓↓←→ A B in der Spielauswahl (Controller und Tastatur) → Abspann, das A im Code startet kein Spiel, ohne vollständigen Code startet A normal; Victory und Level-Banner zeigen das Avatar-Passwort.
 - Geprüft werden ausserdem: fehlende Texturen in jeder Szene, die ganze Familie auf dem Gipfel und im Abspann, und die Fairness bei Pedalo-Power (8 Zufalls-Layouts, ein Bot muss allen Enten ausweichen können).
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
 
