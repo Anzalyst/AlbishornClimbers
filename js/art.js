@@ -221,21 +221,63 @@ const Art = {
     }
   },
 
+  /**
+   * Felsbrocken (44×44): unregelmässiger Umriss, Facetten, Risse, Moos – so
+   * sieht man das Rollen. Für den Steinschlag ('rollingRock') und vergrössert
+   * für den schiebbaren Brocken ('boulder').
+   */
+  rockBody(ctx) {
+    const radii = [20, 19, 21, 18, 20, 21, 19, 20, 18, 21, 20, 19];
+    const pt = (i, k = 1) => {
+      const a = (i / radii.length) * Math.PI * 2;
+      return [22 + Math.cos(a) * radii[i % radii.length] * k, 22 + Math.sin(a) * radii[i % radii.length] * k];
+    };
+    const outline = k => { ctx.beginPath(); radii.forEach((_, i) => ctx.lineTo(...pt(i, k))); ctx.closePath(); };
+    outline(1); ctx.fillStyle = '#26282e'; ctx.fill();                       // dunkle Kontur
+    outline(0.9); ctx.fillStyle = '#7c7468'; ctx.fill();                     // Grundton (warmes Grau)
+    // Facetten: hellere und dunklere Flächen
+    [[0, 2, '#948a7c'], [3, 5, '#665e54'], [6, 8, '#8a8174'], [9, 11, '#5a534a']].forEach(([a, b, c]) => {
+      ctx.beginPath(); ctx.moveTo(22, 22);
+      for (let i = a; i <= b; i++) ctx.lineTo(...pt(i, 0.88));
+      ctx.closePath(); ctx.fillStyle = c; ctx.fill();
+    });
+    outline(0.55); ctx.fillStyle = 'rgba(140,130,118,0.55)'; ctx.fill();
+    // Risse
+    ctx.strokeStyle = '#2e2a26'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(8, 16); ctx.lineTo(17, 21); ctx.lineTo(14, 31); ctx.lineTo(19, 37);
+    ctx.moveTo(26, 6); ctx.lineTo(29, 15); ctx.lineTo(38, 19); ctx.moveTo(29, 15); ctx.lineTo(27, 24);
+    ctx.moveTo(30, 33); ctx.lineTo(36, 30); ctx.stroke();
+    // Moos & Flechten
+    ctx.fillStyle = '#4f7a34'; ctx.beginPath(); ctx.ellipse(13, 9, 5, 3, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6f9a44'; ctx.beginPath(); ctx.ellipse(12, 8, 2.5, 1.5, -0.5, 0, Math.PI * 2); ctx.fill();
+    [[33, 36], [9, 27], [24, 34]].forEach(([x, y]) => this.rect(ctx, x, y, 2, 2, '#c8c070'));
+  },
+
+  /** Licht oben links, Schatten unten rechts über dem Felsbrocken (44×44). */
+  rockLight(ctx) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(22, 22, 19, 0, Math.PI * 2); ctx.clip();
+    const g = ctx.createLinearGradient(6, 6, 38, 38);
+    g.addColorStop(0, 'rgba(255,250,235,0.42)'); g.addColorStop(0.45, 'rgba(255,255,255,0)');
+    g.addColorStop(0.7, 'rgba(0,0,0,0.15)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 44, 44);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(14, 12, 4, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  },
+
   objects(scene) {
     this.canvas(scene, 'crate', TILE, TILE, ctx => this.woodCrate(ctx, false));
     this.canvas(scene, 'pushCrate', TILE, TILE, ctx => this.woodCrate(ctx, true));
 
+    // Schiebbarer Felsbrocken (2×2 Kacheln): Design des Steinschlag-Brockens,
+    // vergrössert; er rollt nicht → Licht & Schatten fest eingezeichnet
     this.canvas(scene, 'boulder', TILE * 2, TILE * 2, ctx => {
       ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(32, 36, 31, 27, 0, 0, Math.PI * 2);
-      ctx.clip();
-      this.radial(ctx, 22, 22, 50, [[0, '#b3b8c1'], [0.55, '#858a94'], [1, '#585c66']]);
-      this.rect(ctx, 34, 34, 12, 2, '#5d616b');
-      this.rect(ctx, 14, 44, 9, 2, '#5d616b');
+      ctx.translate(0, 3);
+      ctx.scale(TILE * 2 / 44, (TILE * 2 - 3) / 44);   // unten bündig, damit er satt aufliegt
+      this.rockBody(ctx);
+      this.rockLight(ctx);
       ctx.restore();
-      this.rect(ctx, 14, 9, 22, 4, '#6cbd4f');               // Moos
-      this.rect(ctx, 17, 8, 14, 2, '#8ad868');
     });
 
     this.canvas(scene, 'door', TILE, TILE, ctx => {
@@ -364,43 +406,10 @@ const Art = {
       ctx.fillStyle = '#16181c'; ctx.beginPath(); ctx.ellipse(28, 40, 17, 18, 0, Math.PI, 0); ctx.lineTo(45, 52); ctx.lineTo(11, 52); ctx.closePath(); ctx.fill();
       [[6, 30], [44, 22], [20, 12], [36, 10]].forEach(([x, y]) => this.rect(ctx, x, y, 4, 2, '#5a5e68'));
     });
-    // Rollender Felsbrocken: unregelmässiger Umriss, Facetten, Risse, Moos –
-    // so sieht man das Rollen. Licht & Schatten kommen aus 'rockShade', das
-    // NICHT mitdreht (Licht bleibt oben links → plastisch).
-    this.canvas(scene, 'rollingRock', 44, 44, ctx => {
-      const radii = [20, 19, 21, 18, 20, 21, 19, 20, 18, 21, 20, 19];
-      const pt = (i, k = 1) => {
-        const a = (i / radii.length) * Math.PI * 2;
-        return [22 + Math.cos(a) * radii[i % radii.length] * k, 22 + Math.sin(a) * radii[i % radii.length] * k];
-      };
-      const outline = k => { ctx.beginPath(); radii.forEach((_, i) => ctx.lineTo(...pt(i, k))); ctx.closePath(); };
-      outline(1); ctx.fillStyle = '#26282e'; ctx.fill();                       // dunkle Kontur
-      outline(0.9); ctx.fillStyle = '#7c7468'; ctx.fill();                     // Grundton (warmes Grau)
-      // Facetten: hellere und dunklere Flächen
-      [[0, 2, '#948a7c'], [3, 5, '#665e54'], [6, 8, '#8a8174'], [9, 11, '#5a534a']].forEach(([a, b, c]) => {
-        ctx.beginPath(); ctx.moveTo(22, 22);
-        for (let i = a; i <= b; i++) ctx.lineTo(...pt(i, 0.88));
-        ctx.closePath(); ctx.fillStyle = c; ctx.fill();
-      });
-      outline(0.55); ctx.fillStyle = 'rgba(140,130,118,0.55)'; ctx.fill();
-      // Risse
-      ctx.strokeStyle = '#2e2a26'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(8, 16); ctx.lineTo(17, 21); ctx.lineTo(14, 31); ctx.lineTo(19, 37);
-      ctx.moveTo(26, 6); ctx.lineTo(29, 15); ctx.lineTo(38, 19); ctx.moveTo(29, 15); ctx.lineTo(27, 24);
-      ctx.moveTo(30, 33); ctx.lineTo(36, 30); ctx.stroke();
-      // Moos & Flechten
-      ctx.fillStyle = '#4f7a34'; ctx.beginPath(); ctx.ellipse(13, 9, 5, 3, -0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#6f9a44'; ctx.beginPath(); ctx.ellipse(12, 8, 2.5, 1.5, -0.5, 0, Math.PI * 2); ctx.fill();
-      [[33, 36], [9, 27], [24, 34]].forEach(([x, y]) => this.rect(ctx, x, y, 2, 2, '#c8c070'));
-    });
-    this.canvas(scene, 'rockShade', 44, 44, ctx => {
-      ctx.beginPath(); ctx.arc(22, 22, 19, 0, Math.PI * 2); ctx.clip();
-      const g = ctx.createLinearGradient(6, 6, 38, 38);
-      g.addColorStop(0, 'rgba(255,250,235,0.42)'); g.addColorStop(0.45, 'rgba(255,255,255,0)');
-      g.addColorStop(0.7, 'rgba(0,0,0,0.15)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 44, 44);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(14, 12, 4, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
-    });
+    // Rollender Felsbrocken (Zeichnung: rockBody). Licht & Schatten kommen aus
+    // 'rockShade', das NICHT mitdreht (Licht bleibt oben links → plastisch).
+    this.canvas(scene, 'rollingRock', 44, 44, ctx => this.rockBody(ctx));
+    this.canvas(scene, 'rockShade', 44, 44, ctx => this.rockLight(ctx));
     this.canvas(scene, 'rockShadow', 40, 10, ctx => {
       ctx.fillStyle = 'rgba(0,0,0,1)'; ctx.beginPath(); ctx.ellipse(20, 5, 19, 4, 0, 0, Math.PI * 2); ctx.fill();
     });

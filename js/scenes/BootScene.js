@@ -212,8 +212,12 @@ function tintColor(hex, amount) {
   return '#' + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
 }
 
-/** Raster aus Zeichen → doppelt so grosses Farbraster mit Kontur und Shading. */
-function familyPixels(rows, palette) {
+/**
+ * Raster aus Zeichen → doppelt so grosses Farbraster (noch ohne Kontur).
+ * overlays: von Hand in voller Auflösung gezeichnete Stellen (z. B. Svens
+ * Kopf), [{ x, y, rows, palette }] in Pixeln: ' ' = lassen, '.' = transparent.
+ */
+function familyColors(rows, palette, overlays = []) {
   const cell = (x, y) => (rows[y] && palette[rows[y][x]] ? rows[y][x] : null);
   const H = rows.length * 2, W = rows[0].length * 2;
   const color = [], dot = [];
@@ -234,6 +238,18 @@ function familyPixels(rows, palette) {
       dot[y].push(isDot && ch && FAMILY_DOTS.includes(ch));
     }
   }
+  overlays.forEach(o => o.rows.forEach((row, r) => [...row].forEach((ch, c) => {
+    const y = o.y + r, x = o.x + c;
+    if (ch === ' ' || y < 0 || y >= H || x < 0 || x >= W) return;
+    color[y][x] = ch === '.' ? null : (o.palette || {})[ch] || palette[ch] || null;
+    dot[y][x] = FAMILY_DOTS.includes(ch);
+  })));
+  return { color, dot };
+}
+
+/** Farbraster (familyColors) → Kontur und Shading wie bei Jessica und Simon. */
+function familyStyle({ color, dot }) {
+  const H = color.length, W = color[0].length;
   const filled = (x, y) => y >= 0 && y < H && x >= 0 && x < W && !!color[y][x];
   // Licht von oben rechts
   const shaded = color.map((row, y) => row.map((c, x) => {
@@ -247,6 +263,11 @@ function familyPixels(rows, palette) {
     if (c) return x === 0 || y === 0 || x === W - 1 || y === H - 1 ? FAMILY_OUTLINE : c;
     return filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1) ? FAMILY_OUTLINE : null;
   }));
+}
+
+/** Raster aus Zeichen → doppelt so grosses Farbraster mit Kontur und Shading. */
+function familyPixels(rows, palette, overlays) {
+  return familyStyle(familyColors(rows, palette, overlays));
 }
 
 /** Zeichen-Raster mit Palette → Farbraster (für Jessica & Simon). */
@@ -374,6 +395,28 @@ const PEOPLE = {
       [4, 2, 'FFFFFFF'], [6, 3, 'FFFFF'], [15, 2, 'fffffff'],
       [16, 2, 'f'], [17, 2, 'f'], [18, 1, 'f'], [19, 1, 'ff']
     ],
+    // Kopf in voller Auflösung (Pixel x 18–37, y 0–11): runde Basecap mit
+    // Schirm nach vorn, Haaransatz und Ohr, Nase, Lächeln (rechts ' ' = frei
+    // lassen für den Winke-Arm)
+    hiRes: [{
+      x: 18, y: 0,
+      // c/C/I = Cap (heller als die Kontur), v = Schirm, h = Haaransatz
+      palette: { c: '#5a5e6c', C: '#43465a', I: '#7c8092', v: '#3a3d4c', h: '#4e3424', S: '#cc9068' },
+      rows: [
+        '................    ',
+        '.......cccccc...    ',
+        '.....cIIccccccc...  ',
+        '....cIccccccccccc.  ',
+        '....hCCCCCCCCCCvvvv ',
+        '....hhsssssssssss   ',
+        '....hhssssssssess   ',
+        '....hsSsssssssssss  ',
+        '....hhssssssssssS   ',
+        '.....hsssssssmmss   ',
+        '......Sssssssss.    ',
+        '........sssss...    '
+      ]
+    }],
     frames: {
       wave: [[8, 17, '.'], [9, 17, '.'], [10, 17, '.'], [11, 17, '.'], [12, 17, '..'],
              [5, 17, 'o'], [4, 18, 's'], [3, 18, 's'], [2, 18, 's'], [1, 18, 'ss']],
@@ -514,6 +557,26 @@ const DAUGHTER = {
     '.ww..ww.'
   ],
   palette: { r: '#d49aaa', R: '#b07888', s: '#f4c8a4', e: '#222222', g: '#9a9ca4', G: '#7a7c84', n: '#ec5fa4', w: '#eef0f8' },
+  // Kopf in voller Auflösung (Pixel 16×12): runde Mütze mit Bündchen,
+  // Stupsnase, rote Bäckchen – sie schaut nach links
+  hiRes: [{
+    x: 0, y: 0,
+    palette: { b: '#f0a0a8', m: '#c0506a', h: '#e0b860' },
+    rows: [
+      '................',
+      '.....rrrrrr.....',
+      '...rrrrrrrrrr...',
+      '..rrrrrrrrrrrr..',
+      '..RRRRRRRRRRRR..',
+      '..shssssssrrrr..',
+      '..sesssssssrrr..',
+      '.ssssssssssrr...',
+      '..sbsssssssrr...',
+      '..ssmssssssh....',
+      '...ssssssss.....',
+      '....ssssss......'
+    ]
+  }],
   // Position im Sven-Raster: linke obere Ecke (der Kopf ragt über die Kraxe hinaus)
   col: 3,
   row: -1
@@ -651,7 +714,7 @@ class BootScene extends Phaser.Scene {
       const tex = this.textures.createCanvas(`person_${key}`, FW * FRAME_ORDER.length, FH);
       FRAME_ORDER.forEach((name, i) => {
         const grid = this.buildPersonGrid(person, person.frames[name] || []);
-        this.drawColors(tex.getContext(), familyPixels(grid, person.palette), 1, i * FW, 0);
+        this.drawColors(tex.getContext(), familyPixels(grid, person.palette, person.hiRes), 1, i * FW, 0);
         tex.add(i, 0, i * FW, 0, FW, FH);
       });
       tex.refresh();
@@ -659,7 +722,7 @@ class BootScene extends Phaser.Scene {
 
     // Tochter (eigenes Sprite)
     const d = this.textures.createCanvas('svenDaughter', 8 * SCALE, DAUGHTER.pixels.length * SCALE);
-    this.drawColors(d.getContext(), familyPixels(DAUGHTER.pixels, DAUGHTER.palette));
+    this.drawColors(d.getContext(), familyPixels(DAUGHTER.pixels, DAUGHTER.palette, DAUGHTER.hiRes));
     d.refresh();
 
     // Ginny, die Katze: 3 Frames (sitzen, 2× laufen)
@@ -679,13 +742,14 @@ class BootScene extends Phaser.Scene {
     // Sven mit Tochter, die über seine Schulter schaut
     const shift = -DAUGHTER.row;                               // Platz für ihren Kopf oben
     const svenGrid = this.buildPersonGrid(PEOPLE.sven);
-    const combined = Array.from({ length: PERSON_HEIGHT + shift }, (_, r) => [...(svenGrid[r - shift] || '.'.repeat(PEOPLE.sven.width))]);
-    DAUGHTER.pixels.forEach((row, r) => [...row].forEach((ch, c) => {
-      const R = r + DAUGHTER.row + shift, C = c + DAUGHTER.col;
-      if (ch !== '.' && combined[R] && combined[R][C] === '.') combined[R][C] = ch;
+    const padded = Array.from({ length: PERSON_HEIGHT + shift }, (_, r) => svenGrid[r - shift] || '.'.repeat(PEOPLE.sven.width));
+    const both = familyColors(padded, PEOPLE.sven.palette, PEOPLE.sven.hiRes.map(o => Object.assign({}, o, { y: o.y + shift * 2 })));
+    const hannah = familyColors(DAUGHTER.pixels, DAUGHTER.palette, DAUGHTER.hiRes);
+    hannah.color.forEach((row, r) => row.forEach((c, x) => {
+      const Y = r + (DAUGHTER.row + shift) * 2, X = x + DAUGHTER.col * 2;
+      if (c && both.color[Y] && !both.color[Y][X]) { both.color[Y][X] = c; both.dot[Y][X] = hannah.dot[r][x]; }
     }));
-    const svenColors = familyPixels(combined.map(row => row.join('')), Object.assign({}, DAUGHTER.palette, PEOPLE.sven.palette));
-    this.makePortrait('portrait_sven', svenColors.slice(0, 26).map(row => row.slice(4)), 2);
+    this.makePortrait('portrait_sven', familyStyle(both).slice(0, 26).map(row => row.slice(4)), 2);
 
     // Porträts der beiden Geschwister
     Object.keys(HIKER_STYLES).forEach(key => {
