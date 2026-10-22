@@ -2,18 +2,10 @@
  * CreditsScene – Abspann
  *
  * Die Einträge aus CREDITS (config.js) rollen von unten nach oben über
- * den Nachthimmel; unten wandert die ganze Familie vorbei.
- *   Sprung (gedrückt halten) = schneller   ESC / Sprung am Ende = weiter
- * Danach: Gedenkbild für Kurt & Peter mit KES-Textbox (MEMORIAL.duration,
- * A / START / ENTER überspringt), dann weich zur EndScene (Dankesbild).
+ * den Nachthimmel; unten wandert die ganze Familie vorbei. Vor dem "ÄNDI"
+ * folgt ein hervorgehobener Abschnitt in Erinnerung an Kurt & Peter.
+ *   Sprung (gedrückt halten) = schneller   ESC / Sprung am Ende = weiter zur EndScene
  * ===================================================================== */
-
-const MEMORIAL = {
-  fadeIn: 1200,        // sanftes Einblenden des Gedenkbilds
-  duration: 5000,      // so lange bleibt es stehen (ab Ende des Einblendens)
-  skipAfter: 400,      // kurze Sperre, damit der Tastendruck vom Abspann nicht gleich überspringt
-  fadeOut: 1200
-};
 
 class CreditsScene extends Phaser.Scene {
   constructor() {
@@ -24,9 +16,6 @@ class CreditsScene extends Phaser.Scene {
     this.inputs = createPlayerInputs(this);
     this.leaving = false;
     this.finished = false;
-    this.memorial = null;     // Gedenk-Sequenz: { elapsed, leaving }
-    this.enterPressed = false;
-    this.input.keyboard.on('keydown-ENTER', () => { this.enterPressed = true; });
     this.cameras.main.fadeIn(800, 0, 0, 0);
 
     this.createNightSky();
@@ -107,6 +96,8 @@ class CreditsScene extends Phaser.Scene {
       y += 70;
     });
 
+    y = this.addMemorial(y);
+
     // Zum Schluss: KES-Logo und "ENDE" – bleibt in der Bildmitte stehen
     const end = this.add.text(cx, y + 40, TXT.creditsEnd, {
       fontFamily: FONT, fontSize: '28px', color: '#ffffff'
@@ -122,6 +113,29 @@ class CreditsScene extends Phaser.Scene {
     }).setOrigin(0.5, 1).setDepth(30).setVisible(false);
   }
 
+  /**
+   * Gedenk-Abschnitt im Lauftext: "In liebevoller Erinnerig an" / KURT & PETER
+   * (gross, golden, zwischen zwei Edelweiss) / "Ihr sind immer Teil vo üsem
+   * Abentüür!" – mit ruhigem Abstand davor und danach. Gibt das neue y zurück.
+   */
+  addMemorial(y) {
+    const cx = GAME_WIDTH / 2;
+    const [intro, names, outro] = TXT.memorialRoll;
+    y += 40;
+    const parts = [
+      this.add.text(cx, y, intro, { fontFamily: FONT, fontSize: '12px', color: '#c8d0e8', align: 'center' }).setOrigin(0.5, 0),
+      this.add.text(cx, y + 34, names, {
+        fontFamily: FONT, fontSize: '22px', color: '#f7d117', align: 'center', stroke: '#5b2d1a', strokeThickness: 5
+      }).setOrigin(0.5, 0),
+      this.add.text(cx, y + 84, outro, { fontFamily: FONT, fontSize: '12px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 0)
+    ];
+    this.memorialTexts = parts;
+    const half = parts[1].width / 2 + 34;
+    [-half, half].forEach(dx => parts.push(this.add.image(cx + dx, y + 45, 'edelweiss').setScale(2)));
+    this.roll.add(parts);
+    return y + 84 + 30 + 110;
+  }
+
   playMusic() {
     if (this.leaving) return;
     this.song = Sfx.melody(this, Sfx.songs.credits, 0.3);
@@ -130,9 +144,6 @@ class CreditsScene extends Phaser.Scene {
 
   update(time, delta) {
     this.inputs.forEach(i => i.update());
-    const enter = this.enterPressed;
-    this.enterPressed = false;
-    if (this.memorial) { this.updateMemorial(delta, enter); return; }
 
     // Wanderer laufen von links nach rechts und kommen immer wieder
     this.parade.forEach(s => {
@@ -150,64 +161,16 @@ class CreditsScene extends Phaser.Scene {
         Sfx.play(this, 'win');
         this.time.delayedCall(800, () => this.prompt.setVisible(true));
       }
-    } else if (this.prompt.visible && (enter || this.inputs.some(i => i.justPressed('jump') || i.justPressed('start')))) {
+    } else if (this.prompt.visible && this.inputs.some(i => i.justPressed('jump') || i.justPressed('start'))) {
       this.leave();
     }
   }
 
-  /** Abspann zu Ende: ausblenden, dann das Gedenkbild (ESC während des Gedenkbilds = weiter). */
   leave() {
-    if (this.memorial) { this.leaveMemorial(); return; }
     if (this.leaving) return;
     this.leaving = true;
     if (this.song) this.song.stop();
     this.cameras.main.fadeOut(600, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.showMemorial());
-  }
-
-  /** Gedenkbild für Kurt & Peter im Dia-Rahmen, darunter die KES-Textbox. */
-  showMemorial() {
-    const cx = GAME_WIDTH / 2;
-    const layer = this.add.container(0, 0).setDepth(100);
-    const pw = 480, ph = 360, border = 8, top = 22;
-    const g = this.add.graphics();
-    g.fillStyle(0x0a0b14).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    g.fillStyle(0xe9e4d4).fillRect(cx - pw / 2 - border, top, pw + border * 2, ph + border * 2);
-    g.fillStyle(0x8a8474).fillRect(cx - pw / 2 - 2, top + border - 2, pw + 4, ph + 4);
-    layer.add(g);
-    if (this.textures.exists('loading_erinnerung')) {
-      this.memorialPhoto = this.add.image(cx, top + border + ph / 2, 'loading_erinnerung').setDisplaySize(pw, ph);
-      layer.add(this.memorialPhoto);
-    }
-    const boxY = top + ph + border * 2 + 14, boxH = 70;
-    layer.add(drawKesTextBox(this, 40, boxY, GAME_WIDTH - 80, boxH));
-    this.memorialText = this.add.text(cx, boxY + boxH / 2, TXT.memorial, {
-      fontFamily: FONT, fontSize: '12px', color: '#ffffff', align: 'center', lineSpacing: 10,
-      wordWrap: { width: GAME_WIDTH - 140 }
-    }).setOrigin(0.5);
-    this.memorialHint = this.add.text(GAME_WIDTH - 40, GAME_HEIGHT - 10, TXT.memorialSkip, {
-      fontFamily: FONT, fontSize: '8px', color: '#aab4cc'
-    }).setOrigin(1, 1).setVisible(false);
-    layer.add([this.memorialText, this.memorialHint]);
-    this.memorial = { elapsed: 0, leaving: false, layer };
-    this.cameras.main.fadeIn(MEMORIAL.fadeIn, 0, 0, 0);
-  }
-
-  updateMemorial(delta, enter) {
-    const m = this.memorial;
-    m.elapsed += delta;
-    this.memorialHint.setVisible(m.elapsed >= MEMORIAL.skipAfter && Math.floor(m.elapsed / 500) % 2 === 0);
-    if (m.leaving) return;
-    const pressed = enter || this.inputs.some(i => i.justPressed('jump') || i.justPressed('start'));
-    if ((pressed && m.elapsed >= MEMORIAL.skipAfter) || m.elapsed >= MEMORIAL.fadeIn + MEMORIAL.duration) this.leaveMemorial();
-  }
-
-  /** Weich ins Dankesbild (EndScene) überblenden. */
-  leaveMemorial() {
-    const m = this.memorial;
-    if (m.leaving) return;
-    m.leaving = true;
-    this.cameras.main.fadeOut(MEMORIAL.fadeOut, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('EndScene'));
   }
 }

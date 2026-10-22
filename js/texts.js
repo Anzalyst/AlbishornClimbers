@@ -96,9 +96,10 @@ const TXT = {
     kinderwagen: 'ZWEI-SPIELER-MODUS VOR EINIGE JAHRE... NO OHNE CONTROLLER!'
   },
 
-  // Gedenkbild für Kurt & Peter (Abspann vor dem Dankesbild, letztes Bild der Galerie)
+  // Gedenken an Kurt & Peter: Bildunterschrift des Gedenkbilds (letztes Bild
+  // der Galerie) und hervorgehobener Abschnitt im Abspann-Lauftext
   memorial: 'In liebevoller Erinnerig an Kurt & Peter. Ihr sind immer Teil vo üsem Abentüür!',
-  memorialSkip: 'A / ENTER = WIITER',
+  memorialRoll: ['In liebevoller Erinnerig an', 'KURT & PETER', 'Ihr sind immer Teil vo üsem Abentüür!'],
 
   // Bildergalerie im Hauptmenü (GalleryScene)
   galleryMenu: 'BILDERGALLERIE',

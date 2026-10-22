@@ -283,61 +283,47 @@
       if (!keys.includes(k)) out.errors.push(`Abspann: ${k} läuft nicht mit`);
     });
     if (!sc.children.list.some(o => o.texture && o.texture.key === 'svenDaughter')) out.errors.push('Abspann: Hannah fehlt');
+    checkMemorial(sc);
     step(frames);
-    checkMemorial();
   }
 
-  /** Abspann-Ende: Gedenkbild für Kurt & Peter, ~5 s, überspringbar, dann weich zum Dankesbild. */
-  function checkMemorial() {
+  /** Abspann-Lauftext: hervorgehobener Abschnitt für Kurt & Peter vor "ÄNDI"; Gedenkbild in der Galerie. */
+  function checkMemorial(sc) {
     out.memorial = {};
     const check = (name, ok, detail = '') => {
       out.memorial[name] = !!ok;
       if (!ok) out.errors.push(`Gedenk-Test "${name}" fehlgeschlagen ${detail}`);
     };
-    const active = k => game.scene.isActive(k);
-    const cs = () => game.scene.getScene('CreditsScene');
-    const until = (cond, max) => { let f = 0; while (!cond() && f < max) { step(); f++; } return f; };
-    const tapJump = () => { setInput(0, { jump: true }); step(); setInput(0); step(); };
+    const texts = sc.roll.list.filter(o => o.type === 'Text');
+    const at = str => texts.findIndex(t => t.text === str);
+    const [intro, names, outro] = TXT.memorialRoll;
+    check('Lauftext: "In liebevoller Erinnerig an" / KURT & PETER / "Ihr sind immer Teil vo üsem Abentüür!"',
+      intro === 'In liebevoller Erinnerig an' && names === 'KURT & PETER' && outro === 'Ihr sind immer Teil vo üsem Abentüür!' &&
+      at(intro) >= 0 && at(names) === at(intro) + 1 && at(outro) === at(names) + 1);
+    const t = sc.memorialTexts || [];
+    const end = texts.find(o => o.text === TXT.creditsEnd);
+    const lastCredit = texts[at(intro) - 1];
+    check('Hervorgehoben (gross, golden, Edelweiss) und direkt vor "ÄNDI"',
+      t[1] && t[1].style.fontSize === '22px' && t[1].style.color === '#f7d117' &&
+      sc.roll.list.filter(o => o.texture && o.texture.key === 'edelweiss').length === 2 &&
+      end && t[2].y < end.y && lastCredit && lastCredit.y < t[0].y && t.every(o => o.width < GAME_WIDTH - 60));
+    check('Kein Standbild mehr im Abspann', !('memorial' in sc) && !sc.children.list.some(o => o.texture && o.texture.key === 'loading_erinnerung'));
     const img = game.textures.exists('loading_erinnerung') && game.textures.get('loading_erinnerung').getSourceImage();
-    check('Gedenkbild eingebettet (512×384), nicht im Ladebildschirm, letztes Bild der Galerie',
+    check('Gedenkbild bleibt 7. Bild der Galerie (512×384, nicht im Ladebildschirm)',
       img && img.width === 512 && img.height === 384 && !TXT.loadingSlides.erinnerung &&
-      GalleryScene.slides()[GalleryScene.slides().length - 1] === 'erinnerung' && GalleryScene.caption('erinnerung') === TXT.memorial);
+      GalleryScene.slides().length === 7 && GalleryScene.slides()[6] === 'erinnerung' && GalleryScene.caption('erinnerung') === TXT.memorial);
 
-    // 1) Ohne Eingabe: Abspann fertig → Gedenkbild → nach ~5 s weich zur EndScene
-    let sc = cs();
-    sc.roll.y = sc.rollStopY; step(80);
-    sc.leave();
-    until(() => sc.memorial, 120);
-    step(30);
-    const fading = sc.cameras.main.fadeEffect.isRunning && sc.cameras.main.fadeEffect.direction === false;
-    check('Abspann blendet sanft auf das Gedenkbild um', !!sc.memorial && active('CreditsScene') && fading &&
-      sc.memorialPhoto && sc.memorialPhoto.texture.key === 'loading_erinnerung' && sc.memorialPhoto.displayWidth === 480);
-    check('KES-Textbox mit dem Gedenktext', sc.memorialText && sc.memorialText.text === TXT.memorial &&
-      TXT.memorial === 'In liebevoller Erinnerig an Kurt & Peter. Ihr sind immer Teil vo üsem Abentüür!' &&
-      sc.memorialText.getWrappedText(TXT.memorial).length <= 2);
-    let frames = 30;
-    let fadeOut = false;
-    while (!active('EndScene') && frames < 12 * 60) {
-      step(); frames++;
-      if (sc.memorial.leaving && sc.sys.isActive() && sc.cameras.main.fadeEffect.isRunning) fadeOut = true;
+    // Lauftext rollt durch: der Abschnitt zieht durchs Bild, "ÄNDI" bleibt stehen
+    const seenY = [];
+    setInput(0, { jump: true });   // Sprung gehalten = schneller
+    for (let f = 0; f < 60 * 60 && !sc.finished; f++) {
+      step();
+      const y = sc.roll.y + t[1].y;
+      if (y > 0 && y < GAME_HEIGHT) seenY.push(y);
     }
-    const secs = frames / 60;
-    check('Bleibt ~5 s stehen, dann weich zum Dankesbild', active('EndScene') && fadeOut && secs >= 6 && secs <= 8,
-      `(${secs.toFixed(2)} s inkl. Ein-/Ausblenden)`);
-
-    // 2) Überspringen mit A / Sprung, START und ENTER
-    [['A / Sprung', () => tapJump()], ['START', () => { setInput(0, { start: true }); step(); setInput(0); step(); }],
-      ['ENTER', () => { cs().input.keyboard.emit('keydown-ENTER'); step(); }]].forEach(([name, press]) => {
-      startScene('CreditsScene');
-      sc = cs();
-      sc.roll.y = sc.rollStopY; step(80);
-      sc.leave();
-      until(() => sc.memorial, 120);
-      step(60); press();
-      const f = until(() => active('EndScene'), 200);
-      check(`${name} überspringt das Gedenkbild`, active('EndScene') && f < 100, `(${f} Bilder)`);
-    });
     setInput(0);
+    check('Abschnitt zieht im Lauftext durchs Bild, danach bleibt "ÄNDI" stehen', sc.finished && seenY.length > 60 &&
+      Math.min(...seenY) < GAME_HEIGHT / 2 && sc.roll.y + end.y > 0 && sc.roll.y + end.y < GAME_HEIGHT);
   }
 
   // --- Gamepad & Tastatur: echte Eingabe-Schicht mit simulierten Geräten ---
@@ -465,9 +451,7 @@
     const credits = game.scene.getScene('CreditsScene');
     credits.roll.y = credits.rollStopY; step(80);   // Abspann vorspulen
     tap(padA, 0); step(50);
-    check('Abspann → Gedenkbild (noch nicht EndScene)', active('CreditsScene') && !!credits.memorial && !active('EndScene'));
-    step(30); tap(padA, 0); step(90);   // nach der kurzen Sperre (MEMORIAL.skipAfter)
-    check('Gedenkbild: A → EndScene', active('EndScene'));
+    check('Abspann → EndScene (Dankesbild)', active('EndScene'));
     const end = game.scene.getScene('EndScene');
     check('EndScene zeigt das Bild', end.children.list.some(o => o.texture && o.texture.key === 'endscreen'));
     tap(padB, 0); step(5);
@@ -839,6 +823,70 @@
     setInput(0); setInput(1);
   }
 
+  // --- Felsbrocken: beim gemeinsamen Schieben rollt die Grafik mit ---------
+  function runBoulderTests() {
+    syncClock(LEVELS.length + 55);
+    reseed(5151);
+    PlayerInput.prototype.update = scriptedInputUpdate;
+    setInput(0); setInput(1);
+    out.boulder = {};
+    const check = (name, ok, detail = '') => {
+      out.boulder[name] = !!ok;
+      if (!ok) out.errors.push(`Felsbrocken-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+    startScene('GameScene', { levelIndex: 1 });   // Level 2: Felsbrocken auf flachem Boden
+    step(30);
+    const sc = game.scene.getScene('GameScene');
+    const rock = sc.blockSystem.blocks.find(b => b.texture.key === 'boulder');
+    const crate = sc.blockSystem.blocks.find(b => b.texture.key === 'pushCrate');
+    const place = side => sc.players.forEach((p, i) => {
+      const b = rock.body;
+      p.sprite.body.reset(side < 0 ? b.left - 13 - i * 4 : b.right + 13 + i * 4, b.bottom - 16);
+    });
+    const push = (dir, who, frames) => {
+      for (let f = 0; f < frames; f++) {
+        who.forEach(i => setInput(i, dir > 0 ? { right: true } : { left: true }));
+        step();
+      }
+      setInput(0); setInput(1);
+      step(2);
+    };
+    const deg = Phaser.Math.RadToDeg;
+
+    // 1) Nur einer schiebt → zu schwer, nichts bewegt oder dreht sich
+    place(-1); step(10);
+    let x0 = rock.x, a0 = rock.angle;
+    push(1, [0], 40);
+    check('Allein: Felsbrocken bleibt liegen und dreht sich nicht', Math.abs(rock.x - x0) < 0.5 && rock.angle === a0,
+      `(dx ${(rock.x - x0).toFixed(1)}, Winkel ${a0} → ${rock.angle})`);
+
+    // 2) Beide schieben nach rechts → er rollt im Uhrzeigersinn, Winkel = Weg / Radius
+    x0 = rock.x; a0 = rock.angle;
+    push(1, [0, 1], 60);
+    let dx = rock.x - x0, da = rock.angle - a0;
+    const expect = d => deg(d / rock.rollRadius);
+    check('Zu zweit nach rechts: rollt im Uhrzeigersinn, passend zur Strecke', dx > 40 && da > 0 &&
+      Math.abs(da - expect(dx)) < 2, `(dx ${dx.toFixed(1)} px, Winkel +${da.toFixed(1)}°, erwartet ${expect(dx).toFixed(1)}°)`);
+    check('Licht dreht nicht mit und folgt dem Brocken', rock.shade.angle === 0 &&
+      Math.abs(rock.shade.x - rock.x) < 0.5 && Math.abs(rock.shade.y - rock.y) < 0.5);
+
+    // 3) Zurück nach links → dreht sich gegen den Uhrzeigersinn
+    place(1); step(10);
+    x0 = rock.x; a0 = rock.angle;
+    push(-1, [0, 1], 40);
+    dx = rock.x - x0; da = rock.angle - a0;
+    check('Zu zweit nach links: rollt gegen den Uhrzeigersinn', dx < -25 && da < 0 && Math.abs(da - expect(dx)) < 2,
+      `(dx ${dx.toFixed(1)} px, Winkel ${da.toFixed(1)}°)`);
+
+    // 4) Steht still → keine Drehung; Kisten drehen sich nie
+    a0 = rock.angle;
+    step(30);
+    check('Ohne Schieben: keine Drehung', rock.angle === a0);
+    check('Physik-Körper bleibt ein achsparalleles 64×64-Rechteck', rock.body.width === 64 && rock.body.height === 64 && !rock.body.allowRotation);
+    check('Holzkisten rollen nicht', !crate || (!crate.shade && crate.angle === 0));
+    setInput(0); setInput(1);
+  }
+
   /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
   function checkOffline() {
     const external = performance.getEntriesByType('resource').map(e => e.name).filter(n => !n.startsWith('file:'));
@@ -885,6 +933,7 @@
       runInputTests();
       runSspTests();
       try { runLoadingTests(); } catch (e) { out.errors.push(`Ladebildschirm-Test abgebrochen: ${e.stack || e}`); }
+      try { runBoulderTests(); } catch (e) { out.errors.push(`Felsbrocken-Test abgebrochen: ${e.stack || e}`); }
       // Chopfnüss: Lösungs-Test mit echten Eingaben (tools/harness-puzzles.js)
       syncClock(LEVELS.length + 60);
       PlayerInput.prototype.update = scriptedInputUpdate;

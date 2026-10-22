@@ -270,14 +270,14 @@ const Art = {
     this.canvas(scene, 'pushCrate', TILE, TILE, ctx => this.woodCrate(ctx, true));
 
     // Schiebbarer Felsbrocken (2×2 Kacheln): Design des Steinschlag-Brockens,
-    // vergrössert; er rollt nicht → Licht & Schatten fest eingezeichnet
+    // vergrössert. Er rollt beim Schieben → Licht & Schatten als eigenes,
+    // nicht mitdrehendes Bild ('boulderShade', siehe BlockSystem)
+    const rockScale = TILE * 2 / 44;
     this.canvas(scene, 'boulder', TILE * 2, TILE * 2, ctx => {
-      ctx.save();
-      ctx.translate(0, 3);
-      ctx.scale(TILE * 2 / 44, (TILE * 2 - 3) / 44);   // unten bündig, damit er satt aufliegt
-      this.rockBody(ctx);
-      this.rockLight(ctx);
-      ctx.restore();
+      ctx.save(); ctx.scale(rockScale, rockScale); this.rockBody(ctx); ctx.restore();
+    });
+    this.canvas(scene, 'boulderShade', TILE * 2, TILE * 2, ctx => {
+      ctx.save(); ctx.scale(rockScale, rockScale); this.rockLight(ctx); ctx.restore();
     });
 
     this.canvas(scene, 'door', TILE, TILE, ctx => {

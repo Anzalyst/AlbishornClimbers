@@ -28,6 +28,14 @@ class BlockSystem {
       block.label = scene.add.text(spawn.x, spawn.y, '', {
         fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3, align: 'center'
       }).setOrigin(0.5, 1).setDepth(DEPTH.FX);
+      // Felsbrocken rollen beim Schieben sichtbar mit (nur die Grafik – der
+      // Physik-Körper bleibt ein achsparalleles Rechteck); Licht dreht nicht mit
+      if (spawn.texture === 'boulder') {
+        block.rollRadius = block.displayWidth / 2 - 2;
+        block.body.allowRotation = false;     // Drehung macht roll() (aus der Schiebestrecke)
+        block.lastX = spawn.x;
+        block.shade = scene.add.image(spawn.x, spawn.y, 'boulderShade').setDepth(DEPTH.OBJECT + 0.1);
+      }
       return block;
     });
   }
@@ -74,7 +82,20 @@ class BlockSystem {
         scene.unstuck.unstick(bb);
         scene.toast(TXT.blockBack, '#ffffff');
       }
+      if (block.shade) this.roll(block);
     });
+  }
+
+  /**
+   * Felsbrocken drehen sich passend zur geschobenen Strecke (Winkel = Weg /
+   * Radius, wie beim Steinschlag): Richtung und Tempo stimmen automatisch.
+   * Sprünge (z. B. Zurücksetzen an den Startplatz) zählen nicht als Rollen.
+   */
+  roll(block) {
+    const dx = block.x - block.lastX;
+    if (Math.abs(dx) < TILE / 2) block.angle += Phaser.Math.RadToDeg(dx / block.rollRadius);
+    block.lastX = block.x;
+    block.shade.setPosition(block.x, block.y);
   }
 
   /**
