@@ -620,6 +620,7 @@ class BootScene extends Phaser.Scene {
     this.createDecoTextures();
     Art.createAll(this);          // Gelände, Mechaniken & Hintergründe (art.js)
     SspArt.createAll(this);       // Grafiken der Super Sempach Party (js/ssp/sspArt.js)
+    MenuArt.createAll(this);      // Spielauswahl: Landschaft, Kartenbilder, Icons (js/menuArt.js)
     // Einzige Bilddatei: Victory-Bild der EndScene (eingebettet, siehe tools/embed-images.js)
     if (typeof ENDSCREEN_IMAGE !== 'undefined') this.textures.addBase64('endscreen', ENDSCREEN_IMAGE);
     // Familienbilder für Ladebildschirme und Bildergalerie (eingebettet, siehe tools/embed-images.js)

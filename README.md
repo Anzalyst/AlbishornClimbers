@@ -24,6 +24,7 @@ chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --dis
 Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
 - `js/scenes/BootScene.js`: Figuren und Porträts (als Pixel-Raster im Code), Schalter, Hebel, Fahnen, Edelweiss, Deko (Haus, Tanne, Restaurant, Turm)
 - `js/art.js` (aufgerufen aus der BootScene): Gelände-Kacheln, Wasser, Kisten, Felsbrocken, Mechaniken (Aufzug, Förderband, Zugbrücke, Farbtasten) und der Parallax-Hintergrund
+- `js/menuArt.js` (aufgerufen aus der BootScene): Spielauswahl im 16-Bit-Look – Landschaft mit geditherten Verläufen, Pixelwolken, plastischen Bergen, Tannenwald, Wegweiser und Schweizer Fähnchen; die beiden Kartenbilder; Lagerfeuer, Glitzer, Gamepad- und Lautsprecher-Icons. Gezeichnet in halber Auflösung, angezeigt 2×.
 
 Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und verwendet sie im Spiel über diesen Schlüssel.
 
@@ -114,12 +115,13 @@ js/input.js                Tastatur + Gamepad API → einheitliche Spieler-Einga
 js/sfx.js                  Retro-Sounds & Melodien per Web Audio
 js/dialog.js               Dialogbox mit Porträt & Schreibmaschinen-Text
 js/art.js                  Gelände, Mechaniken, Parallax-Hintergrund & Licht ("Modern Pixel")
+js/menuArt.js              Grafiken der Spielauswahl (Landschaft, Kartenbilder, Icons)
 js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte, ruft art.js auf)
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
 js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe mit Familien-Avataren
 js/scenes/GameScene.js     Gameplay-Szene: erzeugt die Module aus js/game/ und taktet sie
 js/scenes/PauseScene.js    Pausenmenü für alle Spiele (START/ESC/P): Weiter, Neustart, Ton, Hauptmenü
-js/scenes/GameSelectScene.js  Hauptmenü: Albishorn Climbers, Super Sempach Party oder Bildergalerie
+js/scenes/GameSelectScene.js  Hauptmenü (Spielauswahl): Albishorn Climbers, Super Sempach Party oder Bildergalerie, lebendige Kartenbilder
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
 js/scenes/CreditsScene.js  Abspann-Lauftext, mit Gedenk-Abschnitt für Kurt & Peter

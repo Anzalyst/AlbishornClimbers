@@ -788,6 +788,11 @@
     const gal = () => game.scene.getScene('GalleryScene');
     const gTex = () => gal().photo.texture.key;
     startScene('GameSelectScene'); step(20);
+    const texIn = sc => { const k = []; const v = o => { if (o.texture) k.push(o.texture.key); if (o.list) o.list.forEach(v); }; sc.children.list.forEach(v); return k; };
+    const menuTex = texIn(gs());
+    check('Spielauswahl: Landschaft, Kartenbilder, Ginny, Gamepad- und Lautsprecher-Icons, keine fehlende Textur',
+      ['menuBackdrop', 'menuCloud0', 'cardAlbis', 'cardSsp', 'menuFlame', 'hiker1', 'hiker2', 'ssp_trophy', 'cat_ginny', 'padIcon1', 'padIcon2', 'speakerOn']
+        .every(k => menuTex.includes(k)) && !menuTex.includes('__MISSING') && missing(gs()) === 0, `(${[...new Set(menuTex)]})`);
     tapIn(0, 'down');
     check('Hauptmenü: Runter wählt BILDERGALLERIE', gs().selected === 2 && gs().gallery.list.some(o => o.text === TXT.galleryMenu));
     tapIn(0, 'up');
