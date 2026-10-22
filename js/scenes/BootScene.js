@@ -425,7 +425,7 @@ class BootScene extends Phaser.Scene {
     SspArt.createAll(this);       // Grafiken der Super Sempach Party (js/ssp/sspArt.js)
     // Einzige Bilddatei: Victory-Bild der EndScene (eingebettet, siehe tools/embed-images.js)
     if (typeof ENDSCREEN_IMAGE !== 'undefined') this.textures.addBase64('endscreen', ENDSCREEN_IMAGE);
-    // Familienfotos der Ladebildschirme (16-Bit-Look, siehe tools/make-loading-images.js)
+    // Familienbilder für Ladebildschirme und Bildergalerie (eingebettet, siehe tools/embed-images.js)
     if (typeof LOADING_IMAGES !== 'undefined') {
       Object.entries(LOADING_IMAGES).forEach(([key, data]) => this.textures.addBase64('loading_' + key, data));
     }

@@ -652,19 +652,23 @@
     const active = k => game.scene.isActive(k);
     const ls = () => game.scene.getScene('LoadingScene');
     const tapJump = () => { setInput(0, { jump: true }); step(); setInput(0); step(); };
+    const tapIn = (i, action) => { setInput(i, { [action]: true }); step(); setInput(i); step(); };
+    const pressKey = (key, name) => { game.scene.getScene(key).input.keyboard.emit(`keydown-${name}`); step(); };
     const until = (cond, max) => { let f = 0; while (!cond() && f < max) { step(); f++; } return f; };
     const missing = sc => sc.children.list.filter(o => o.texture && o.texture.key === '__MISSING').length;
     const keys = Object.keys(TXT.loadingSlides);
 
-    // 1) Fotos eingebettet und geladen, alle im 4:3-Format, jedes mit Spruch
+    // 1) Bilder eingebettet und geladen, alle im 4:3-Format, jedes mit Spruch
     const sizes = keys.map(k => {
       const img = game.textures.exists(`loading_${k}`) && game.textures.get(`loading_${k}`).getSourceImage();
       return img ? `${img.width}x${img.height}` : 'fehlt';
     });
-    check('6 Familienfotos eingebettet und geladen (256×192 = 4:3)', keys.length === 6 &&
-      keys.every(k => LOADING_IMAGES[k]) && sizes.every(s => s === '256x192'), `(${keys.map((k, i) => `${k}: ${sizes[i]}`)})`);
+    check('6 Familienbilder eingebettet und geladen (512×384 = 4:3)', keys.length === 6 &&
+      keys.every(k => LOADING_IMAGES[k]) && sizes.every(s => s === '512x384'), `(${keys.map((k, i) => `${k}: ${sizes[i]}`)})`);
+    check('Sprüche wie bestellt (Mütze: "…WENN SIE IRGENDWO RUNTERFÄLLT...")',
+      TXT.loadingSlides.muetze === 'DE SPILER 2, WENN SIE IRGENDWO RUNTERFÄLLT...' && keys.every(k => TXT.loadingSlides[k].length > 10));
 
-    // 2) Victory → Ladebildschirm → nächstes Level, ohne Eingabe nach 4–5 s
+    // 2) Level geschafft → Victory → Ladebildschirm → nächstes Level, ohne Eingabe nach ~4 s
     LoadingScene.bag = []; LoadingScene.last = null;
     startScene('VictoryScene', { levelIndex: 0, collected: 1, total: 5 });
     step(70); tapJump();
@@ -673,11 +677,9 @@
     let frames = 1;
     step(5); frames += 5;
     const sc = ls();
-    check('Zeigt Foto (2× skaliert), Spruch, Ginny und "LADET..."', sc.photo && sc.photo.texture.key === `loading_${sc.slide}` &&
-      sc.photo.scaleX === 2 && sc.fullText === TXT.loadingSlides[sc.slide] && sc.ginny && sc.ginny.anims.isPlaying &&
-      sc.label.text.startsWith(TXT.loading) && missing(sc) === 0, `(Dia ${sc.slide})`);
-    tapJump(); frames += 2;
-    check('GUMP in den ersten 1.5 s wird ignoriert', active('LoadingScene') && !sc.leaving);
+    check('Zeigt Bild (512×384), Spruch, Ginny und "LADET..."', sc.photo && sc.photo.texture.key === `loading_${sc.slide}` &&
+      sc.photo.displayWidth === 512 && sc.photo.displayHeight === 384 && sc.fullText === TXT.loadingSlides[sc.slide] &&
+      sc.ginny && sc.ginny.anims.isPlaying && sc.label.text.startsWith(TXT.loading) && missing(sc) === 0, `(Dia ${sc.slide})`);
     step(120); frames += 120;
     const typed = sc.caption.text.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
     check('Spruch fertig getippt, höchstens 2 Zeilen', typed === sc.fullText && sc.lines.length <= 2, `("${typed}")`);
@@ -688,14 +690,17 @@
       if (sc.leaving && sc.sys.isActive() && sc.cameras.main.fadeEffect.isRunning) fading = true;
     }
     const secs = frames / 60;
-    check('Nach 4–5 s weich ausgeblendet → Level 2 startet', fading && active('GameScene') &&
-      game.scene.getScene('GameScene').levelIndex === 1 && secs >= 4.4 && secs <= 5.2, `(${secs.toFixed(2)} s, Ausblenden ${fading})`);
+    check('Nach ~4 s weich ausgeblendet → Level 2 startet', fading && active('GameScene') &&
+      game.scene.getScene('GameScene').levelIndex === 1 && secs >= 3.9 && secs <= 4.7, `(${secs.toFixed(2)} s, Ausblenden ${fading})`);
 
-    // 3) Abkürzen nach 1.5 s
-    startScene('LoadingScene', { next: 'GameScene', data: { levelIndex: 2 } });
-    step(100); tapJump();
-    const f3 = until(() => active('GameScene'), 120);
-    check('Ab 1.5 s: GUMP kürzt ab', active('GameScene') && game.scene.getScene('GameScene').levelIndex === 2 && f3 < 40, `(${f3} Bilder)`);
+    // 3) Überspringen mit A / Sprung, START (Controller) oder ENTER – praktisch sofort
+    [['A / Sprung', () => tapJump()], ['START', () => tapIn(0, 'start')], ['ENTER', () => pressKey('LoadingScene', 'ENTER')]].forEach(([name, press], k) => {
+      startScene('LoadingScene', { next: 'GameScene', data: { levelIndex: 2 + k } });
+      step(20); press();
+      const f = until(() => active('GameScene'), 120);
+      check(`${name} überspringt den Ladebildschirm sofort`,
+        active('GameScene') && game.scene.getScene('GameScene').levelIndex === 2 + k && f < 40, `(${f} Bilder)`);
+    });
 
     // 4) Magazin: jedes Foto einmal, dann neu gemischt, nie zweimal hintereinander
     LoadingScene.bag = []; LoadingScene.last = null;
@@ -727,10 +732,54 @@
     check('SSP: Ladebildschirm vor dem Minispiel', active('LoadingScene') && ls().next === 'SspPedalo' && missing(ls()) === 0);
     until(() => active('SspPedalo'), 9 * 60);
     check('SSP: danach startet das Minispiel', active('SspPedalo'));
-    check('Kein Ladebildschirm für Menüs, Zwischenstand & Siegerehrung',
-      !wantsLoading('SspMenuScene') && !wantsLoading('SspScoreScene') && !wantsLoading('SspAwardScene') &&
-      !wantsLoading('MenuScene') && !wantsLoading('VictoryScene') && wantsLoading('GameScene') &&
-      SSP.minigames.every(m => wantsLoading(m.key)));
+    SspParty.record('SspPedalo', 1, {});
+    SspParty.advance(game.scene.getScene('SspPedalo'));
+    until(() => active('LoadingScene'), 60);
+    check('SSP: nach dem Minispiel Ladebildschirm vor der Siegerehrung', active('LoadingScene') && ls().next === 'SspAwardScene');
+    until(() => active('SspAwardScene'), 9 * 60);
+    check('… und dann die Siegerehrung', active('SspAwardScene'));
+    check('Kein Ladebildschirm für Menüs, Zwischenstand & Galerie',
+      !wantsLoading('SspMenuScene') && !wantsLoading('SspScoreScene') && wantsLoading('SspAwardScene') &&
+      !wantsLoading('MenuScene') && !wantsLoading('VictoryScene') && !wantsLoading('GalleryScene') &&
+      wantsLoading('GameScene') && SSP.minigames.every(m => wantsLoading(m.key)));
+
+    // 7) Hauptmenü → Bildergalerie → blättern → zurück ins Hauptmenü
+    const gs = () => game.scene.getScene('GameSelectScene');
+    const gal = () => game.scene.getScene('GalleryScene');
+    const gTex = () => gal().photo.texture.key;
+    startScene('GameSelectScene'); step(20);
+    tapIn(0, 'down');
+    check('Hauptmenü: Runter wählt BILDERGALLERIE', gs().selected === 2 && gs().gallery.list.some(o => o.text === TXT.galleryMenu));
+    tapIn(0, 'up');
+    check('Hauptmenü: Hoch zurück zu den Spielen', gs().selected === 0);
+    tapIn(0, 'right'); tapIn(0, 'down'); tapIn(0, 'up');
+    check('Hauptmenü: Hoch kehrt zur zuletzt gewählten Karte zurück', gs().selected === 1);
+    tapIn(0, 'down'); tapIn(0, 'jump');
+    until(() => active('GalleryScene'), 60);
+    step(5);
+    check('Hauptmenü → Bildergalerie (erstes Bild gross, Spruch, kein Ladebildschirm)', active('GalleryScene') && !active('LoadingScene') &&
+      gTex() === `loading_${keys[0]}` && gal().caption.text === TXT.loadingSlides[keys[0]] &&
+      gal().photo.displayWidth === 512 && missing(gal()) === 0);
+    const seenG = [gal().slide];
+    for (let k = 1; k < keys.length; k++) { tapIn(1, 'right'); seenG.push(gal().slide); }
+    check('Galerie: Rechts blättert durch alle 6 Bilder (beide Spieler)', seenG.join() === keys.join() &&
+      gTex() === `loading_${keys[5]}` && gal().caption.text === TXT.loadingSlides[keys[5]], `(${seenG})`);
+    tapIn(0, 'right');
+    check('Galerie: nach dem letzten Bild wieder das erste', gal().index === 0 && gTex() === `loading_${keys[0]}`);
+    tapIn(0, 'left'); tapIn(0, 'left');
+    check('Galerie: Links blättert zurück', gal().index === 4 && gTex() === `loading_${keys[4]}`);
+    tapIn(0, 'back');
+    until(() => active('GameSelectScene'), 60);
+    check('Galerie: B → zurück ins Hauptmenü (Galerie bleibt gewählt)',
+      active('GameSelectScene') && !active('GalleryScene') && gs().selected === 2);
+    step(20);
+    pressKey('GameSelectScene', 'ENTER');
+    until(() => active('GalleryScene'), 60);
+    check('Hauptmenü: ENTER öffnet die Galerie', active('GalleryScene'));
+    step(5);
+    pressKey('GalleryScene', 'ESC');
+    until(() => active('GameSelectScene'), 60);
+    check('Galerie: ESC → zurück ins Hauptmenü', active('GameSelectScene') && !active('GalleryScene'));
     setInput(0); setInput(1);
   }
 

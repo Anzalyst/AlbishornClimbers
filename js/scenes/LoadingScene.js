@@ -1,32 +1,49 @@
 /* =====================================================================
- * LoadingScene – Ladebildschirm als Dia-Show mit echten Familienfotos
+ * LoadingScene – Ladebildschirm als Dia-Show mit den Familienbildern
  *
- * Erscheint vor jedem Level von Albishorn Climbers und vor jedem Minispiel
- * der Super Sempach Party: ein zufälliges Foto im 16-Bit-Look (4:3, im
- * Dia-Rahmen), darunter eine schwarze Retro-Textbox mit dem Spruch und
- * ein Ladebalken, auf dem Ginny die Katze mitläuft. Nach LOADING.duration
- * blendet die Szene aus und das Spiel geht weiter (ab LOADING.skipAfter
- * darf man mit GUMP/START abkürzen).
+ * Erscheint vor jedem Level von Albishorn Climbers (also auch nach jedem
+ * bestandenen Level), vor jedem Minispiel der Super Sempach Party und nach
+ * dem letzten Minispiel vor der Siegerehrung: ein zufälliges Pixel-Art-
+ * Familienbild (4:3, im Dia-Rahmen), darunter die KES-Textbox (schwarz mit
+ * gelber Kontur) mit dem Spruch und ein Ladebalken, auf dem Ginny die Katze
+ * mitläuft ("LADET..."). Nach LOADING.duration blendet die Szene aus und
+ * das Spiel geht weiter; A / Sprung / START / ENTER überspringt sofort.
  *
  *   startWithLoading(scene, key, data)   statt scene.scene.start(key, data)
  *
- * Fotos: js/generated/loading-images.js (tools/make-loading-images.js),
- * Sprüche: TXT.loadingSlides (texts.js).
+ * Bilder: js/generated/loading-images.js (tools/embed-images.js),
+ * Sprüche: TXT.loadingSlides (texts.js). Die Bildergalerie (GalleryScene)
+ * zeigt dieselben Bilder.
  * ===================================================================== */
 
 const LOADING = {
-  duration: 4500,      // ms bis zum Ausblenden
-  skipAfter: 1500,     // ab dann: GUMP/START = sofort weiter
+  duration: 4000,      // ms bis zum Ausblenden
+  skipAfter: 250,      // ab dann: A / START / ENTER = sofort weiter (kurze Sperre gegen Tasten-Wiederholung)
   fadeIn: 300,
   fadeOut: 400,
   typeMs: 18,          // Schreibmaschinen-Tempo der Textbox (ms pro Zeichen)
-  photoScale: 2        // 256×192 → 512×384, knackig ohne Weichzeichnen
+  photoW: 512,         // Bildgrösse im Dia-Rahmen (= eingebettete Grösse, 4:3)
+  photoH: 384
 };
 
-/** Mit Ladebildschirm: Level von Albishorn Climbers und Minispiele der SSP. */
+/**
+ * Mit Ladebildschirm: Level von Albishorn Climbers, Minispiele der SSP und
+ * die Siegerehrung (= nach dem letzten Minispiel). Zwischenstand und Menüs
+ * nicht – nach dem Zwischenstand folgt ja gleich der Ladebildschirm vor
+ * dem nächsten Minispiel.
+ */
 function wantsLoading(key) {
   return typeof LOADING_IMAGES !== 'undefined' &&
-    (key === 'GameScene' || (typeof SSP !== 'undefined' && !!SSP.byKey(key)));
+    (key === 'GameScene' || key === 'SspAwardScene' || (typeof SSP !== 'undefined' && !!SSP.byKey(key)));
+}
+
+/** KES-Textbox: schwarz mit gelber Kontur (Ladebildschirm und Bildergalerie). */
+function drawKesTextBox(scene, x, y, w, h) {
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000).fillRect(x, y, w, h);
+  g.lineStyle(4, 0xf7d117).strokeRect(x + 2, y + 2, w - 4, h - 4);
+  g.lineStyle(2, 0x8a6a10).strokeRect(x + 8, y + 8, w - 16, h - 16);
+  return g;
 }
 
 /** Szenenwechsel, bei Bedarf über den Ladebildschirm. */
@@ -64,11 +81,13 @@ class LoadingScene extends Phaser.Scene {
 
   create() {
     this.inputs = createPlayerInputs(this);
+    this.enterPressed = false;
+    this.input.keyboard.on('keydown-ENTER', () => { this.enterPressed = true; });
     const cx = GAME_WIDTH / 2;
     this.drawBackground();
 
     // --- Dia: Foto im Kunststoff-Rahmen, schiebt sich mit "Klack" herein ---
-    const pw = 256 * LOADING.photoScale, ph = 192 * LOADING.photoScale;
+    const pw = LOADING.photoW, ph = LOADING.photoH;
     const border = 10, top = 6;
     this.slideBox = this.add.container(cx, top + border + ph / 2);
     const frame = this.add.graphics();
@@ -82,7 +101,7 @@ class LoadingScene extends Phaser.Scene {
     this.slideBox.add(frame);
     const texKey = `loading_${this.slide}`;
     if (this.textures.exists(texKey)) {
-      this.photo = this.add.image(0, 0, texKey).setScale(LOADING.photoScale);
+      this.photo = this.add.image(0, 0, texKey).setDisplaySize(pw, ph);
       this.slideBox.add(this.photo);
     }
     // Projektor-Licht: ganz leichtes Flackern über dem Bild
@@ -94,12 +113,9 @@ class LoadingScene extends Phaser.Scene {
       onComplete: () => Sfx.play(this, 'slideClack')
     });
 
-    // --- Retro-Textbox mit dem Spruch (Schreibmaschine) ---
+    // --- KES-Textbox mit dem Spruch (Schreibmaschine) ---
     const boxY = top + fh + 8, boxH = 62;
-    const box = this.add.graphics();
-    box.fillStyle(0x000000).fillRect(40, boxY, GAME_WIDTH - 80, boxH);
-    box.lineStyle(4, 0xffffff).strokeRect(42, boxY + 2, GAME_WIDTH - 84, boxH - 4);
-    box.lineStyle(2, 0x5a6a9a).strokeRect(48, boxY + 8, GAME_WIDTH - 96, boxH - 16);
+    drawKesTextBox(this, 40, boxY, GAME_WIDTH - 80, boxH);
     this.fullText = TXT.loadingSlides[this.slide];
     this.caption = this.add.text(cx, boxY + boxH / 2, '', {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', align: 'center', lineSpacing: 10,
@@ -141,7 +157,9 @@ class LoadingScene extends Phaser.Scene {
     this.elapsed += delta;
     this.refresh();
     if (this.leaving) return;
-    const skip = this.elapsed >= LOADING.skipAfter && this.inputs.some(i => i.justPressed('jump') || i.justPressed('start'));
+    const pressed = this.enterPressed || this.inputs.some(i => i.justPressed('jump') || i.justPressed('start'));
+    this.enterPressed = false;
+    const skip = this.elapsed >= LOADING.skipAfter && pressed;
     if (skip || this.elapsed >= LOADING.duration) this.leave();
   }
 

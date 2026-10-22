@@ -27,12 +27,14 @@ Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch pe
 
 Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und verwendet sie im Spiel über diesen Schlüssel.
 
-**Einzige Ausnahme:** das Victory-Bild der `EndScene` (`assets/images/endscreen.jpg`, 720×540). Per Doppelklick (`file://`) darf der Browser Bilddateien weder per XHR laden noch als WebGL-Textur nutzen. Deshalb wird das Bild als Base64 in `js/generated/endscreen-image.js` eingebettet und in der BootScene mit `textures.addBase64` angelegt. Nach einem Austausch des Bildes `node tools/embed-images.js` ausführen und die erzeugte Datei mitcommitten.
+**Einzige Ausnahme:** die Bilder in `assets/images/loading/` – das Victory-Bild der `EndScene` (`endscreen.jpg`, 720×540) und die Pixel-Art-Familienbilder. Per Doppelklick (`file://`) darf der Browser Bilddateien weder per XHR laden noch als WebGL-Textur nutzen. Deshalb werden sie mit `node tools/embed-images.js` als Base64 in `js/generated/` eingebettet und in der BootScene mit `textures.addBase64` angelegt. Nach einem Austausch eines Bildes das Script ausführen und die erzeugten Dateien mitcommitten.
 
-**Ladebildschirme (Dia-Show):** Vor jedem Level und vor jedem Sempach-Minispiel zeigt die `LoadingScene` ein zufälliges Familienfoto im 16-Bit-Look (256×192 = 4:3, doppelt so gross im Dia-Rahmen), darunter eine schwarze Retro-Textbox mit einem Spruch auf Züritüütsch und einen Ladebalken, auf dem Ginny mitläuft. Nach 4,5 s blendet die Szene weich aus (ab 1,5 s kann man mit GUMP/START abkürzen). Die Fotos werden nie zweimal hintereinander gezeigt: Erst kommen alle einmal dran, dann wird neu gemischt.
-- Originale: `assets/images/loading/*.jpg` (abfotografierte Albumseiten)
-- `node tools/make-loading-images.js` schneidet zu, dreht quer liegende Fotos, verkleinert, frischt die Farben auf und reduziert auf 40 Farben (15-Bit-Palette) mit Bayer-Dithering. Das geschieht im Canvas eines headless Chrome/Edge, ohne npm-Paket. Ergebnis: `js/generated/loading-images.js` (PNG als Base64). Mit `--preview <Ordner>` werden die PNGs zusätzlich abgelegt.
-- Ausschnitte stehen in `PHOTOS` im Script, die Sprüche in `TXT.loadingSlides` (`js/texts.js`). Für ein neues Foto: JPG ablegen, Ausschnitt eintragen, Spruch mit gleichem Schlüssel ergänzen, Script ausführen.
+**Ladebildschirme (Dia-Show):** Vor jedem Level (also auch nach jedem bestandenen Level), vor jedem Sempach-Minispiel und nach dem letzten Minispiel vor der Siegerehrung zeigt die `LoadingScene` ein zufälliges Familienbild (512×384 = 4:3, im Dia-Rahmen), darunter die KES-Textbox (schwarz, gelbe Kontur) mit einem Spruch auf Züritüütsch und einen Ladebalken, auf dem Ginny mitläuft („LADET…“). Nach 4 s blendet die Szene weich aus; A / Sprung, START oder ENTER überspringt sofort. Die Bilder werden nie zweimal hintereinander gezeigt: Erst kommen alle einmal dran, dann wird neu gemischt.
+
+**Bildergalerie:** Im Hauptmenü (Spielauswahl) führt „BILDERGALLERIE“ (Runter, dann A / ENTER) zur `GalleryScene`: dieselben Bilder gross, darunter der Spruch; Links/Rechts blättert, B / ESC führt zurück.
+- Originale: `assets/images/loading/` (Pixel-Art, 4:3 bzw. breiter)
+- `node tools/embed-images.js` schneidet mittig auf 4:3 zu und verkleinert auf 512×384 (im Canvas eines headless Chrome/Edge, ohne npm-Paket). Ergebnis: `js/generated/loading-images.js` (JPEG als Base64). Mit `--preview <Ordner>` werden die verkleinerten Bilder zusätzlich abgelegt.
+- Die Zuordnung Datei → Schlüssel steht in `SLIDES` im Script, die Sprüche (und die Reihenfolge der Galerie) in `TXT.loadingSlides` (`js/texts.js`). Für ein neues Bild: Datei ablegen, in `SLIDES` eintragen, Spruch mit gleichem Schlüssel ergänzen, Script ausführen.
 
 ## Personalisierung & Sprache
 **Albishorn Climbers ist komplett auf Züritüütsch** (Mundart). Die Super Sempach Party bleibt auf Hochdeutsch, nur Grill-Legende Peter Kammer redet Mundart.
@@ -111,14 +113,15 @@ js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
 js/scenes/MenuScene.js     Titel, Menü, Passwort-Eingabe
 js/scenes/GameScene.js     Gameplay-Szene: erzeugt die Module aus js/game/ und taktet sie
 js/scenes/PauseScene.js    Pausenmenü für alle Spiele (START/ESC/P): Weiter, Neustart, Ton, Hauptmenü
-js/scenes/GameSelectScene.js  Hauptmenü: Wahl zwischen Albishorn Climbers und Super Sempach Party
+js/scenes/GameSelectScene.js  Hauptmenü: Albishorn Climbers, Super Sempach Party oder Bildergalerie
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
 js/scenes/CreditsScene.js  Abspann
 js/scenes/EndScene.js      Victory-Bild „Danke fürs Spielen!“ mit Konfetti & Sternen
-js/scenes/LoadingScene.js  Ladebildschirm: Dia-Show mit Familienfotos, Spruch, Ginny auf dem Ladebalken
-assets/images/             Quelle des Victory-Bilds (endscreen.jpg), loading/ = Fotos der Ladebildschirme
-js/generated/              Eingebettete Bilder (tools/embed-images.js, tools/make-loading-images.js)
+js/scenes/LoadingScene.js  Ladebildschirm: Dia-Show mit Familienbildern, Spruch, Ginny auf dem Ladebalken
+js/scenes/GalleryScene.js  Bildergalerie: Familienbilder mit Sprüchen durchblättern
+assets/images/loading/     Quellen: Victory-Bild (endscreen.jpg) und Familienbilder (Ladebildschirm, Galerie)
+js/generated/              Eingebettete Bilder (tools/embed-images.js)
 js/game/LevelParser.js     ASCII-Karte → Datenobjekt, prüft die Leveldaten (ohne Phaser)
 js/game/LevelBuilder.js    Datenobjekt → Gelände, Wasser, Deko, Collider
 js/game/Player.js          Spielfigur: Bewegung, Sprung, Animation, Respawn
@@ -173,7 +176,8 @@ Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das 
 - `--gameplay` vergleicht nur den Spielablauf (ohne Texte und HUD). Damit lässt sich nach Übersetzungen oder Textänderungen beweisen, dass sich am Spiel selbst nichts geändert hat.
 - **Hindernis-Test** (`tools/harness-puzzles.js`): Bots überwinden jeden neuen Abschnitt in Level 1–5 mit echten Sprüngen (beide Figuren) und prüfen: Bröckel-Platten sacken weg und kommen wieder, Baumstämme nehmen mit und gehen am Ende unter, Wasser → Checkpoint, Pendel-Schwung beim Absprung, Figuren stehen stabil auf Pendel und Stamm (kein Rutschen, kein Durchfallen), das Pendel folgt exakt seiner Formel, Felsbrocken drehen sich passend zur Rollstrecke und rollen über die Nischen, Treffer → Checkpoint, die Fels-Schwelle hält die Brocken auf. Pendel, Stämme und Level 2/5 laufen zusätzlich mit unregelmässiger Bildrate wie auf einem 50/75-Hz-Fernseher (0–2 Physik-Schritte pro Bild).
 - **Rätsel-Test** (`tools/harness-puzzles.js`): Zwei Bots lösen beide Chopfnüss nur mit normalen Eingaben (laufen, springen, Hebel/Knöpfe) bis ins Ziel und prüfen dabei jede Mechanik: Countdown und Ticken, Tor zu nach Ablauf, UND-Tor, falsche Reihenfolge/Zeitlimit beim Farbeschloss, Waage proportional, Gleichgewichts-Lämpli, Ablauf Victory → nächste Chopfnuss → Menü.
-- **Ladebildschirm-Test**: alle 6 Fotos eingebettet und im 4:3-Format geladen; Victory → Dia-Show → nächstes Level; Foto, Spruch, Ginny und „LADET…“ sichtbar; GUMP wird erst ab 1,5 s angenommen; nach 4–5 s weich ausgeblendet; zufällige Reihenfolge ohne direkte Wiederholung; Menü/Passwort, Intro und Sempach-Minispiele laufen über den Ladebildschirm, Menüs, Zwischenstand und Neustart aus der Pause nicht.
+- **Ladebildschirm-Test**: alle 6 Familienbilder eingebettet (512×384) und jedes mit Spruch; Level geschafft → Victory → Dia-Show → nächstes Level; Bild, Spruch, Ginny und „LADET…“ sichtbar; nach ~4 s weich ausgeblendet; A / Sprung, START und ENTER überspringen sofort; zufällige Reihenfolge ohne direkte Wiederholung; Menü/Passwort, Intro und Sempach-Minispiele laufen über den Ladebildschirm, ebenso der Weg vom letzten Minispiel zur Siegerehrung; Menüs, Zwischenstand und Galerie nicht.
+- **Galerie-Test**: Hauptmenü → Runter wählt BILDERGALLERIE (Hoch zurück zur letzten Karte) → A bzw. ENTER öffnet die Galerie; Rechts blättert durch alle 6 Bilder (mit Spruch), am Ende wieder von vorne, Links zurück; B bzw. ESC → Hauptmenü.
 - Geprüft werden ausserdem: fehlende Texturen in jeder Szene, die ganze Familie auf dem Gipfel und im Abspann, und die Fairness bei Pedalo-Power (8 Zufalls-Layouts, ein Bot muss allen Enten ausweichen können).
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
 

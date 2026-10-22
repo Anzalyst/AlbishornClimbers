@@ -3,8 +3,10 @@
  *
  *   ALBISHORN CLIMBERS     → Titelmenü des Jump'n'Runs (MenuScene)
  *   SUPER SEMPACH PARTY    → Menü der Minispiel-Party (SspMenuScene)
- * Bedienung: Links/Rechts (oder Hoch/Runter) wählen, A / START bestätigen,
- * M = Ton an/aus. Aus jedem Spiel führt die Pause → "HAUPTMENÜ" hierher.
+ *   BILDERGALLERIE         → Familienbilder mit Sprüchen (GalleryScene)
+ * Bedienung: Links/Rechts wählt das Spiel, Runter die Bildergalerie, Hoch
+ * zurück zu den Spielen; A / START / ENTER bestätigen, M = Ton an/aus.
+ * Aus jedem Spiel führt die Pause → "HAUPTMENÜ" hierher.
  * ===================================================================== */
 
 class GameSelectScene extends Phaser.Scene {
@@ -12,10 +14,14 @@ class GameSelectScene extends Phaser.Scene {
     super('GameSelectScene');
   }
 
+  init(data) {
+    this.selected = (data && data.selected) || 0;   // 0/1 = Spiele, 2 = Bildergalerie
+    this.lastCard = this.selected === 1 ? 1 : 0;
+  }
+
   create() {
     this.inputs = createPlayerInputs(this);
     this.backdrop = addBackdrop(this, [0x2a3a6a, 0x8ccbf0]);
-    this.selected = 0;
     this.leaving = false;
     this.cameras.main.fadeIn(300, 0, 0, 0);
     const cx = GAME_WIDTH / 2;
@@ -37,6 +43,14 @@ class GameSelectScene extends Phaser.Scene {
       return Object.assign(card, { container: c, frame });
     });
 
+    // Dritter Menüpunkt unter den Karten: Bildergalerie
+    this.gallery = this.add.container(cx, 468);
+    this.galleryFrame = this.add.rectangle(0, 0, 340, 40, 0x10131c, 0.9);
+    this.gallery.add([this.galleryFrame,
+      this.add.text(0, 1, TXT.galleryMenu, { fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5)]);
+
+    this.enterPressed = false;
+    this.input.keyboard.on('keydown-ENTER', () => { this.enterPressed = true; });
     this.footer = this.add.text(cx, GAME_HEIGHT - 20, '', { fontFamily: FONT, fontSize: '9px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5);
     this.input.keyboard.on('keydown-M', () => Sfx.toggleMute());
     this.refresh();
@@ -72,6 +86,24 @@ class GameSelectScene extends Phaser.Scene {
       this.tweens.killTweensOf(card.container);
       this.tweens.add({ targets: card.container, scale: on ? 1.05 : 0.95, duration: 150 });
     });
+    const on = this.selected === 2;
+    this.galleryFrame.setStrokeStyle(on ? 4 : 2, on ? 0xf7d117 : 0x5a6480);
+    this.tweens.killTweensOf(this.gallery);
+    this.tweens.add({ targets: this.gallery, scale: on ? 1.05 : 0.95, duration: 150 });
+  }
+
+  /** Auswahl bewegen: Links/Rechts zwischen den Spielen, Runter/Hoch zur Galerie und zurück. */
+  move(any) {
+    let next = this.selected;
+    if (this.selected === 2) {
+      if (any('up')) next = this.lastCard;
+    } else if (any('left') || any('right')) next = 1 - this.selected;
+    else if (any('down')) next = 2;
+    if (next === this.selected) return;
+    this.selected = next;
+    if (next < 2) this.lastCard = next;
+    Sfx.play(this, 'select');
+    this.refresh();
   }
 
   update(time, delta) {
@@ -82,16 +114,15 @@ class GameSelectScene extends Phaser.Scene {
     if (this.leaving) return;
 
     const any = a => this.inputs.some(i => i.justPressed(a));
-    if (any('left') || any('right') || any('up') || any('down')) {
-      this.selected = 1 - this.selected;
-      Sfx.play(this, 'select');
-      this.refresh();
-    }
-    if (any('jump') || any('start')) {
+    this.move(any);
+    const enter = this.enterPressed;
+    this.enterPressed = false;
+    if (enter || any('jump') || any('start')) {
       this.leaving = true;
       Sfx.play(this, 'select');
+      const target = this.selected === 2 ? 'GalleryScene' : this.cards[this.selected].scene;
       this.cameras.main.fadeOut(300, 0, 0, 0);
-      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(this.cards[this.selected].scene));
+      this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(target));
     }
   }
 }
