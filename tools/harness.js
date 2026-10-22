@@ -665,8 +665,8 @@
     });
     check('6 Familienbilder eingebettet und geladen (512×384 = 4:3)', keys.length === 6 &&
       keys.every(k => LOADING_IMAGES[k]) && sizes.every(s => s === '512x384'), `(${keys.map((k, i) => `${k}: ${sizes[i]}`)})`);
-    check('Sprüche wie bestellt (Mütze: "…WENN SIE IRGENDWO RUNTERFÄLLT...")',
-      TXT.loadingSlides.muetze === 'DE SPILER 2, WENN SIE IRGENDWO RUNTERFÄLLT...' && keys.every(k => TXT.loadingSlides[k].length > 10));
+    check('Sprüche wie bestellt (Mütze: "…WENN SIE IRGENDWO ABEGHEIT...")',
+      TXT.loadingSlides.muetze === 'DE SPILER 2, WENN SIE IRGENDWO ABEGHEIT...' && keys.every(k => TXT.loadingSlides[k].length > 10));
 
     // 2) Level geschafft → Victory → Ladebildschirm → nächstes Level, ohne Eingabe nach ~4 s
     LoadingScene.bag = []; LoadingScene.last = null;

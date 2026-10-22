@@ -7,117 +7,191 @@
  * Hintergründe in art.js (Art.createAll).
  * ===================================================================== */
 
-// --- Pixel-Art der Wanderer (12×16 Pixel, wird 2× skaliert) ---------------
-// Zeichen → Farbe aus der Palette des jeweiligen Spielers, '.' = transparent
-const HIKER_HEAD = [
-  '....hhhh....',
-  '...hhhhhh...',
-  '...hhssss...',
-  '...hsssess..',
-  '....sssss...'
-];
-const HIKER_FRAMES = {
-  idle: HIKER_HEAD.concat([
-    '..bbcccc....',
-    '.bbbccccc...',
-    '.bbbcccccs..',
-    '.bbbccccd...',
-    '..bbcccc....',
-    '....pppppp..',
-    '....pp..pp..',
-    '....pp..pp..',
-    '....pp..pp..',
-    '....kk..kk..',
-    '....kkk.kkk.'
-  ]),
-  walk1: HIKER_HEAD.concat([
-    '..bbcccc....',
-    '.bbbccccc...',
-    '.bbbcccccs..',
-    '.bbbccccd...',
-    '..bbcccc....',
-    '....pppppp..',
-    '...ppp..pp..',
-    '...pp....pp.',
-    '..pp.....pp.',
-    '..pp.....pp.',
-    '.kkk.....kkk'
-  ]),
-  walk2: HIKER_HEAD.concat([
-    '..bbcccc....',
-    '.bbbccccc...',
-    '.bbbccccs...',
-    '.bbbccccd...',
-    '..bbcccc....',
-    '....pppppp..',
-    '.....pppp...',
-    '.....pppp...',
-    '.....pp.pp..',
-    '.....pp.pp..',
-    '.....kkkkkk.'
-  ]),
-  jump: HIKER_HEAD.concat([
-    '..bbcccc.s..',
-    '.bbbcccccs..',
-    '.bbbccccc...',
-    '.bbbccccd...',
-    '..bbcccc....',
-    '....pppppp..',
-    '...ppp.ppp..',
-    '..kkk..pp...',
-    '..kk...kkk..',
-    '............',
-    '............'
-  ])
+// --- Pixel-Art von Jessica & Simon (24×32 Pixel, volle Auflösung) ----------
+// Jessica, Simon und alle Szenen der Super Sempach Party nutzen dieselben
+// Texturen (hiker1 / hiker2) – der Stil ist überall identisch.
+// Gezeichnet werden nur die Grundfarben; Schatten (links/unten), Glanzlichter
+// (oben/rechts) und die dunkle Kontur rechnet hikerFrame() automatisch dazu.
+// Zeichen → Farbe aus der Palette der Figur, '.' = transparent, 'o' = Kontur.
+
+// Beine (Zeilen 21–31), für beide gleich: p = Hose, k = Schuh, l = Schnürung
+const HIKER_LEGS = {
+  idle: [
+    '........ppppppp.........',
+    '........ppp.ppp.........',
+    '........ppp.ppp.........',
+    '........ppp.ppp.........',
+    '........ppp.ppp.........',
+    '........ppp.ppp.........',
+    '........ppp.ppp.........',
+    '........klk.klk.........',
+    '........kkkk.kkkk.......',
+    '........kkkk.kkkk.......',
+    '........oooo.oooo.......'
+  ],
+  walk1: [
+    '........ppppppp.........',
+    '.......ppp...ppp........',
+    '......ppp.....ppp.......',
+    '......ppp.....ppp.......',
+    '.....ppp.......ppp......',
+    '.....ppp.......ppp......',
+    '.....ppp.......ppp......',
+    '.....klk.......klk......',
+    '.....kkkk......kkkk.....',
+    '.....kkkk......kkkk.....',
+    '.....oooo......oooo.....'
+  ],
+  walk2: [
+    '........ppppppp.........',
+    '.........ppppp..........',
+    '.........ppppp..........',
+    '.........ppp.pp.........',
+    '.........ppp.pp.........',
+    '.........ppp.ppp........',
+    '.........ppp..pp........',
+    '.........klk..kk........',
+    '.........kkkk.kkk.......',
+    '.........kkkk.kkk.......',
+    '.........oooo.ooo.......'
+  ],
+  jump: [
+    '........ppppppp.........',
+    '.......ppp..ppp.........',
+    '......ppp...ppp.........',
+    '.....klk....ppp.........',
+    '.....kkkk...ppp.........',
+    '.....oooo...klk.........',
+    '............kkkk........',
+    '............oooo........',
+    '........................',
+    '........................',
+    '........................'
+  ]
+};
+
+// Arm je Pose (Änderungen am Oberkörper: [Zeile, Spalte, 'Pixel'], ' ' = lassen)
+const HIKER_ARMS = {
+  idle: [],
+  walk1: [[14, 15, 'cc'], [15, 15, 'ccc'], [16, 15, 'c.cc'], [17, 15, 'c..ss'], [18, 15, 'cc'], [19, 15, '...'], [20, 16, '..']],
+  walk2: [[14, 15, 'cc'], [15, 15, 'cc'], [16, 15, 'cc'], [17, 15, 'cc'], [18, 15, 'cc'], [19, 15, '...'], [20, 16, '..'], [19, 7, 's'], [20, 7, 's']],
+  jump: [[14, 15, 'cc'], [15, 15, 'cc'], [16, 15, 'cc'], [17, 15, 'cc'], [18, 15, 'cc'], [19, 15, '...'], [20, 16, '..'],
+    [10, 17, 'ss'], [11, 17, 'cc'], [12, 17, 'c'], [13, 17, 'c']]
 };
 const HIKER_FRAME_ORDER = ['idle', 'walk1', 'walk2', 'jump'];   // Frame 0..3
 
-// Aussehen von Jessica & Simon (nach den Bildvorlagen).
-// "ops" ändern die Grundform oben in ALLEN Frames: [Zeile, Spalte, 'Pixel'].
+// Grundfarbe → [Schatten, Glanzlicht] (automatisches Shading)
+const HIKER_SHADING = {
+  u: ['U', 'I'], v: ['V', 'F'], h: ['H', 'L'], s: ['S', null], c: ['C', 'X'],
+  t: ['T', 'Y'], b: ['n', 'N'], p: ['P', 'Q'], k: ['K', 'J'], g: ['G', null]
+};
+
+// Aussehen von Jessica & Simon (nach den Bildvorlagen), Kopf Zeilen 0–11,
+// Oberkörper Zeilen 12–20. Beide schauen nach rechts, Rucksack auf dem Rücken.
 const HIKER_STYLES = {
-  // Jessica: lange, wellige blonde Haare, goldene Kreolen, dunkle Outdoor-Jacke,
-  // dunkelblaue Cargo-Hose, dunkelbraune Schnürstiefel, blauer Rucksack
+  // Jessica: blaue Strickmütze mit Bommel, lange blonde Haare über dem Rücken,
+  // goldene Kreolen, dunkle Outdoor-Jacke mit Reissverschluss, dunkelblaue
+  // Cargo-Hose, braune Schnürstiefel, blauer Rucksack mit Schulterriemen
   hiker1: {
     palette: {
-      h: '#e8c060', H: '#c09038', s: '#f4c8a4', e: '#1e3a6e', y: '#f0b020',
-      c: '#2e2a30', d: '#1e1a20', b: '#2a5a9a', p: '#26386a', P: '#3a4e86', k: '#5a3418'
+      o: '#1c1626', W: '#f4f2ee',
+      u: '#2f6fd0', U: '#1f4c96', I: '#6aa4f4', v: '#2558aa', V: '#173c7a', F: '#3f7ad0',
+      h: '#e8c060', H: '#b88a30', L: '#fbe39a', s: '#f4c8a4', S: '#d9a07c',
+      e: '#1e2a4e', r: '#f0a0a0', m: '#b8505a', y: '#f0b020',
+      c: '#3a3442', C: '#262230', X: '#5a5470', z: '#a8aec0', t: '#7ab0f0', T: '#5a90d0', Y: '#a0c8f8',
+      b: '#2a5a9a', n: '#1c3e70', N: '#4a84d0', a: '#14243e', g: '#4a3020', G: '#33200f',
+      p: '#26386a', P: '#1a2850', Q: '#3a5292', k: '#6a3e1c', K: '#46260e', J: '#8a5a30', l: '#d8c49c'
     },
-    ops: [
-      [0, 0, '...hhhhh....'],
-      [1, 0, '..hhHhhhh...'],
-      [2, 0, '..hHhssss...'],
-      [3, 0, '..hhHssess..'],
-      [4, 0, '..hHhyssss..'],              // y = Kreole
-      [5, 2, 'hH'], [6, 3, 'h'], [7, 3, 'H'], [8, 3, 'h'],   // Haare fallen wellig über den Rücken
-      [4, 1, 'b'],                          // Rucksack ragt über die Schulter
-      [10, 5, 'P']                          // Cargo-Tasche
+    head: [
+      '........................',
+      '...........WW...........',
+      '.........uuuuuu.........',
+      '........uuuuuuuu........',
+      '.......uuuuuuuuuu.......',
+      '.......vvvvvvvvvvv......',
+      '......hhhhhhhhssss......',
+      '......hhhhhssesses......',
+      '......hhhhsssrssss......',
+      '......hhhhyssssmms......',
+      '......hhhhh.sssss.......',
+      '.....hhhhhh..sss........'
+    ],
+    body: [
+      '...bbbbhhcccctccc.......',
+      '..bbbbbhhcccczccc.......',
+      '..bbbbbbacccczcoc.......',
+      '..bbbbbbacccczcoc.......',
+      '..bbbbbbacccczcoc.......',
+      '..bbbbbbacccczcoc.......',
+      '...bbbbbcccccccoc.......',
+      '....bbb.ccccccc.ss......',
+      '........ggggggg.ss......'
     ]
   },
-  // Simon: kurze braune Haare, Dreitagebart, offene dunkle Jacke über
-  // olivgrünem T-Shirt, dunkle Hose, braune Wanderschuhe, dunkelroter Rucksack
+  // Simon: rote Cap mit Schirm, kurze braune Haare, Dreitagebart, offene
+  // dunkle Jacke über olivgrünem T-Shirt, dunkle Hose, braune Wanderschuhe,
+  // dunkelroter Rucksack
   hiker2: {
     palette: {
-      h: '#7a5232', H: '#a07448', s: '#eab994', B: '#9a7254', e: '#1e3a6e',
-      c: '#2c3430', d: '#1c2420', o: '#6b6650', b: '#8a1e24', p: '#2a2228', k: '#6b4a2a'
+      o: '#1c1626',
+      u: '#c8323a', U: '#8e1e26', I: '#f06a68', v: '#a02830', V: '#6e161c', F: '#c84850',
+      h: '#7a5232', H: '#563620', L: '#a07448', s: '#eab994', S: '#cf9a74',
+      e: '#1e2a3e', B: '#a8826a', m: '#8a4a3a',
+      c: '#2c3430', C: '#1c2420', X: '#4a5650', t: '#6b6650', T: '#4e4a3a', Y: '#8a8466',
+      b: '#8a1e24', n: '#5e1218', N: '#b23a3e', a: '#3a0e12', g: '#2a2420', G: '#1a1612',
+      p: '#2a2228', P: '#1a1418', Q: '#403640', k: '#6b4a2a', K: '#4a3018', J: '#8e6a44', l: '#c8b090'
     },
-    ops: [
-      [0, 0, '...hHhhH....'],
-      [1, 0, '...hhHhhh...'],
-      [3, 0, '...hBssess..'],              // B = Bartansatz
-      [4, 0, '....sBBBB...'],              // Dreitagebart
-      [5, 6, 'o'], [6, 6, 'oo'], [7, 6, 'oo'], [8, 6, 'oo'], [9, 6, 'o'],   // offene Jacke, T-Shirt
-      [4, 2, 'bb']                          // Rucksack ragt über die Schulter
+    head: [
+      '........................',
+      '........................',
+      '.........uuuuu..........',
+      '........uuuuuuuu........',
+      '.......uuuuuuuuuu.......',
+      '.......uuuuuuuuuuvvvv...',
+      '......hhhhssssssss......',
+      '......hhhhsssesses......',
+      '......hhhsssssssss......',
+      '......hhhhsBBBBmmB......',
+      '.......hhh.BBBBBB.......',
+      '........hh...sss........'
+    ],
+    body: [
+      '...bbbbcccccttccc.......',
+      '..bbbbbccccttttcc.......',
+      '..bbbbbbacctttcoc.......',
+      '..bbbbbbacctttcoc.......',
+      '..bbbbbbacctttcoc.......',
+      '..bbbbbbacctttcoc.......',
+      '...bbbbbccctttcoc.......',
+      '....bbb.ccctttc.ss......',
+      '........ggggggg.ss......'
     ]
   }
 };
 
-/** Ein Frame (Pixel-Zeilen) von Jessica oder Simon mit ihrem Stil. */
-function styledHikerFrame(key, frameName) {
-  const rows = HIKER_FRAMES[frameName].map(row => [...row]);
-  HIKER_STYLES[key].ops.forEach(([r, c, str]) => {
-    [...str].forEach((ch, i) => { if (ch !== ' ' && rows[r] && c + i < rows[r].length) rows[r][c + i] = ch; });
+/**
+ * Ein Frame (24 Pixel-Zeilen à 24 Zeichen) von Jessica oder Simon: Kopf,
+ * Oberkörper mit Arm-Pose und Beine zusammensetzen, dann Shading und Kontur.
+ */
+function hikerFrame(key, frameName) {
+  const style = HIKER_STYLES[key];
+  const rows = style.head.concat(style.body, HIKER_LEGS[frameName]).map(row => [...row]);
+  HIKER_ARMS[frameName].forEach(([r, c, str]) => {
+    [...str].forEach((ch, i) => { if (ch !== ' ') rows[r][c + i] = ch; });
   });
-  return rows.map(row => row.join(''));
+  const H = rows.length, W = rows[0].length;
+  const filled = (x, y) => y >= 0 && y < H && x >= 0 && x < W && rows[y][x] !== '.';
+  // Licht von oben rechts: linke/untere Kante dunkler, obere/rechte heller
+  const shaded = rows.map((row, y) => row.map((ch, x) => {
+    const m = HIKER_SHADING[ch];
+    if (!m) return ch;
+    if (!filled(x - 1, y) || !filled(x, y + 1)) return m[0];
+    if (m[1] && (!filled(x + 1, y) || !filled(x, y - 1))) return m[1];
+    return ch;
+  }));
+  // Dunkle Kontur um die ganze Figur
+  return shaded.map((row, y) => row.map((ch, x) =>
+    ch === '.' && (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) ? 'o' : ch).join(''));
 }
 
 // --- Erwachsene (nach den Bildvorlagen) -------------------------------------
@@ -472,12 +546,12 @@ class BootScene extends Phaser.Scene {
   // Spielfiguren
   // ---------------------------------------------------------------------
   createHikerTextures() {
-    const SCALE = 2, FW = 12 * SCALE, FH = 16 * SCALE;
+    const FW = 24, FH = 32;   // volle Auflösung, gleiche Grösse wie früher 12×16 × 2
     Object.keys(HIKER_STYLES).forEach(key => {
       const tex = this.textures.createCanvas(key, FW * HIKER_FRAME_ORDER.length, FH);
       const ctx = tex.getContext();
       HIKER_FRAME_ORDER.forEach((name, i) => {
-        this.drawPixels(ctx, styledHikerFrame(key, name), HIKER_STYLES[key].palette, SCALE, i * FW, 0);
+        this.drawPixels(ctx, hikerFrame(key, name), HIKER_STYLES[key].palette, 1, i * FW, 0);
         tex.add(i, 0, i * FW, 0, FW, FH);   // Frame i definieren
       });
       tex.refresh();
@@ -546,7 +620,7 @@ class BootScene extends Phaser.Scene {
 
     // Porträts der beiden Geschwister
     Object.keys(HIKER_STYLES).forEach(key => {
-      this.makePortrait(`portrait_${key}`, styledHikerFrame(key, 'idle').slice(0, 8), HIKER_STYLES[key].palette);
+      this.makePortrait(`portrait_${key}`, hikerFrame(key, 'idle').slice(0, 24), HIKER_STYLES[key].palette, 3);
     });
   }
 
