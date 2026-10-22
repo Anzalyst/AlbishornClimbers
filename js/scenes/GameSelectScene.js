@@ -92,7 +92,7 @@ class GameSelectScene extends Phaser.Scene {
     this.tweens.add({ targets: this.titleShine, alpha: 0, duration: 400, delay: 1600, repeat: -1, repeatDelay: 4200 });
   }
 
-  /** Untere Leiste: Controller als kleine Gamepads, Ton mit Lautsprecher-Symbol. */
+  /** Untere Leiste: Controller als kleine Gamepads, Ton-Status mit Lautsprecher-Symbol. */
   createFooter(cx) {
     const style = { fontFamily: FONT, fontSize: '9px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 };
     const y = GAME_HEIGHT - 16;
@@ -220,7 +220,7 @@ class GameSelectScene extends Phaser.Scene {
     });
     // Verbundener Controller: Icon leuchtet; Ton: Lautsprecher mit Wellen bzw. rotem X
     this.padIcons.forEach((icon, i) => icon.setAlpha(this.inputs[i].hasPad ? 1 : 0.4));
-    this.soundText.setText(Sfx.muted ? 'TON AUS (M)' : 'M = TON AUS');
+    this.soundText.setText(Sfx.muted ? TXT.soundIsOff : TXT.soundOffHint);
     this.speaker.setTexture(Sfx.muted ? 'speakerOff' : 'speakerOn').setX(this.soundText.x - this.soundText.width - 18);
     if (this.leaving) return;
 

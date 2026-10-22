@@ -35,6 +35,7 @@ class IntroScene extends Phaser.Scene {
       else if (this.phase === 'logo' && pressed && this.time.now > this.skippableAt) this.leave('GameSelectScene');
     } else {
       if (this.backdrop) this.backdrop.update(this.cameras.main, GAME_HEIGHT, delta);
+      if (this.inputs.some(i => i.justPressed('start'))) { this.leave('GameScene', { levelIndex: 0 }); return; }
       if (this.dialog) this.dialog.update(this.inputs);
     }
   }

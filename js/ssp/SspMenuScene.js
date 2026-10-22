@@ -49,7 +49,7 @@ class SspMenuScene extends Phaser.Scene {
     this.descText = this.add.text(cx, 425, '', {
       fontFamily: FONT, fontSize: '8px', color: '#ffffff', align: 'center', wordWrap: { width: 520 }, lineSpacing: 5, stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5, 0);
-    this.add.text(cx, GAME_HEIGHT - 10, 'A = OK   B / ESC = ZURÜCK   M = TON', { fontFamily: FONT, fontSize: '8px', color: '#dddddd', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 1);
+    this.add.text(cx, GAME_HEIGHT - 10, 'A = OK   B = ZURÜCK', { fontFamily: FONT, fontSize: '8px', color: '#dddddd', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 1);
 
     this.input.keyboard.on('keydown-ESC', () => this.back());
     this.input.keyboard.on('keydown-M', () => Sfx.toggleMute());

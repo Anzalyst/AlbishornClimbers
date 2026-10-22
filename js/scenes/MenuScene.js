@@ -113,8 +113,8 @@ class MenuScene extends Phaser.Scene {
   createFooter() {
     const style = color => ({ fontFamily: FONT, fontSize: '9px', color, stroke: '#000000', strokeThickness: 3, lineSpacing: 6 });
     const [p1, p2] = PLAYER_DEFS.map(d => d.name.toUpperCase());
-    this.add.text(40, GAME_HEIGHT - 70, `${p1}\n${TXT.footerKeys1}\nController 1`, style(PLAYER_DEFS[0].colorCss));
-    this.add.text(GAME_WIDTH - 40, GAME_HEIGHT - 70, `${p2}\n${TXT.footerKeys2}\nController 2`, style(PLAYER_DEFS[1].colorCss))
+    this.add.text(40, GAME_HEIGHT - 70, `${p1}\n${TXT.footerKeys1}`, style(PLAYER_DEFS[0].colorCss));
+    this.add.text(GAME_WIDTH - 40, GAME_HEIGHT - 70, `${p2}\n${TXT.footerKeys2}`, style(PLAYER_DEFS[1].colorCss))
       .setOrigin(1, 0);
     this.padStatus = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 26, '', style('#ffffff')).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, `© ${CONSOLE.name} – ${CONSOLE.fullName}`, style('#aab4cc')).setOrigin(0.5);

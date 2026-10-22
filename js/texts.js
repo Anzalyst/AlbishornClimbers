@@ -6,34 +6,36 @@
  * Infotafeln und Anekdoten in levels.js – ebenfalls in Mundart.
  * (Die Super Sempach Party bleibt auf Hochdeutsch.)
  *
- * "GUMP" = Sprung-Taste (Leertaste / Enter / Controller A).
+ * Bedienhinweise nennen NUR Controller-Knöpfe (A, B, START, Steuerkreuz) –
+ * die Konsole wird mit Controllern gespielt. Die Tastatur funktioniert
+ * weiterhin (zum Testen), wird aber nirgends angezeigt.
  * Platzhalter wie {name} werden im Code ersetzt.
  * ===================================================================== */
 
 const TXT = {
   // Startbildschirm der Konsole & Intro
   powerOn: 'DRÜCK E TASCHTE ZUM IISCHALTE',
-  skipIntro: 'ESC = ÜBERSPRINGE',
+  skipIntro: 'START = ÜBERSPRINGE',
   signpost: 'Albishorn 1h30',
 
   // Titelmenü
   menuSubtitle: 'Vo Ebertswil ufe ufs Albishorn',
   menuItems: ['SPIIL STARTE', 'PASSWORT', 'CHOPFNÜSS', 'HAUPTMENÜ'],
   passwordTitle: 'PASSWORT IIGÄ',
-  passwordHelp: '▲▼ = AVATAR   ◀▶ = STELL   GUMP = OK   ESC = ZRUGG',
+  passwordHelp: '▲▼ = AVATAR   ◀▶ = STELL   A = OK   B = ZRUGG',
   passwordSecret: 'PSST … E ÜBERRASCHIG!',
   passwordWrong: 'FALSCHS PASSWORT!',
   passwordCredits: 'MIAU! … AB ZUM ABSPANN!',
   konamiCredits: 'GEHEIMCODE! AB ZUM ABSPANN!',
-  footerKeys1: 'WASD + LEERTASCHTE',
-  footerKeys2: 'PFIIL + ENTER',
-  soundOffHint: 'M = TON US',
-  soundIsOff: 'TON US (M)',
+  footerKeys1: 'CONTROLLER 1',
+  footerKeys2: 'CONTROLLER 2',
+  soundOffHint: 'TON AA',
+  soundIsOff: 'TON US',
 
   // Im Level
   level: 'LEVEL',
   bonusLevel: 'CHOPFNUSS',
-  hudKeys: 'ESC/START Pause  R Nomal  M Ton',
+  hudKeys: 'START = PAUSE',
   atGoal: '✔ AM ZIIL',
   passwordLabel: 'Passwort',
   goalSign: 'ZIIL',
@@ -73,13 +75,13 @@ const TXT = {
   pause: {
     title: 'PAUSE', resume: 'WIITER', restart: 'NOMAL VO VORNE',
     soundOn: 'TON: AA', soundOff: 'TON: US', mainMenu: 'HAUPTMENÜ',
-    help: 'GUMP = OK   START = WIITER'
+    help: 'A = OK   START = WIITER'
   },
 
   // Level geschafft
   victoryTitle: 'LEVEL GSCHAFFT!',
   victoryAll: 'ALLI GFUNDE!',
-  victoryPrompt: 'GUMP = WIITER   ESC / B = MENÜ',
+  victoryPrompt: 'A = WIITER   B = MENÜ',
   victoryPassword: 'PASSWORT FÜR {label}',
   bonusTitle: 'CHOPFNUSS GKNACKT!',
   bonusAllDone: 'ALLI CHOPFNÜSS GKNACKT!\nIhr sind es Superteam!',
@@ -88,7 +90,7 @@ const TXT = {
   // Ladebildschirm (Familienbilder, LoadingScene) – Reihenfolge = Bildergalerie
   loading: 'LADET',
   loadingChill: 'CHILL MAL EN MOMENT',
-  loadingSkip: 'A / ENTER = WIITER',
+  loadingSkip: 'A = WIITER',
   loadingSlides: {
     dreck: 'CHILL MAL... FRÜENER HÄT MER AU DÖRFE IM DRÄCK SPIELE UND D ELTERE HÄND NÖD GRAD D KRISE BECHO!',
     muetze: 'DE SPILER 2, WENN SIE IRGENDWO ABEGHEIT...',
@@ -106,17 +108,17 @@ const TXT = {
   // Bildergalerie im Hauptmenü (GalleryScene)
   galleryMenu: 'BILDERGALLERIE',
   galleryCount: 'BILD {n} / {all}',
-  galleryPrompt: '< > = BLÄTTERE     B / ESC = ZRUGG',
+  galleryPrompt: '◀ ▶ = BLÄTTERE     B = ZRUGG',
 
   // Finale, Abspann, Endbild
   finaleTitle: 'HAPPY BIRTHDAY!',
   finaleGreeting: 'Alles Gueti zum {age}. Geburtstag,\n{who}!',
   finaleGreetingFallback: 'ihr zwöi Gipfelstürmer',
   finaleEdelweiss: 'Edelwiiss gsammlet: {got} / {all}',
-  finalePrompt: 'GUMP = ABSPANN',
+  finalePrompt: 'A = ABSPANN',
   creditsEnd: 'ÄNDI',
-  creditsPrompt: 'GUMP = WIITER',
-  endPrompt: 'GUMP = HAUPTMENÜ'
+  creditsPrompt: 'A = WIITER',
+  endPrompt: 'A = HAUPTMENÜ'
 };
 
 /** Text mit Platzhaltern füllen: tx('Wart uf {name}!', { name: 'Simon' }). */

@@ -174,7 +174,7 @@ class MinigameScene extends Phaser.Scene {
     this.hudLeft = this.add.text(20, 17, '', style(12, p1.css)).setDepth(101);
     this.hudRight = this.add.text(GAME_WIDTH - 20, 17, '', style(12, p2.css)).setOrigin(1, 0).setDepth(101);
     this.hudCenter = this.add.text(GAME_WIDTH / 2, 14, '', style(16, '#ffffff')).setOrigin(0.5, 0).setDepth(101);
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 8, 'START / ESC = PAUSE', style(7, '#aab4cc')).setOrigin(0.5, 1).setDepth(101).setAlpha(0.7);
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 8, 'START = PAUSE', style(7, '#aab4cc')).setOrigin(0.5, 1).setDepth(101).setAlpha(0.7);
   }
 
   updateHud() {

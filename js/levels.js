@@ -105,7 +105,7 @@ const LEVELS = [
     },
     targets: { D: 'door' },
     hints: [
-      'Willkomme z Ebertswil! {P1}: A/D + LEERTASCHTE. {P2}: Pfiil + ENTER. Ihr chömed nume zäme as Ziil!',
+      'Willkomme z Ebertswil! Steuerchrüz = laufe, A = gumpe. Ihr chömed nume zäme as Ziil!',
       'Bröckel-Brättli! Wänn öpper druf staht, wackled si – und nach 1 Sekunde gheied si abe. Schnäll wiiter! Nach es paar Sekunde sind si wieder do.',
       'Es Felsband! {P1}: Stell di uf de BLAU Schalter – solang du druf stahsch, isch s Tor offe.',
       'En Hebel leit mer mit UFE um. {P2}: Dä Hebel hebt s Tor für immer offe.'

@@ -81,6 +81,8 @@ Der Aktions-Knopf (B) wird in den Sempach-Minispielen gebraucht (A/B-Wechseln be
 Tastatur: `ESC` / `P` = Pause, `R` = Level neu starten, `M` = Ton an/aus.
 Controller: `START` / `OPTIONS` = Pausenmenü (Weiter, Neu starten, Ton, Hauptmenü). Tastatur und Controller funktionieren gleichzeitig. Das Spiel ist komplett ohne Tastatur bedienbar.
 
+**Konsolen-Betrieb (KES-ThinkCentre):** Alle Bedienhinweise im Spiel nennen nur Controller-Knöpfe (A, B, START, Steuerkreuz) – nirgends mehr Tastatur-Tasten. Die Tastatur funktioniert weiterhin zum Testen und Debuggen (Tabelle oben), wird dem Spieler aber nicht angezeigt. Das Story-Intro lässt sich mit START überspringen. Ein Test (`Konsole` in run-tests.js) durchsucht alle Texte und die wichtigsten Bildschirme nach Tastatur-Hinweisen.
+
 Spieler 1 bekommt den ersten verbundenen Controller, Spieler 2 den zweiten, egal in welchem Browser-Slot sie stecken. Controller werden erst nach dem ersten Tastendruck auf dem Pad erkannt (Browser-Regel).
 
 ## Level & Passwörter

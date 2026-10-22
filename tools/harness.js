@@ -1031,6 +1031,70 @@
     setInput(0); setInput(1);
   }
 
+  // --- Konsolen-Betrieb: Bedienhinweise nennen nur Controller-Knöpfe -------
+  function runControllerTextTests() {
+    syncClock(LEVELS.length + 59);
+    reseed(5959);
+    PlayerInput.prototype.update = scriptedInputUpdate;
+    setInput(0); setInput(1);
+    out.pad = {};
+    const check = (name, ok, detail = '') => {
+      out.pad[name] = !!ok;
+      if (!ok) out.errors.push(`Controller-Text-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+    // Tastatur-Hinweise, die der Spieler nicht mehr sehen soll
+    const KEYBOARD = /\b(ESC|ENTER|SHIFT|WASD|BACKSPACE|LEERTA\w*|PFIIL\w*|PFEIL\w*|TASTATUR)\b|\bA\/D\b|\bM = |\(M\)|\bR NOMAL\b|\bP = /i;
+    const strings = [];
+    const collect = v => { if (typeof v === 'string') strings.push(v); else if (v && typeof v === 'object') Object.values(v).forEach(collect); };
+    collect(TXT);
+    collect(SSP.keyLegend);
+    SSP.minigames.forEach(m => collect([m.desc, m.controls]));
+    LEVELS.forEach(l => collect([l.name, l.hints, l.anecdote]));
+    const bad = strings.filter(s => KEYBOARD.test(s));
+    check('Texte (texts.js, Level-Tafeln, Minispiele): keine Tastatur-Hinweise', !bad.length, `(${bad})`);
+
+    // Sichtbare Texte der Bildschirme
+    const shownTexts = key => {
+      const t = [];
+      const v = o => { if (o.type === 'Text' && o.visible) t.push(o.text); if (o.list) o.list.forEach(v); };
+      game.scene.getScene(key).children.list.forEach(v);
+      return t;
+    };
+    const screens = [
+      ['GameSelectScene'], ['MenuScene', undefined, () => { setInput(0, { down: true }); step(); setInput(0); step(); setInput(0, { jump: true }); step(); setInput(0); step(5); }],
+      ['VictoryScene', { levelIndex: 0, collected: 1, total: 5 }], ['GameScene', { levelIndex: 0 }], ['GalleryScene'],
+      ['LoadingScene', { next: 'GameScene', data: { levelIndex: 0 } }], ['IntroScene', { mode: 'story' }],
+      ['SspMenuScene'], ['SspGrill'], ['CreditsScene'], ['EndScene']
+    ];
+    const found = [];
+    screens.forEach(([key, data, extra]) => {
+      startScene(key, data);
+      step(40);
+      if (extra) extra();
+      shownTexts(key).filter(s => KEYBOARD.test(s)).forEach(s => found.push(`${key}: ${s}`));
+    });
+    // Pause im Level
+    startScene('GameScene', { levelIndex: 0 }); step(20);
+    game.scene.getScene('GameScene').openPause(); step(5);
+    shownTexts('PauseScene').filter(s => KEYBOARD.test(s)).forEach(s => found.push(`PauseScene: ${s}`));
+    check('Alle Bildschirme zeigen nur Controller-Knöpfe (A, B, START, Steuerkreuz)', !found.length, `(${found.join(' | ')})`);
+    check('Hinweise nennen A / B / START', TXT.hudKeys === 'START = PAUSE' && TXT.victoryPrompt === 'A = WIITER   B = MENÜ' &&
+      TXT.passwordHelp.includes('A = OK') && TXT.passwordHelp.includes('B = ZRUGG') && TXT.skipIntro === 'START = ÜBERSPRINGE');
+
+    // Story-Intro: START überspringt (Controller) – Tastatur-ESC bleibt im Code
+    startScene('IntroScene', { mode: 'story' }); step(20);
+    setInput(0, { start: true }); step(); setInput(0);
+    let f = 0;
+    while (!game.scene.isActive('LoadingScene') && f++ < 90) step();
+    check('Story-Intro: START überspringt → Ladebildschirm vor Level 1', game.scene.isActive('LoadingScene') &&
+      game.scene.getScene('LoadingScene').nextData.levelIndex === 0);
+    check('Tastatur bleibt zum Testen aktiv (ESC/P im Level, M = Ton)', ['ESC', 'P', 'M'].every(k => {
+      startScene('GameScene', { levelIndex: 0 }); step(2);
+      return game.scene.getScene('GameScene').input.keyboard.listenerCount(`keydown-${k}`) > 0;
+    }));
+    setInput(0); setInput(1);
+  }
+
   /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
   function checkOffline() {
     const external = performance.getEntriesByType('resource').map(e => e.name).filter(n => !n.startsWith('file:'));
@@ -1079,6 +1143,7 @@
       try { runLoadingTests(); } catch (e) { out.errors.push(`Ladebildschirm-Test abgebrochen: ${e.stack || e}`); }
       try { runBoulderTests(); } catch (e) { out.errors.push(`Felsbrocken-Test abgebrochen: ${e.stack || e}`); }
       try { runPasswordTests(); } catch (e) { out.errors.push(`Passwort-Test abgebrochen: ${e.stack || e}`); }
+      try { runControllerTextTests(); } catch (e) { out.errors.push(`Controller-Text-Test abgebrochen: ${e.stack || e}`); }
       // Chopfnüss: Lösungs-Test mit echten Eingaben (tools/harness-puzzles.js)
       syncClock(LEVELS.length + 60);
       PlayerInput.prototype.update = scriptedInputUpdate;

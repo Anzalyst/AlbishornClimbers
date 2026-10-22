@@ -13,7 +13,7 @@
 const SSP = {
   title: 'SUPER SEMPACH PARTY',
   subtitle: 'Das Camping-Duell am Sempachersee',
-  keyLegend: 'A = Leertaste / Enter / Pad-A     B = E / Shift / Pad-B',
+  keyLegend: 'A = SPRINGEN / BESTÄTIGEN     B = AKTION',
 
   // Reihenfolge = Reihenfolge im Party-Modus
   minigames: [
