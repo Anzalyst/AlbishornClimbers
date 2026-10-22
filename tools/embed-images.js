@@ -43,7 +43,8 @@ const SLIDES = [
   { key: 'clowns',      src: 'clowns.jpg' },
   { key: 'hochzeit',    src: 'peterundesthi.jpg' },
   { key: 'badewanne',   src: 'badewanne.jpg' },
-  { key: 'kinderwagen', src: 'buggy_team.png' }
+  { key: 'kinderwagen', src: 'buggy_team.png' },
+  { key: 'erinnerung',  src: 'peterkurt.jpg' }       // Gedenkbild: Abspann + Galerie, nicht im Ladebildschirm
 ];
 
 const MIME = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };

@@ -31,7 +31,9 @@ Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und v
 
 **Ladebildschirme (Dia-Show):** Vor jedem Level (also auch nach jedem bestandenen Level), vor jedem Sempach-Minispiel und nach dem letzten Minispiel vor der Siegerehrung zeigt die `LoadingScene` ein zufälliges Familienbild (512×384 = 4:3, im Dia-Rahmen), darunter die KES-Textbox (schwarz, gelbe Kontur) mit einem Spruch auf Züritüütsch und einen Ladebalken, auf dem Ginny mitläuft („LADET…“). Nach 4 s blendet die Szene weich aus; A / Sprung, START oder ENTER überspringt sofort. Die Bilder werden nie zweimal hintereinander gezeigt: Erst kommen alle einmal dran, dann wird neu gemischt.
 
-**Bildergalerie:** Im Hauptmenü (Spielauswahl) führt „BILDERGALLERIE“ (Runter, dann A / ENTER) zur `GalleryScene`: dieselben Bilder gross, darunter der Spruch; Links/Rechts blättert, B / ESC führt zurück.
+**Bildergalerie:** Im Hauptmenü (Spielauswahl) führt „BILDERGALLERIE“ (Runter, dann A / ENTER) zur `GalleryScene`: dieselben Bilder gross, darunter der Spruch, als letztes, ehrendes Bild das Gedenkbild für Kurt & Peter; Links/Rechts blättert, B / ESC führt zurück.
+
+**Gedenkbild:** Nach dem Abspann blendet die `CreditsScene` sanft auf das Bild von Kurt & Peter (`assets/images/loading/peterkurt.jpg`, eingebettet wie die Ladebilder) mit der KES-Textbox „In liebevoller Erinnerig an Kurt & Peter. Ihr sind immer Teil vo üsem Abentüür!“ um. Es bleibt ca. 5 s stehen (A / START / ENTER überspringt) und geht dann weich ins Dankesbild über. In der zufälligen Auswahl der Ladebildschirme erscheint es bewusst nicht.
 - Originale: `assets/images/loading/` (Pixel-Art, 4:3 bzw. breiter)
 - `node tools/embed-images.js` schneidet mittig auf 4:3 zu und verkleinert auf 512×384 (im Canvas eines headless Chrome/Edge, ohne npm-Paket). Ergebnis: `js/generated/loading-images.js` (JPEG als Base64). Mit `--preview <Ordner>` werden die verkleinerten Bilder zusätzlich abgelegt.
 - Die Zuordnung Datei → Schlüssel steht in `SLIDES` im Script, die Sprüche (und die Reihenfolge der Galerie) in `TXT.loadingSlides` (`js/texts.js`). Für ein neues Bild: Datei ablegen, in `SLIDES` eintragen, Spruch mit gleichem Schlüssel ergänzen, Script ausführen.
@@ -56,7 +58,7 @@ In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{
 ## Ablauf
 KES-Startlogo → **Spielauswahl** (Albishorn Climbers oder Super Sempach Party)
 
-**Albishorn Climbers:** Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 (vor jedem Level ein Ladebildschirm mit Familienfoto) → Gipfel: Sven wartet am Aussichtsturm → Geburtstagsfeier → Abspann → „Danke fürs Spielen!“ (EndScene) → Menü
+**Albishorn Climbers:** Menü → Intro mit Tante Edith & Onkel Kurt → Level 1–5 (vor jedem Level ein Ladebildschirm mit Familienfoto) → Gipfel: Sven wartet am Aussichtsturm → Geburtstagsfeier → Abspann → Gedenkbild für Kurt & Peter → „Danke fürs Spielen!“ (EndScene) → Menü
 
 **Super Sempach Party:** SSP-Menü → *Party* (alle 5 Minispiele, dazwischen Zwischenstand; vor jedem Minispiel der Ladebildschirm) oder *Minispiel wählen* → Siegerehrung mit Podest, Pokal und Konfetti → SSP-Menü. Jedes Minispiel beginnt mit einer Karte, die Ziel und Steuerung erklärt, danach kommt der Countdown.
 
@@ -116,7 +118,7 @@ js/scenes/PauseScene.js    Pausenmenü für alle Spiele (START/ESC/P): Weiter, N
 js/scenes/GameSelectScene.js  Hauptmenü: Albishorn Climbers, Super Sempach Party oder Bildergalerie
 js/scenes/VictoryScene.js  Level geschafft + nächstes Passwort
 js/scenes/FinaleScene.js   Gipfel-Treffen mit Sven + Geburtstagsfeier
-js/scenes/CreditsScene.js  Abspann
+js/scenes/CreditsScene.js  Abspann, danach das Gedenkbild für Kurt & Peter
 js/scenes/EndScene.js      Victory-Bild „Danke fürs Spielen!“ mit Konfetti & Sternen
 js/scenes/LoadingScene.js  Ladebildschirm: Dia-Show mit Familienbildern, Spruch, Ginny auf dem Ladebalken
 js/scenes/GalleryScene.js  Bildergalerie: Familienbilder mit Sprüchen durchblättern
@@ -177,7 +179,8 @@ Der Test braucht Node.js und einen installierten Chrome oder Edge. Er lädt das 
 - **Hindernis-Test** (`tools/harness-puzzles.js`): Bots überwinden jeden neuen Abschnitt in Level 1–5 mit echten Sprüngen (beide Figuren) und prüfen: Bröckel-Platten sacken weg und kommen wieder, Baumstämme nehmen mit und gehen am Ende unter, Wasser → Checkpoint, Pendel-Schwung beim Absprung, Figuren stehen stabil auf Pendel und Stamm (kein Rutschen, kein Durchfallen), das Pendel folgt exakt seiner Formel, Felsbrocken drehen sich passend zur Rollstrecke und rollen über die Nischen, Treffer → Checkpoint, die Fels-Schwelle hält die Brocken auf. Pendel, Stämme und Level 2/5 laufen zusätzlich mit unregelmässiger Bildrate wie auf einem 50/75-Hz-Fernseher (0–2 Physik-Schritte pro Bild).
 - **Rätsel-Test** (`tools/harness-puzzles.js`): Zwei Bots lösen beide Chopfnüss nur mit normalen Eingaben (laufen, springen, Hebel/Knöpfe) bis ins Ziel und prüfen dabei jede Mechanik: Countdown und Ticken, Tor zu nach Ablauf, UND-Tor, falsche Reihenfolge/Zeitlimit beim Farbeschloss, Waage proportional, Gleichgewichts-Lämpli, Ablauf Victory → nächste Chopfnuss → Menü.
 - **Ladebildschirm-Test**: alle 6 Familienbilder eingebettet (512×384) und jedes mit Spruch; Level geschafft → Victory → Dia-Show → nächstes Level; Bild, Spruch, Ginny und „LADET…“ sichtbar; nach ~4 s weich ausgeblendet; A / Sprung, START und ENTER überspringen sofort; zufällige Reihenfolge ohne direkte Wiederholung; Menü/Passwort, Intro und Sempach-Minispiele laufen über den Ladebildschirm, ebenso der Weg vom letzten Minispiel zur Siegerehrung; Menüs, Zwischenstand und Galerie nicht.
-- **Galerie-Test**: Hauptmenü → Runter wählt BILDERGALLERIE (Hoch zurück zur letzten Karte) → A bzw. ENTER öffnet die Galerie; Rechts blättert durch alle 6 Bilder (mit Spruch), am Ende wieder von vorne, Links zurück; B bzw. ESC → Hauptmenü.
+- **Galerie-Test**: Hauptmenü → Runter wählt BILDERGALLERIE (Hoch zurück zur letzten Karte) → A bzw. ENTER öffnet die Galerie; Rechts blättert durch alle 6 Bilder (mit Spruch) und zum Schluss das Gedenkbild, am Ende wieder von vorne, Links zurück; B bzw. ESC → Hauptmenü.
+- **Gedenk-Test**: Gedenkbild eingebettet, nicht in den Ladebildschirmen, letztes Bild der Galerie; Abspann blendet sanft darauf um, KES-Textbox mit dem Gedenktext, nach ca. 5 s weich zum Dankesbild; A / Sprung, START und ENTER überspringen.
 - Geprüft werden ausserdem: fehlende Texturen in jeder Szene, die ganze Familie auf dem Gipfel und im Abspann, und die Fairness bei Pedalo-Power (8 Zufalls-Layouts, ein Bot muss allen Enten ausweichen können).
 - Ändert sich das Verhalten **absichtlich** (z. B. neue Level, andere Physik), die Referenz mit `--update-golden` neu schreiben und mitcommitten.
 

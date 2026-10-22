@@ -284,6 +284,60 @@
     });
     if (!sc.children.list.some(o => o.texture && o.texture.key === 'svenDaughter')) out.errors.push('Abspann: Hannah fehlt');
     step(frames);
+    checkMemorial();
+  }
+
+  /** Abspann-Ende: Gedenkbild für Kurt & Peter, ~5 s, überspringbar, dann weich zum Dankesbild. */
+  function checkMemorial() {
+    out.memorial = {};
+    const check = (name, ok, detail = '') => {
+      out.memorial[name] = !!ok;
+      if (!ok) out.errors.push(`Gedenk-Test "${name}" fehlgeschlagen ${detail}`);
+    };
+    const active = k => game.scene.isActive(k);
+    const cs = () => game.scene.getScene('CreditsScene');
+    const until = (cond, max) => { let f = 0; while (!cond() && f < max) { step(); f++; } return f; };
+    const tapJump = () => { setInput(0, { jump: true }); step(); setInput(0); step(); };
+    const img = game.textures.exists('loading_erinnerung') && game.textures.get('loading_erinnerung').getSourceImage();
+    check('Gedenkbild eingebettet (512×384), nicht im Ladebildschirm, letztes Bild der Galerie',
+      img && img.width === 512 && img.height === 384 && !TXT.loadingSlides.erinnerung &&
+      GalleryScene.slides()[GalleryScene.slides().length - 1] === 'erinnerung' && GalleryScene.caption('erinnerung') === TXT.memorial);
+
+    // 1) Ohne Eingabe: Abspann fertig → Gedenkbild → nach ~5 s weich zur EndScene
+    let sc = cs();
+    sc.roll.y = sc.rollStopY; step(80);
+    sc.leave();
+    until(() => sc.memorial, 120);
+    step(30);
+    const fading = sc.cameras.main.fadeEffect.isRunning && sc.cameras.main.fadeEffect.direction === false;
+    check('Abspann blendet sanft auf das Gedenkbild um', !!sc.memorial && active('CreditsScene') && fading &&
+      sc.memorialPhoto && sc.memorialPhoto.texture.key === 'loading_erinnerung' && sc.memorialPhoto.displayWidth === 480);
+    check('KES-Textbox mit dem Gedenktext', sc.memorialText && sc.memorialText.text === TXT.memorial &&
+      TXT.memorial === 'In liebevoller Erinnerig an Kurt & Peter. Ihr sind immer Teil vo üsem Abentüür!' &&
+      sc.memorialText.getWrappedText(TXT.memorial).length <= 2);
+    let frames = 30;
+    let fadeOut = false;
+    while (!active('EndScene') && frames < 12 * 60) {
+      step(); frames++;
+      if (sc.memorial.leaving && sc.sys.isActive() && sc.cameras.main.fadeEffect.isRunning) fadeOut = true;
+    }
+    const secs = frames / 60;
+    check('Bleibt ~5 s stehen, dann weich zum Dankesbild', active('EndScene') && fadeOut && secs >= 6 && secs <= 8,
+      `(${secs.toFixed(2)} s inkl. Ein-/Ausblenden)`);
+
+    // 2) Überspringen mit A / Sprung, START und ENTER
+    [['A / Sprung', () => tapJump()], ['START', () => { setInput(0, { start: true }); step(); setInput(0); step(); }],
+      ['ENTER', () => { cs().input.keyboard.emit('keydown-ENTER'); step(); }]].forEach(([name, press]) => {
+      startScene('CreditsScene');
+      sc = cs();
+      sc.roll.y = sc.rollStopY; step(80);
+      sc.leave();
+      until(() => sc.memorial, 120);
+      step(60); press();
+      const f = until(() => active('EndScene'), 200);
+      check(`${name} überspringt das Gedenkbild`, active('EndScene') && f < 100, `(${f} Bilder)`);
+    });
+    setInput(0);
   }
 
   // --- Gamepad & Tastatur: echte Eingabe-Schicht mit simulierten Geräten ---
@@ -411,7 +465,9 @@
     const credits = game.scene.getScene('CreditsScene');
     credits.roll.y = credits.rollStopY; step(80);   // Abspann vorspulen
     tap(padA, 0); step(50);
-    check('Abspann → EndScene', active('EndScene'));
+    check('Abspann → Gedenkbild (noch nicht EndScene)', active('CreditsScene') && !!credits.memorial && !active('EndScene'));
+    step(30); tap(padA, 0); step(90);   // nach der kurzen Sperre (MEMORIAL.skipAfter)
+    check('Gedenkbild: A → EndScene', active('EndScene'));
     const end = game.scene.getScene('EndScene');
     check('EndScene zeigt das Bild', end.children.list.some(o => o.texture && o.texture.key === 'endscreen'));
     tap(padB, 0); step(5);
@@ -761,13 +817,13 @@
       gTex() === `loading_${keys[0]}` && gal().caption.text === TXT.loadingSlides[keys[0]] &&
       gal().photo.displayWidth === 512 && missing(gal()) === 0);
     const seenG = [gal().slide];
-    for (let k = 1; k < keys.length; k++) { tapIn(1, 'right'); seenG.push(gal().slide); }
-    check('Galerie: Rechts blättert durch alle 6 Bilder (beide Spieler)', seenG.join() === keys.join() &&
-      gTex() === `loading_${keys[5]}` && gal().caption.text === TXT.loadingSlides[keys[5]], `(${seenG})`);
+    for (let k = 1; k < keys.length + 1; k++) { tapIn(1, 'right'); seenG.push(gal().slide); }
+    check('Galerie: Rechts blättert durch alle 6 Bilder + Gedenkbild (beide Spieler)', seenG.join() === keys.concat('erinnerung').join() &&
+      gTex() === 'loading_erinnerung' && gal().caption.text === TXT.memorial, `(${seenG})`);
     tapIn(0, 'right');
     check('Galerie: nach dem letzten Bild wieder das erste', gal().index === 0 && gTex() === `loading_${keys[0]}`);
     tapIn(0, 'left'); tapIn(0, 'left');
-    check('Galerie: Links blättert zurück', gal().index === 4 && gTex() === `loading_${keys[4]}`);
+    check('Galerie: Links blättert zurück (übers Gedenkbild)', gal().index === 5 && gTex() === `loading_${keys[5]}`);
     tapIn(0, 'back');
     until(() => active('GameSelectScene'), 60);
     check('Galerie: B → zurück ins Hauptmenü (Galerie bleibt gewählt)',

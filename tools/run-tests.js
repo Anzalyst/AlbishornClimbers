@@ -115,6 +115,7 @@ Object.entries(result.input || {}).forEach(([name, ok]) => console.log(`  Eingab
 if (result.family) console.log(`  Familie  Gipfel: ${(result.family.finale || []).length}/8 da, ${result.family.partyHats} Partyhütchen | Abspann: ${(result.family.credits || []).join(', ')}`);
 (result.sspStats || []).forEach(l => console.log(`  SSP-Statistik  ${l}`));
 Object.entries(result.ssp || {}).forEach(([name, ok]) => console.log(`  SSP     ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
+Object.entries(result.memorial || {}).forEach(([name, ok]) => console.log(`  Gedenken ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 Object.entries(result.loading || {}).forEach(([name, ok]) => console.log(`  Laden   ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 Object.entries(result.skills || {}).forEach(([name, ok]) => console.log(`  Hindernis ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 Object.entries(result.puzzles || {}).forEach(([name, ok]) => console.log(`  Rätsel  ${ok ? 'ok    ' : 'FEHLER'} ${name}`));

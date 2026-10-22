@@ -6,7 +6,8 @@
  * (am Ende geht's wieder von vorne los), B / ESC = zurück zur Spielauswahl.
  *
  * Bilder: LOADING_IMAGES (js/generated/loading-images.js), Sprüche und
- * Reihenfolge: TXT.loadingSlides (texts.js).
+ * Reihenfolge: TXT.loadingSlides (texts.js). Als letztes, ehrendes Bild
+ * folgt das Gedenkbild für Kurt & Peter (TXT.memorial).
  * ===================================================================== */
 
 class GalleryScene extends Phaser.Scene {
@@ -60,9 +61,15 @@ class GalleryScene extends Phaser.Scene {
     this.show(this.index);
   }
 
-  /** Alle Bilder, die eingebettet sind – in der Reihenfolge von TXT.loadingSlides. */
+  /** Alle Bilder, die eingebettet sind – in der Reihenfolge von TXT.loadingSlides, zum Schluss das Gedenkbild. */
   static slides() {
-    return Object.keys(TXT.loadingSlides).filter(k => typeof LOADING_IMAGES !== 'undefined' && LOADING_IMAGES[k]);
+    return Object.keys(TXT.loadingSlides).concat('erinnerung')
+      .filter(k => typeof LOADING_IMAGES !== 'undefined' && LOADING_IMAGES[k]);
+  }
+
+  /** Bildunterschrift: Spruch bzw. Gedenktext. */
+  static caption(key) {
+    return key === 'erinnerung' ? TXT.memorial : TXT.loadingSlides[key];
   }
 
   /** Bild Nummer i zeigen (läuft an den Enden rundherum). */
@@ -72,7 +79,7 @@ class GalleryScene extends Phaser.Scene {
     this.index = ((i % n) + n) % n;
     this.slide = this.keys[this.index];
     this.photo.setTexture(`loading_${this.slide}`).setDisplaySize(LOADING.photoW, LOADING.photoH);
-    this.caption.setText(TXT.loadingSlides[this.slide]);
+    this.caption.setText(GalleryScene.caption(this.slide));
     this.counter.setText(tx(TXT.galleryCount, { n: this.index + 1, all: n }).replace(' ', '\n'));
   }
 
