@@ -24,7 +24,7 @@ chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --dis
 Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
 - `js/scenes/BootScene.js`: Figuren und Porträts (als Pixel-Raster im Code), Schalter, Hebel, Fahnen, Edelweiss, Deko (Haus, Tanne, Restaurant, Turm)
 - `js/art.js` (aufgerufen aus der BootScene): Gelände-Kacheln, Wasser, Kisten, Felsbrocken, Mechaniken (Aufzug, Förderband, Zugbrücke, Farbtasten) und der Parallax-Hintergrund
-- `js/menuArt.js` (aufgerufen aus der BootScene): Spielauswahl im 16-Bit-Look – Landschaft mit geditherten Verläufen, Pixelwolken, plastischen Bergen, Tannenwald, Wegweiser und Schweizer Fähnchen; die beiden Kartenbilder; Lagerfeuer, Glitzer, Gamepad- und Lautsprecher-Icons. Gezeichnet in halber Auflösung, angezeigt 2×.
+- `js/menuArt.js` (aufgerufen aus der BootScene): Spielauswahl im 16-Bit-Look – Landschaft mit geditherten Verläufen, Pixelwolken, plastischen Bergen, Tannenwald, Wegweiser und Schweizer Fähnchen; die beiden Kartenbilder; Lagerfeuer, Glitzer, Gamepad- und Lautsprecher-Icons. Gezeichnet in halber Auflösung, angezeigt 2×. Ausserdem die KES-Konsole des Einschalt-Bildschirms (`kesConsole`: Modulschacht, Lüftungsschlitze, KES-Logo, farbige Knöpfe; LEDs und der pulsierende Text „DRÜCK E TASCHTE ZUM IISCHALTE“ kommen aus der IntroScene).
 
 Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und verwendet sie im Spiel über diesen Schlüssel.
 

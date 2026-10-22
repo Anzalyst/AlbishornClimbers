@@ -461,8 +461,22 @@
 
     // 13) Konsole einschalten per Controller
     startScene('IntroScene', { mode: 'logo' });
-    step(5); tap(padA, 0); step(2);
-    check('Startbildschirm: A schaltet ein', game.scene.getScene('IntroScene').phase !== 'off');
+    const intro = game.scene.getScene('IntroScene');
+    const introTex = [];
+    const scanTex = o => { if (o.texture) introTex.push(o.texture.key); if (o.list) o.list.forEach(scanTex); };
+    intro.children.list.forEach(scanTex);
+    check('Startbildschirm: KES-Konsole als Pixel-Art mit 4 LEDs', introTex.includes('kesConsole') &&
+      game.textures.get('kesConsole').getSourceImage().width === 200 && intro.leds.length === 4 && !introTex.includes('__MISSING'));
+    const hintAlpha = [], hintColor = new Set();
+    for (let k = 0; k < 140; k++) { step(); hintAlpha.push(intro.powerHint.alpha); hintColor.add(intro.powerHint.style.color); }
+    check('Startbildschirm: "DRÜCK E TASCHTE ZUM IISCHALTE" pulsiert weich (Alpha 0.2–1, Farbschimmer)',
+      intro.powerHint.text === TXT.powerOn && intro.powerHint.text === 'DRÜCK E TASCHTE ZUM IISCHALTE' &&
+      Math.min(...hintAlpha) < 0.3 && Math.max(...hintAlpha) > 0.95 && hintColor.size > 10 &&
+      hintAlpha.every((a, i) => !i || Math.abs(a - hintAlpha[i - 1]) < 0.1), `(Alpha ${Math.min(...hintAlpha).toFixed(2)}–${Math.max(...hintAlpha).toFixed(2)}, ${hintColor.size} Farben)`);
+    check('Startbildschirm: Power-LED glimmt im Standby', intro.led.alpha > 0.1 && intro.led.alpha < 0.6);
+    tap(padA, 0); step(12);
+    check('Startbildschirm: A schaltet ein', intro.phase !== 'off');
+    check('Startbildschirm: beim Einschalten leuchten alle LEDs', intro.leds.every(l => l.dot.alpha === 1));
 
     Object.defineProperty(navigator, 'getGamepads', { value: () => [], configurable: true });
   }

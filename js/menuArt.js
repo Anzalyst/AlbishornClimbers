@@ -13,6 +13,7 @@
  *   cardSsp        Kartenbild Super Sempach Party (160×75)
  *   menuFlame      Lagerfeuer, 3 Frames · menuSparkle Glitzer
  *   padIcon1/2     Controller rot/blau · speakerOn/Off Lautsprecher
+ *   kesConsole     die KES-Konsole für den Einschalt-Bildschirm (IntroScene)
  * ===================================================================== */
 
 const MenuArt = {
@@ -30,6 +31,7 @@ const MenuArt = {
     this.tex(scene, 'padIcon2', 18, 10, p => this.pad(p, '#3a7ae8', '#8ab8ff', '#1a3a8a'));
     this.tex(scene, 'speakerOn', 12, 10, p => this.speaker(p, false));
     this.tex(scene, 'speakerOff', 12, 10, p => this.speaker(p, true));
+    this.tex(scene, 'kesConsole', 200, 84, p => this.kesConsole(p));
   },
 
   // ---------------------------------------------------------------------
@@ -407,6 +409,108 @@ const MenuArt = {
     ];
     const col = { o: this.OUTLINE, b: body, l: light, d: dark, a: '#ffffff' };
     rows.forEach((row, y) => [...row].forEach((ch, x) => p.set(x, y, col[ch])));
+  },
+
+  /** Abgerundetes Rechteck (inklusive Ränder), col(x, y, edge) liefert die Farbe. */
+  roundRect(p, x0, y0, x1, y1, r, col) {
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = Math.max(x0 + r - x, 0, x - (x1 - r)), dy = Math.max(y0 + r - y, 0, y - (y1 - r));
+        if (dx * dx + dy * dy > r * r + r * 0.6) continue;
+        p.set(x, y, col(x, y));
+      }
+    }
+  },
+
+  /** Position der LED-Pünktchen über den sechs Knöpfen (für die Leuchten in der IntroScene). */
+  KES_BUTTONS: [116, 128, 140, 152, 164, 176],
+  KES_LED_Y: 45,
+
+  /**
+   * KES-Konsole (200×84, wird 2× angezeigt): Deckel mit Scharnier, eingelassener
+   * Modulschacht mit Führungen und Pfeil, Lüftungsschlitze, kursives KES-Logo,
+   * sechs farbige Knöpfe, Vorderseite mit Controller-Ports und Strombuchse.
+   */
+  kesConsole(p) {
+    const r = (x, y) => this.rnd(x * 31 + y * 17);
+    // Scharnier-Leiste hinten
+    p.rect(48, 1, 104, 7, '#cfcfd5');
+    p.rect(48, 1, 104, 1, '#e8e8ec');
+    p.rect(48, 1, 1, 7, '#8a8a92'); p.rect(151, 1, 1, 7, '#8a8a92');
+    // Deckel (Oberseite): oben/links Licht, rechts/unten Schatten, leicht gedithert
+    this.roundRect(p, 6, 6, 193, 63, 7, (x, y) => {
+      if (y <= 7) return '#e2e2e8';
+      if (x <= 7) return '#d6d6dc';
+      if (x >= 192) return '#a4a4ac';
+      return y > 50 && this.dither(x, y, (y - 50) / 14) ? '#b6b6bc' : '#c4c4ca';
+    });
+    // Lüftungsschlitze links und rechts
+    for (let y = 12; y <= 44; y += 3) { p.rect(9, y, 5, 1, '#5e5e68'); p.rect(186, y, 5, 1, '#5e5e68'); p.rect(9, y + 1, 5, 1, '#d4d4da'); p.rect(186, y + 1, 5, 1, '#d4d4da'); }
+    // Eingelassene Mulde für das Modul (Schatten oben/links, Licht unten/rechts)
+    this.roundRect(p, 26, 11, 173, 45, 5, (x, y) => (y <= 12 || x <= 27 ? '#868690' : y >= 44 || x >= 172 ? '#dcdce2' : '#adadb5'));
+    // Modulschacht
+    this.roundRect(p, 42, 17, 157, 37, 3, () => '#8e8e98');
+    this.roundRect(p, 44, 19, 155, 35, 2, (x, y) => (y <= 20 ? '#1c1a22' : y >= 34 ? '#3e3c48' : '#2c2a34'));
+    [62, 136].forEach(x => { p.rect(x, 21, 2, 12, '#6c6c76'); p.rect(x, 21, 1, 12, '#9c9ca6'); });
+    [7, 5, 3, 1].forEach((w, i) => p.rect(100 - (w >> 1), 29 + i, w, 1, '#4e4c58'));    // Pfeil nach unten
+    // KES-Logo: kursiv, dunkel mit heller Kontur und Schatten
+    const glyphs = {
+      K: ['XX....XXX', 'XX...XXX.', 'XX..XXX..', 'XX.XXX...', 'XXXXX....', 'XXXX.....', 'XXXXX....', 'XX.XXX...', 'XX..XXX..', 'XX...XXX.', 'XX....XXX'],
+      E: ['XXXXXXXX', 'XXXXXXXX', 'XX......', 'XX......', 'XXXXXX..', 'XXXXXX..', 'XX......', 'XX......', 'XX......', 'XXXXXXXX', 'XXXXXXXX'],
+      S: ['.XXXXXXX', 'XXXXXXXX', 'XX......', 'XX......', 'XXXXXXX.', '.XXXXXXX', '......XX', '......XX', '......XX', 'XXXXXXXX', 'XXXXXXX.']
+    };
+    const logo = new Set();
+    [['K', 0], ['E', 11], ['S', 21]].forEach(([ch, ox]) => glyphs[ch].forEach((row, y) => [...row].forEach((c, x) => {
+      if (c === 'X') logo.add(`${20 + ox + x + Math.floor((10 - y) / 3)},${48 + y}`);
+    })));
+    const has = (x, y) => logo.has(`${x},${y}`);
+    logo.forEach(k => { const [x, y] = k.split(',').map(Number); p.set(x + 1, y + 1, '#7e7e88'); p.set(x + 2, y + 2, '#9a9aa2'); });
+    logo.forEach(k => {
+      const [x, y] = k.split(',').map(Number);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!has(x + dx, y + dy) && !(dx > 0 && dy > 0)) p.set(x + dx, y + dy, '#f0f0f4');
+    });
+    logo.forEach(k => { const [x, y] = k.split(',').map(Number); p.set(x, y, has(x, y - 1) ? '#3a3842' : '#5c5a68'); });
+    // Sechs Knöpfe mit LED-Pünktchen
+    const btn = [['#d8322a', '#ff8a7a', '#8a1612'], ['#f0b818', '#fff08a', '#a87410'], ['#38b838', '#9af07a', '#1e6e1e'],
+      ['#2a6ee0', '#8ab8ff', '#183e8a'], ['#5a3a28', '#7a5440', '#3a2418'], ['#5a3a28', '#7a5440', '#3a2418']];
+    this.KES_BUTTONS.forEach((cx, i) => {
+      const [base, light, dark] = btn[i];
+      for (let y = -4; y <= 4; y++) {
+        for (let x = -4; x <= 4; x++) {
+          const d = x * x + y * y;
+          if (d > 18) continue;
+          p.set(cx + x, 54 + y, d > 11 ? dark : (x <= -1 && y <= -1 && d < 6 ? light : base));
+        }
+      }
+      p.set(cx - 2, 52, '#ffffff');
+      p.rect(cx, this.KES_LED_Y, 1, 1, dark);                                              // LED (aus)
+    });
+    // Abnutzung: ein paar Kratzer und Flecken
+    for (let i = 0; i < 40; i++) {
+      const x = 10 + Math.floor(r(i, 1) * 180), y = 8 + Math.floor(r(1, i) * 54);
+      if (x > 24 && x < 176 && y > 9 && y < 47) continue;
+      p.set(x, y, r(i, i) > 0.5 ? '#d8d8de' : '#9e9ea6');
+    }
+    // Vorderseite
+    p.rect(8, 63, 184, 1, '#6a6a72');
+    this.roundRect(p, 8, 64, 191, 81, 3, (x, y) => (y === 64 ? '#cacad0' : y >= 79 ? '#7c7c84' : '#a2a2aa'));
+    p.rect(9, 71, 182, 1, '#8a8a94');
+    p.rect(90, 66, 20, 2, '#5c5c66'); p.rect(90, 68, 20, 1, '#c4c4ca');                  // Mittelschlitz
+    [56, 112].forEach(x => { p.rect(x, 73, 32, 4, '#7a7a84'); p.rect(x + 1, 74, 30, 2, '#24222c'); });   // Controller-Ports
+    for (let x = 14; x <= 50; x += 2) p.rect(x, 77, 1, 4, '#4a4a54');                     // Lüftung unten
+    for (let x = 148; x <= 162; x += 2) p.rect(x, 77, 1, 4, '#4a4a54');
+    p.rect(168, 65, 12, 11, '#5a3a28'); p.rect(168, 65, 12, 1, '#7a5440');                  // Strombuchse
+    p.rect(172, 68, 4, 5, '#140c08'); p.rect(173, 69, 2, 3, '#2a1a10');
+    // Dunkle Kontur rundherum
+    const filled = [];
+    for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if (p.filled(x, y)) filled.push(y * p.w + x);
+    const isFilled = new Set(filled);
+    for (let y = 0; y < p.h; y++) {
+      for (let x = 0; x < p.w; x++) {
+        if (isFilled.has(y * p.w + x)) continue;
+        if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isFilled.has((y + dy) * p.w + x + dx) && x + dx >= 0 && x + dx < p.w)) p.set(x, y, '#14121a');
+      }
+    }
   },
 
   /** Lautsprecher mit Schallwellen bzw. rotem X (Ton aus). */

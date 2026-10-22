@@ -54,21 +54,39 @@ class IntroScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#05060a');
     const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
 
-    // Kleine Konsole mit roter Power-LED
-    const consoleBox = this.add.container(cx, cy - 20);
-    consoleBox.add(this.add.rectangle(0, 0, 220, 70, 0xb8bcc8).setStrokeStyle(4, 0x6a6e7a));
-    consoleBox.add(this.add.rectangle(0, -10, 120, 14, 0x3a3e4a));                 // Modulschacht
-    consoleBox.add(this.add.text(-90, 14, CONSOLE.name, { fontFamily: FONT, fontSize: '12px', color: '#3a3e4a' }));
-    this.led = this.add.circle(80, 20, 5, 0x551111);
-    consoleBox.add(this.led);
-    [[-50, 0xd52b1e], [-30, 0xf7d117], [-10, 0x3fd06a], [10, 0x1b6ee8]].forEach(([x, c]) =>
-      consoleBox.add(this.add.circle(x + 40, 20, 4, c)));
+    // KES-Konsole als 16-Bit-Pixel-Art (js/menuArt.js), 2× gross; schwebt ganz leicht
+    const consoleBox = this.add.container(cx, cy - 40);
+    const W = 200 * 2, H = 84 * 2;
+    consoleBox.add(this.add.ellipse(0, H / 2 + 6, W * 0.9, 18, 0x000000, 0.6));       // Schatten auf dem "Tisch"
+    consoleBox.add(this.add.image(0, 0, 'kesConsole').setScale(2));
+    // LEDs über den Knöpfen: Power (rot) glimmt im Standby, die anderen gehen beim Einschalten an
+    const ledAt = i => [MenuArt.KES_BUTTONS[i] * 2 - W / 2 + 1, MenuArt.KES_LED_Y * 2 - H / 2 + 1];
+    this.leds = [0xff2a2a, 0xffd23a, 0x4af05a, 0x4aa0ff].map((color, i) => {
+      const [x, y] = ledAt(i);
+      const glow = this.add.circle(x, y, 10, color, 0).setBlendMode(Phaser.BlendModes.ADD);
+      const dot = this.add.rectangle(x, y, 4, 4, color).setAlpha(0);
+      consoleBox.add([glow, dot]);
+      return { glow, dot };
+    });
+    this.led = this.leds[0].dot;
+    this.standby = this.tweens.add({ targets: [this.led, this.leds[0].glow], alpha: { from: 0.15, to: 0.55 }, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: consoleBox, y: cy - 44, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.powerScreen = consoleBox;
 
-    this.powerHint = this.add.text(cx, cy + 70, TXT.powerOn, {
-      fontFamily: FONT, fontSize: '11px', color: '#aab4cc'
-    }).setOrigin(0.5);
-    this.tweens.add({ targets: this.powerHint, alpha: 0.2, duration: 600, yoyo: true, repeat: -1 });
+    // "DRÜCK E TASCHTE ZUM IISCHALTE": pulsiert wie bei einem Arcade-Automaten –
+    // weiches Ein-/Ausblenden, dazu Farbschimmer Blaugrau → Gelb und ein Hauch Zoom
+    this.powerHint = this.add.text(cx, cy + 92, TXT.powerOn, {
+      fontFamily: FONT, fontSize: '14px', color: '#aab4cc', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setAlpha(0.2);                    // Startzustand des Pulsierens (kein Aufblitzen)
+    const from = Phaser.Display.Color.HexStringToColor('#aab4cc'), to = Phaser.Display.Color.HexStringToColor('#f7d117');
+    this.hintPulse = this.tweens.addCounter({
+      from: 0, to: 100, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut',
+      onUpdate: tw => {
+        const v = tw.getValue();
+        const c = Phaser.Display.Color.Interpolate.ColorWithColor(from, to, 100, v);
+        this.powerHint.setColor(Phaser.Display.Color.RGBToString(c.r, c.g, c.b)).setAlpha(0.2 + 0.8 * v / 100).setScale(1 + 0.04 * v / 100);
+      }
+    });
 
     // Tastatur oder Mausklick schaltet ebenfalls ein
     this.input.keyboard.once('keydown', () => this.powerOn());
@@ -83,8 +101,12 @@ class IntroScene extends Phaser.Scene {
     // (Konsolen-Betrieb: Chromium mit --autoplay-policy=no-user-gesture-required).
     const ctx = this.sound && this.sound.context;
     if (ctx && ctx.state === 'suspended' && ctx.resume) ctx.resume().catch(() => {});
-    this.led.setFillStyle(0xff2a2a);
-    this.time.delayedCall(250, () => {
+    // LEDs gehen nacheinander an, der Text leuchtet kurz voll auf
+    this.standby.stop();
+    this.hintPulse.stop();
+    this.powerHint.setAlpha(1).setScale(1).setColor('#ffffff');
+    this.leds.forEach(({ glow, dot }, i) => this.time.delayedCall(i * 70, () => { dot.setAlpha(1); glow.setAlpha(0.7); }));
+    this.time.delayedCall(380, () => {
       this.powerScreen.destroy();
       this.powerHint.destroy();
       this.cameras.main.flash(300, 255, 255, 255);
