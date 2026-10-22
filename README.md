@@ -49,7 +49,7 @@ Alle Namen und Texte stehen zentral:
 - `js/texts.js`: alle Menüs, Anzeigen, Meldungen und Hinweise (`TXT`)
 - `js/levels.js`: Levelnamen, Infotafeln, Anekdoten
 
-Auf dem Gipfel und im Abspann ist die ganze Familie dabei: Jessica, Simon, Tante Edith, Onkel Kurt, Sven mit Hannah in der Kraxe, Angi und Katze Ginny. Die Figuren sind Pixel-Raster in `js/scenes/BootScene.js` (`PEOPLE`, `GINNY`). Jessica und Simon (`HIKER_STYLES`) sind in voller Auflösung 24×32 gezeichnet; Kontur sowie Schatten und Glanzlichter (Licht von oben rechts) rechnet `hikerFrame()` automatisch dazu. Albishorn Climbers und die Super Sempach Party nutzen dieselben Texturen.
+Auf dem Gipfel und im Abspann ist die ganze Familie dabei: Jessica, Simon, Tante Edith, Onkel Kurt, Sven mit Hannah in der Kraxe, Angi und Katze Ginny. Die Figuren sind Pixel-Raster in `js/scenes/BootScene.js` (`PEOPLE`, `GINNY`). Jessica und Simon (`HIKER_STYLES`) sind in voller Auflösung 24×32 gezeichnet; Kontur sowie Schatten und Glanzlichter (Licht von oben rechts) rechnet `hikerFrame()` automatisch dazu. Albishorn Climbers und die Super Sempach Party nutzen dieselben Texturen. Die übrige Familie (Edith, Kurt, Sven mit Hannah, Angi, Peter, Ginny) bekommt denselben Look über `familyPixels()`: Das Raster wird auf volle Auflösung hochgerechnet, dazu kommen dieselbe 1-px-Kontur, Schatten und Glanzlichter, und die Augen werden schmale Striche.
 
 In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{AUNT}`, `{UNCLE}`, `{PARENTS}`, `{PARTNER}`, `{DAUGHTER}` und `{CAT}` automatisch durch die Namen ersetzt.
 

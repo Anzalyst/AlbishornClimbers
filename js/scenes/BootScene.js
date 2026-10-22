@@ -194,6 +194,66 @@ function hikerFrame(key, frameName) {
     ch === '.' && (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) ? 'o' : ch).join(''));
 }
 
+// --- Familien-Stil: Konturen & Shading wie bei Jessica und Simon -----------
+// Die übrigen Figuren (PEOPLE, Hannah, Ginny) sind als Raster mit doppelt
+// grossen Punkten gezeichnet. familyPixels() rechnet sie auf volle
+// Auflösung hoch und gibt ihnen denselben Look wie hikerFrame(): dunkle
+// Kontur (1 px), Schatten links/unten, Glanzlicht oben/rechts, Augen als
+// schmale Striche. Ergebnis: Raster aus Farben (null = transparent),
+// gleiche Grösse wie früher (Breite × 2, Höhe × 2).
+const FAMILY_OUTLINE = '#1c1626';
+const FAMILY_DOTS = 'e';   // Augen: nur 1 px breit statt 2×2
+
+/** Farbe aufhellen (amount > 0) oder abdunkeln (amount < 0), z. B. 0.2 = 20 %. */
+function tintColor(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const target = amount > 0 ? 255 : 0, a = Math.abs(amount);
+  const ch = shift => Math.round(((n >> shift) & 255) * (1 - a) + target * a);
+  return '#' + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
+}
+
+/** Raster aus Zeichen → doppelt so grosses Farbraster mit Kontur und Shading. */
+function familyPixels(rows, palette) {
+  const cell = (x, y) => (rows[y] && palette[rows[y][x]] ? rows[y][x] : null);
+  const H = rows.length * 2, W = rows[0].length * 2;
+  const color = [], dot = [];
+  for (let y = 0; y < H; y++) {
+    color.push([]); dot.push([]);
+    for (let x = 0; x < W; x++) {
+      const cx = x >> 1, cy = y >> 1;
+      let ch = cell(cx, cy);
+      const isDot = ch && FAMILY_DOTS.includes(ch);
+      if (isDot) {
+        // Auge auf der Seite, wo Haut liegt, dünn halten: die andere Hälfte bekommt die Nachbarfarbe
+        const left = cell(cx - 1, cy), right = cell(cx + 1, cy);
+        const fill = left && !FAMILY_DOTS.includes(left) ? left : right;
+        const eyeCol = fill === left ? 1 : 0;
+        if ((x & 1) !== eyeCol && fill) ch = fill;
+      }
+      color[y].push(ch ? palette[ch] : null);
+      dot[y].push(isDot && ch && FAMILY_DOTS.includes(ch));
+    }
+  }
+  const filled = (x, y) => y >= 0 && y < H && x >= 0 && x < W && !!color[y][x];
+  // Licht von oben rechts
+  const shaded = color.map((row, y) => row.map((c, x) => {
+    if (!c || dot[y][x]) return c;
+    if (!filled(x - 1, y) || !filled(x, y + 1)) return tintColor(c, -0.28);
+    if (!filled(x + 1, y) || !filled(x, y - 1)) return tintColor(c, 0.22);
+    return c;
+  }));
+  // Kontur: aussen um die Figur, am Bildrand (Scheitel, Sohlen) innen
+  return shaded.map((row, y) => row.map((c, x) => {
+    if (c) return x === 0 || y === 0 || x === W - 1 || y === H - 1 ? FAMILY_OUTLINE : c;
+    return filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1) ? FAMILY_OUTLINE : null;
+  }));
+}
+
+/** Zeichen-Raster mit Palette → Farbraster (für Jessica & Simon). */
+function paletteColors(rows, palette) {
+  return rows.map(row => [...row].map(ch => palette[ch] || null));
+}
+
 // --- Erwachsene (nach den Bildvorlagen) -------------------------------------
 // Jede Figur ist ein Pixel-Raster (2× skaliert). "base" ist die Grundform,
 // die Frames ändern nur einzelne Stellen: [Zeile, Spalte, 'Pixel'].
@@ -534,6 +594,15 @@ class BootScene extends Phaser.Scene {
     });
   }
 
+  /** Zeichnet ein Farbraster (siehe familyPixels) auf einen Canvas-Kontext. */
+  drawColors(ctx, colors, scale = 1, offsetX = 0, offsetY = 0) {
+    colors.forEach((row, y) => row.forEach((c, x) => {
+      if (!c) return;
+      ctx.fillStyle = c;
+      ctx.fillRect(offsetX + x * scale, offsetY + y * scale, scale, scale);
+    }));
+  }
+
   /** Erzeugt eine Textur mit einem Graphics-Objekt: draw(g) zeichnet hinein. */
   makeTexture(key, width, height, draw) {
     const g = this.make.graphics({ x: 0, y: 0 }, false);
@@ -582,7 +651,7 @@ class BootScene extends Phaser.Scene {
       const tex = this.textures.createCanvas(`person_${key}`, FW * FRAME_ORDER.length, FH);
       FRAME_ORDER.forEach((name, i) => {
         const grid = this.buildPersonGrid(person, person.frames[name] || []);
-        this.drawPixels(tex.getContext(), grid, person.palette, SCALE, i * FW, 0);
+        this.drawColors(tex.getContext(), familyPixels(grid, person.palette), 1, i * FW, 0);
         tex.add(i, 0, i * FW, 0, FW, FH);
       });
       tex.refresh();
@@ -590,49 +659,49 @@ class BootScene extends Phaser.Scene {
 
     // Tochter (eigenes Sprite)
     const d = this.textures.createCanvas('svenDaughter', 8 * SCALE, DAUGHTER.pixels.length * SCALE);
-    this.drawPixels(d.getContext(), DAUGHTER.pixels, DAUGHTER.palette, SCALE);
+    this.drawColors(d.getContext(), familyPixels(DAUGHTER.pixels, DAUGHTER.palette));
     d.refresh();
 
     // Ginny, die Katze: 3 Frames (sitzen, 2× laufen)
     const cat = this.textures.createCanvas('cat_ginny', 16 * SCALE * 3, 12 * SCALE);
     ['sit', 'walk1', 'walk2'].forEach((pose, i) => {
-      this.drawPixels(cat.getContext(), GINNY.body.concat(GINNY.legs[pose]), GINNY.palette, SCALE, i * 16 * SCALE, 0);
+      this.drawColors(cat.getContext(), familyPixels(GINNY.body.concat(GINNY.legs[pose]), GINNY.palette), 1, i * 16 * SCALE, 0);
       cat.add(i, 0, i * 16 * SCALE, 0, 16 * SCALE, 12 * SCALE);
     });
     cat.refresh();
 
     // Porträts: Kopf + Schultern
     ['edith', 'kurt', 'angi'].forEach(key => {
-      const grid = this.buildPersonGrid(PEOPLE[key]).slice(0, 13);
-      this.makePortrait(`portrait_${key}`, grid, PEOPLE[key].palette, 4);
+      const colors = familyPixels(this.buildPersonGrid(PEOPLE[key]), PEOPLE[key].palette);
+      this.makePortrait(`portrait_${key}`, colors.slice(0, 26), 2);
     });
 
     // Sven mit Tochter, die über seine Schulter schaut
     const shift = -DAUGHTER.row;                               // Platz für ihren Kopf oben
     const svenGrid = this.buildPersonGrid(PEOPLE.sven);
-    const combined = Array.from({ length: 13 }, (_, r) => [...(svenGrid[r - shift] || '.'.repeat(PEOPLE.sven.width))]);
+    const combined = Array.from({ length: PERSON_HEIGHT + shift }, (_, r) => [...(svenGrid[r - shift] || '.'.repeat(PEOPLE.sven.width))]);
     DAUGHTER.pixels.forEach((row, r) => [...row].forEach((ch, c) => {
       const R = r + DAUGHTER.row + shift, C = c + DAUGHTER.col;
       if (ch !== '.' && combined[R] && combined[R][C] === '.') combined[R][C] = ch;
     }));
-    this.makePortrait('portrait_sven', combined.map(row => row.slice(2).join('')),
-      Object.assign({}, DAUGHTER.palette, PEOPLE.sven.palette), 4);
+    const svenColors = familyPixels(combined.map(row => row.join('')), Object.assign({}, DAUGHTER.palette, PEOPLE.sven.palette));
+    this.makePortrait('portrait_sven', svenColors.slice(0, 26).map(row => row.slice(4)), 2);
 
     // Porträts der beiden Geschwister
     Object.keys(HIKER_STYLES).forEach(key => {
-      this.makePortrait(`portrait_${key}`, hikerFrame(key, 'idle').slice(0, 24), HIKER_STYLES[key].palette, 3);
+      this.makePortrait(`portrait_${key}`, paletteColors(hikerFrame(key, 'idle').slice(0, 24), HIKER_STYLES[key].palette), 3);
     });
   }
 
   /** Porträt für die Dialogbox: Kopf + Schultern, gross skaliert, mit Hintergrund. */
-  makePortrait(key, rows, palette, scale = 5) {
+  makePortrait(key, colors, scale) {
     const SIZE = 72;
     const tex = this.textures.createCanvas(key, SIZE, SIZE);
     const ctx = tex.getContext();
     ctx.fillStyle = '#7f93c0';   // heller Hintergrund, damit dunkle Kleidung sichtbar bleibt
     ctx.fillRect(0, 0, SIZE, SIZE);
-    const w = rows[0].length * scale, h = rows.length * scale;
-    this.drawPixels(ctx, rows, palette, scale, Math.round((SIZE - w) / 2), SIZE - h);
+    const w = colors[0].length * scale, h = colors.length * scale;
+    this.drawColors(ctx, colors, scale, Math.round((SIZE - w) / 2), SIZE - h);
     tex.refresh();
   }
 
