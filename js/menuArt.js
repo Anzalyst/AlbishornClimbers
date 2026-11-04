@@ -1,14 +1,13 @@
 /* =====================================================================
- * menuArt.js – Grafiken der Spielauswahl (GameSelectScene)
+ * menuArt.js – Grafiken der Spielauswahl (GameSelectScene) im Comic-Stil
  *
- * Alles wird in HALBER Auflösung Pixel für Pixel gezeichnet und im Spiel
- * doppelt so gross angezeigt → grober 16-Bit-Look wie Jessica und Simon.
- * Farbverläufe sind mit einem 4×4-Bayer-Raster gedithert (SNES-Stil),
+ * Gezeichnet in logisch halber Grösse und im Spiel 2× angezeigt; die
+ * Pixeldichte (ss) ist entsprechend höher, die Linien bleiben scharf.
  * Licht kommt immer von oben links.
  *
  *   menuBackdrop   Himmel, Wolkenbank, Berge, Hügel, Tannenwald, Wegweiser,
  *                  Schweizer Fähnchen, Felsen (480×270)
- *   menuCloud0–2   Pixelwolken zum Ziehenlassen
+ *   menuCloud0–2   Wolken zum Ziehenlassen
  *   cardAlbis      Kartenbild Albishorn Climbers (160×75)
  *   cardSsp        Kartenbild Super Sempach Party (160×75)
  *   menuFlame      Lagerfeuer, 3 Frames · menuSparkle Glitzer
@@ -17,408 +16,321 @@
  * ===================================================================== */
 
 const MenuArt = {
-  BAYER: [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5],
-  OUTLINE: '#1c1626',
+  SS: 4,
 
   createAll(scene) {
-    this.tex(scene, 'menuBackdrop', 480, 270, p => this.backdrop(p));
-    [0, 1, 2].forEach(i => this.tex(scene, `menuCloud${i}`, 72, 26, p => this.cloud(p, 0, 0, 72, 26, i)));
-    this.tex(scene, 'cardAlbis', 160, 75, p => this.albisCard(p));
-    this.tex(scene, 'cardSsp', 160, 75, p => this.sspCard(p));
-    this.tex(scene, 'menuFlame', 24, 12, p => [0, 1, 2].forEach(i => this.flame(p, i * 8, i)), [8, 12, 3]);
-    this.tex(scene, 'menuSparkle', 7, 7, p => this.sparkle(p));
-    this.tex(scene, 'padIcon1', 18, 10, p => this.pad(p, '#e8463c', '#ff8a7a', '#9a1e1a'));
-    this.tex(scene, 'padIcon2', 18, 10, p => this.pad(p, '#3a7ae8', '#8ab8ff', '#1a3a8a'));
-    this.tex(scene, 'speakerOn', 12, 10, p => this.speaker(p, false));
-    this.tex(scene, 'speakerOff', 12, 10, p => this.speaker(p, true));
-    this.tex(scene, 'kesConsole', 200, 84, p => this.kesConsole(p));
+    const tex = (key, w, h, draw, frames) => Comic.tex(scene, key, w, h, draw, { ss: this.SS, frames });
+    tex('menuBackdrop', 480, 270, ctx => this.backdrop(ctx));
+    [0, 1, 2].forEach(i => tex(`menuCloud${i}`, 72, 26, ctx => this.cloud(ctx, 1, 1, 70, 24, i)));
+    tex('cardAlbis', 160, 75, ctx => this.albisCard(ctx));
+    tex('cardSsp', 160, 75, ctx => this.sspCard(ctx));
+    tex('menuFlame', 24, 12, ctx => [0, 1, 2].forEach(i => this.flame(ctx, i * 8, i)), [8, 12, 3]);
+    tex('menuSparkle', 7, 7, ctx => { Comic.burst(ctx, 3.5, 3.5, 3.4, 0.9, 4); ctx.fillStyle = '#fff6c0'; ctx.fill(); });
+    tex('padIcon1', 18, 10, ctx => this.pad(ctx, '#e8463c', '#ff8a7a', '#9a1e1a'));
+    tex('padIcon2', 18, 10, ctx => this.pad(ctx, '#3a7ae8', '#8ab8ff', '#1a3a8a'));
+    tex('speakerOn', 12, 10, ctx => this.speaker(ctx, false));
+    tex('speakerOff', 12, 10, ctx => this.speaker(ctx, true));
   },
 
-  // ---------------------------------------------------------------------
-  // Pixel-Puffer
-  // ---------------------------------------------------------------------
-  /** Textur aus einem Pixel-Puffer; frames = [Breite, Höhe, Anzahl] für Spritesheets. */
-  tex(scene, key, w, h, draw, frames) {
-    if (scene.textures.exists(key)) scene.textures.remove(key);
-    const p = this.buffer(w, h);
-    draw(p);
-    const tex = scene.textures.createCanvas(key, w, h);
-    const ctx = tex.getContext();
-    ctx.putImageData(new ImageData(p.data, w, h), 0, 0);
-    if (frames) {
-      const [fw, fh, n] = frames;
-      for (let i = 0; i < n; i++) tex.add(i, 0, i * fw, 0, fw, fh);
-    }
-    tex.refresh();
+  /** Die Konsole trägt ein Schriftlogo: erst zeichnen, wenn die Comic-Schrift geladen ist (BootScene). */
+  createConsole(scene) {
+    Comic.tex(scene, 'kesConsole', 200, 84, ctx => this.kesConsole(ctx), { ss: this.SS });
   },
 
-  buffer(w, h) {
-    const data = new Uint8ClampedArray(w * h * 4);
-    const rgb = {};
-    const parse = c => rgb[c] || (rgb[c] = [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]);
-    return {
-      w, h, data,
-      set(x, y, c) {
-        x = Math.round(x); y = Math.round(y);
-        if (!c || x < 0 || y < 0 || x >= w || y >= h) return;
-        const [r, g, b] = parse(c), i = (y * w + x) * 4;
-        data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
-      },
-      filled(x, y) {
-        return x >= 0 && y >= 0 && x < w && y < h && data[(y * w + x) * 4 + 3] > 0;
-      },
-      /** Vorhandenes Pixel Richtung Farbe c mischen (a = 0…1), z. B. für Dunst. */
-      mix(x, y, c, a) {
-        if (!this.filled(x, y)) return;
-        const [r, g, b] = parse(c), i = (y * w + x) * 4;
-        data[i] += (r - data[i]) * a; data[i + 1] += (g - data[i + 1]) * a; data[i + 2] += (b - data[i + 2]) * a;
-      },
-      rect(x, y, rw, rh, c) {
-        for (let yy = y; yy < y + rh; yy++) for (let xx = x; xx < x + rw; xx++) this.set(xx, yy, c);
-      }
-    };
-  },
-
-  /** Bayer-Schwelle: true, wenn an (x, y) der Anteil frac (0…1) die "zweite" Farbe bekommt. */
-  dither(x, y, frac) {
-    return frac > (this.BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
-  },
-
-  /** Reproduzierbarer Zufall 0…1. */
-  rnd(n) {
-    const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-    return s - Math.floor(s);
-  },
-
-  /** Senkrechter Farbverlauf über mehrere Farben, gedithert. */
-  gradient(p, x0, y0, w, h, colors, from = y0, to = y0 + h) {
-    for (let y = y0; y < y0 + h; y++) {
-      const t = Phaser.Math.Clamp((y - from) / (to - from), 0, 1) * (colors.length - 1);
-      const lo = Math.floor(t), frac = t - lo;
-      for (let x = x0; x < x0 + w; x++) {
-        p.set(x, y, colors[Math.min(colors.length - 1, lo + (this.dither(x, y, frac) ? 1 : 0))]);
-      }
-    }
-  },
-
-  /** Punkt in Dreieck (für Zelt und Fähnchen). */
-  inTri(x, y, a, b, c) {
-    const s = (p1, p2, p3) => (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]);
-    const d1 = s([x, y], a, b), d2 = s([x, y], b, c), d3 = s([x, y], c, a);
-    return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
-  },
-
-  /** Polygon füllen (Punkte im Uhrzeigersinn egal), col(x, y) liefert die Farbe. */
-  poly(p, pts, col) {
-    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
-    for (let y = Math.floor(Math.min(...ys)); y <= Math.ceil(Math.max(...ys)); y++) {
-      for (let x = Math.floor(Math.min(...xs)); x <= Math.ceil(Math.max(...xs)); x++) {
-        let inside = false;
-        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-          const [xi, yi] = pts[i], [xj, yj] = pts[j];
-          if ((yi > y + 0.5) !== (yj > y + 0.5) && x + 0.5 < (xj - xi) * (y + 0.5 - yi) / (yj - yi) + xi) inside = !inside;
-        }
-        if (inside) p.set(x, y, col(x, y));
-      }
-    }
-  },
+  rnd: n => Comic.rnd(n),
 
   // ---------------------------------------------------------------------
   // Bausteine
   // ---------------------------------------------------------------------
-  /**
-   * Berg mit Licht- (links) und Schattenseite (rechts vom Grat), zackiger
-   * Schneekappe und Felsschichten. c = { lit, shade, dark, snow, snowShade }.
-   */
-  peak(p, x, top, base, hw, c, seed, snowDepth = 0) {
-    for (let y = Math.ceil(top); y <= base; y++) {
-      const t = (y - top) / (base - top);
-      const spread = hw * Math.pow(t, 0.85);
-      const left = x - spread * (1 + 0.12 * this.rnd(seed + y)) - (this.rnd(seed + y * 3) > 0.7 ? 1 : 0);
-      const right = x + spread * (1.05 + 0.12 * this.rnd(seed + y * 5));
-      const spine = x + (y - top) * 0.28 + (this.rnd(seed + Math.floor(y / 3)) - 0.5) * 2;
-      for (let xx = Math.floor(left); xx <= Math.ceil(right); xx++) {
-        const lit = xx < spine - (this.dither(xx, y, Math.max(0, Math.min(1, spine - xx))) ? 1 : 0);
-        const cap = 1 - Math.min(1, Math.abs(xx - x) / (hw * 0.75));                         // Kappe: Mitte tief, Flanken flach
-        const snowLine = top + snowDepth * cap + (this.rnd(seed + xx * 7) - 0.5) * 5;
-        let col;
-        if (snowDepth > 0 && y < snowLine) col = lit ? c.snow : c.snowShade;
-        else {
-          col = lit ? c.lit : c.shade;
-          // Felsschichten: kurze, schräge dunkle Bänder
-          if (((y + Math.floor(xx * 0.5)) % 9 === 0) && this.rnd(seed + Math.floor(xx / 3) * 13 + y * 3) > 0.55) col = c.dark;
-        }
-        if (xx === Math.floor(left) || xx === Math.ceil(right)) col = lit ? c.lit : c.dark;
-        p.set(xx, y, col);
+  /** Berg: kantige Flanken, Schattenseite rechts vom Grat, gezackte Schneekappe. */
+  peak(ctx, x, top, base, hw, c, seed, snow = 0) {
+    const C = Comic, r = i => this.rnd(seed + i);
+    const left = [[x - hw * 0.3, top + (base - top) * 0.3 + r(1) * 3], [x - hw * 0.56, top + (base - top) * 0.56 + r(2) * 4], [x - hw, base]];
+    const right = [[x + hw * 0.26, top + (base - top) * 0.26 + r(3) * 3], [x + hw * 0.6, top + (base - top) * 0.6 + r(4) * 4], [x + hw * 1.04, base]];
+    const outline = [[x, top], ...right, ...left.slice().reverse()];
+    C.poly(ctx, outline);
+    C.cel(ctx, c.lit, s => {
+      // Schattenseite: zackig vom Gipfel nach unten
+      C.poly(s, [[x, top], [x + 3, top + (base - top) * 0.28], [x - 2, top + (base - top) * 0.46], [x + 5, top + (base - top) * 0.72], [x + 1, base + 2], [x + hw * 1.2, base + 2], [x + hw, top]]);
+      s.fillStyle = c.shade; s.fill();
+      if (c.hatch) { s.save(); s.clip(); C.hatch(s, x, top, hw * 1.1, base - top, 2.6, c.hatch, 0.35, 0.5); s.restore(); }
+      if (snow) {
+        const y0 = top + snow, zig = [];
+        const n = 9;
+        for (let i = 0; i <= n; i++) zig.push([x - hw * 0.72 + hw * 1.44 * i / n, y0 + (i % 2 ? 4.5 : -3) + r(i + 9) * 2 - Math.abs(i - n / 2) * 1.1]);
+        C.poly(s, [[x - hw, top - 2], [x + hw, top - 2], ...zig.reverse()]);
+        s.fillStyle = c.snow; s.fill();
+        C.poly(s, [[x, top], [x + hw, top], [x + hw, y0 + 4], [x + 2.4, y0 + 4], [x - 1, top + snow * 0.5]]);
+        s.fillStyle = c.snowShade; s.fill();
       }
-    }
+    }, c.lw);
   },
 
-  /** Tanne: Etagen, links beleuchtet, rechts im Schatten, Stamm. */
-  fir(p, x, base, h, c) {
-    p.rect(x - 1, base - 3, 2, 4, c.trunk || '#4a3020');
-    const body = h - 3, tiers = Math.max(3, Math.round(h / 9));
-    for (let y = 0; y < body; y++) {
-      const tier = Math.floor(y / body * tiers), inTier = (y / body * tiers) % 1;
-      const hw = 0.6 + (tier + 1) / tiers * h * 0.26 * (0.5 + 0.5 * inTier);
-      const yy = base - 3 - body + y;
-      for (let xx = -Math.round(hw); xx <= Math.round(hw); xx++) {
-        let col = c.base;
-        if (xx < -hw * 0.3) col = c.lit;
-        else if (xx > hw * 0.4) col = c.shade;
-        if (inTier > 0.8 && Math.abs(xx) > hw * 0.5) col = c.shade;    // Unterkante der Etage
-        p.set(x + xx, yy, col);
-      }
-    }
-  },
-
-  /** Pixelwolke aus Kreisen, oben weiss, unten bläulich (gedithert). */
-  cloud(p, ox, oy, w, h, seed) {
-    const bumps = [];
+  /** Wolke aus Bäuschen mit Kontur und blauem Raster-Schatten. */
+  cloud(ctx, ox, oy, w, h, seed) {
+    const C = Comic, bumps = [];
     for (let i = 0; i < 6; i++) {
-      const bx = w * (0.15 + 0.7 * i / 5) + (this.rnd(seed * 10 + i) - 0.5) * 6;
-      const r = h * (0.32 + 0.3 * this.rnd(seed * 20 + i)) * (i === 0 || i === 5 ? 0.75 : 1);
-      bumps.push([bx, h - 3 - r * 0.7, r]);
+      const bx = ox + w * (0.16 + 0.68 * i / 5) + (this.rnd(seed * 10 + i) - 0.5) * 5;
+      const r = h * (0.28 + 0.26 * this.rnd(seed * 20 + i)) * (i === 0 || i === 5 ? 0.78 : 1);
+      bumps.push([bx, oy + h - r * 1.02, r]);
     }
-    for (let y = 0; y < h - 2; y++) {
-      for (let x = 0; x < w; x++) {
-        if (!bumps.some(([bx, by, r]) => (x - bx) ** 2 + (y - by) ** 2 <= r * r)) continue;
-        const t = y / (h - 3);
-        let col = t < 0.45 ? '#ffffff' : t < 0.75 ? '#eaf3fa' : '#c6daec';
-        if (t >= 0.38 && t < 0.52 && this.dither(x, y, (t - 0.38) / 0.14)) col = '#eaf3fa';
-        if (t >= 0.68 && t < 0.82 && this.dither(x, y, (t - 0.68) / 0.14)) col = '#c6daec';
-        p.set(ox + x, oy + y, col);
-      }
-    }
+    // Umriss zuerst, Fläche darüber: So bleibt nur die äussere Kontur stehen.
+    // Der Schatten bleibt per Clip in der Wolke (der Hintergrund ist schon deckend).
+    ctx.strokeStyle = '#4a6488'; ctx.lineWidth = 1.1;
+    bumps.forEach(([x, y, r]) => { C.ellipse(ctx, x, y, r, r); ctx.stroke(); });
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    bumps.forEach(([x, y, r]) => { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); });
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    C.fillRect(ctx, ox, oy + h * 0.72, w, h, '#d4e4f4');
+    C.halftone(ctx, ox, oy + h * 0.4, w, h * 0.42, 'rgba(130,170,220,0.6)', 2.1, (u, v) => v);
+    ctx.restore();
   },
 
   /** Wegweiser mit zwei Pfeil-Schildern. */
-  signpost(p, x, base) {
-    p.rect(x, base - 24, 2, 24, '#6a4220');
-    p.rect(x + 1, base - 24, 1, 24, '#4a2c14');
+  signpost(ctx, x, base) {
+    const C = Comic;
+    C.rr(ctx, x - 0.2, base - 25, 2.6, 25, 0.4);
+    C.cel(ctx, '#7a4c26', c => C.fillRect(c, x - 0.2, base - 25, 1, 25, '#53311a'), 0.55);
     [[base - 22, 1], [base - 15, -1]].forEach(([y, dir]) => {
-      const x0 = dir > 0 ? x - 3 : x - 10, len = 15;
-      p.rect(x0, y, len, 5, '#d8a45a');
-      p.rect(x0, y, len, 1, '#f0c88a');
-      p.rect(x0, y + 4, len, 1, '#8a5a2e');
-      const tip = dir > 0 ? x0 + len : x0 - 1;
-      p.rect(tip, y + 1, 1, 3, '#d8a45a');
-      p.set(tip + dir, y + 2, '#d8a45a');
-      p.rect(x0 + 3, y + 2, len - 6, 1, '#8a5a2e');        // "Schrift"
+      const x0 = dir > 0 ? x - 3 : x - 11, len = 15, tip = dir > 0 ? x0 + len + 3 : x0 - 3;
+      const pts = dir > 0 ? [[x0, y], [x0 + len, y], [tip, y + 2.6], [x0 + len, y + 5.2], [x0, y + 5.2]] : [[x0 + len, y], [x0, y], [tip, y + 2.6], [x0, y + 5.2], [x0 + len, y + 5.2]];
+      C.poly(ctx, pts);
+      C.cel(ctx, '#e0ae66', c => {
+        C.fillRect(c, x0 - 4, y + 3, len + 8, 3, '#b07c40');
+        C.fillRect(c, x0 + 3, y + 2.2, len - 6, 0.7, '#6a4220');
+      }, 0.55);
     });
   },
 
   /** Schweizer Fähnchen an einem Mast. */
-  swissFlag(p, x, base, pole = 14) {
-    p.rect(x, base - pole, 1, pole, '#c8ccd4');
-    p.rect(x + 1, base - pole, 1, pole, '#8a909a');
-    p.rect(x + 2, base - pole, 9, 7, '#d8202a');
-    p.rect(x + 2, base - pole + 6, 9, 1, '#a8141c');
-    p.rect(x + 5, base - pole + 1, 3, 5, '#ffffff');
-    p.rect(x + 4, base - pole + 2, 5, 3, '#ffffff');
+  swissFlag(ctx, x, base, pole = 14) {
+    const C = Comic, y = base - pole;
+    C.limb(ctx, [[x, y], [x, base]], 0.9, '#dfe2e8', 0.4);
+    C.poly(ctx, [[x + 0.8, y + 0.2], [x + 5, y - 0.4], [x + 11, y + 0.6], [x + 11, y + 7.4], [x + 5, y + 6.6], [x + 0.8, y + 7.2]]);
+    C.cel(ctx, '#d8202a', c => C.fillRect(c, x + 6, y - 1, 2, 9, 'rgba(0,0,0,0.16)'), 0.5);
+    C.fillRect(ctx, x + 5, y + 1.8, 2.2, 3.8, '#ffffff');
+    C.fillRect(ctx, x + 4, y + 2.8, 4.2, 1.8, '#ffffff');
   },
 
   /** Felsbrocken am Boden. */
-  rock(p, x, base, w, h) {
-    for (let y = 0; y < h; y++) {
-      const hw = w / 2 * Math.sqrt(1 - ((h - y) / h) ** 2);
-      for (let xx = -Math.round(hw); xx <= Math.round(hw); xx++) {
-        const col = y < 2 || xx < -hw * 0.4 ? '#b4b8c0' : xx > hw * 0.3 ? '#6a6e78' : '#8e929c';
-        p.set(x + xx, base - h + y, col);
-      }
-    }
+  rock(ctx, x, base, w, h) {
+    const C = Comic;
+    C.blob(ctx, [[x - w / 2, base + 0.5], [x - w * 0.44, base - h * 0.7], [x - w * 0.1, base - h * 1.1], [x + w * 0.4, base - h * 0.8], [x + w * 0.52, base + 0.5]]);
+    C.cel(ctx, '#a4a8b2', c => {
+      C.fillRect(c, x, base - h, w, h + 1, '#747882');
+      C.hatch(c, x, base - h, w, h + 1, 1.5, 'rgba(23,18,31,0.45)', 0.3);
+    }, 0.6);
   },
 
   // ---------------------------------------------------------------------
   // Hintergrund der Spielauswahl (480×270, wird 2× angezeigt)
   // ---------------------------------------------------------------------
-  backdrop(p) {
-    // Himmel: 16-Bit-Verlauf, gedithert
-    this.gradient(p, 0, 0, 480, 270, ['#3f7fcf', '#5592da', '#6aa6e2', '#80b8ea', '#98c9f0', '#b2d8f4', '#cbe6f8', '#dff0fa'], 0, 175);
+  backdrop(ctx) {
+    const C = Comic;
+    C.vgrad(ctx, 0, 0, 480, 180, [[0, '#3f7fcf'], [0.45, '#7ab4e8'], [1, '#dcf0fa']]);
+    C.fillRect(ctx, 0, 180, 480, 90, '#dcf0fa');
+    C.halftone(ctx, 0, 0, 480, 130, 'rgba(255,255,255,0.26)', 6, (u, v) => 0.2 + v * 0.8);
     // Wolkenbank am Horizont (hinter den Bergen)
     [[-10, 92, 90, 34], [70, 100, 80, 30], [150, 96, 70, 30], [300, 98, 90, 32], [380, 90, 110, 36]]
-      .forEach(([x, y, w, h], i) => this.cloud(p, x, y, w, h, 7 + i));
+      .forEach(([x, y, w, h], i) => this.cloud(ctx, x, y, w, h, 7 + i));
 
     // Ferne Berge (bläulich, mit Schnee)
-    const far = { lit: '#9db2d2', shade: '#7488ac', dark: '#62759a', snow: '#f4f8fc', snowShade: '#c4d2e6' };
+    const far = { lit: '#a8bcda', shade: '#7c90b4', snow: '#f8fbfe', snowShade: '#c8d6ea', hatch: 'rgba(50,70,110,0.4)', lw: 0.7 };
     [[25, 72, 190, 70], [118, 96, 190, 60], [215, 58, 190, 80], [318, 86, 190, 62], [418, 52, 190, 84], [495, 80, 190, 50]]
-      .forEach(([x, top, base, hw], i) => this.peak(p, x, top, base, hw, far, 100 + i * 17, 22));
+      .forEach(([x, top, base, hw], i) => this.peak(ctx, x, top, base, hw, far, 100 + i * 17, 21));
     // Dunst über den Bergfüssen
-    for (let y = 150; y < 192; y++) for (let x = 0; x < 480; x++) p.mix(x, y, '#d6ebf7', (y - 150) / 42 * 0.55);
+    C.vgrad(ctx, 0, 150, 480, 42, [[0, 'rgba(214,235,247,0)'], [1, 'rgba(214,235,247,0.6)']]);
 
     // Mittlere Berge: bewaldet, grünblau
-    const mid = { lit: '#6f9a78', shade: '#4d7560', dark: '#3f6452', snow: '', snowShade: '' };
+    const mid = { lit: '#76a27e', shade: '#517a64', hatch: 'rgba(25,60,50,0.5)', lw: 0.8 };
     [[70, 128, 215, 85], [190, 140, 215, 70], [300, 124, 215, 90], [440, 132, 215, 80]]
-      .forEach(([x, top, base, hw], i) => this.peak(p, x, top, base, hw, mid, 300 + i * 23));
-    for (let y = 120; y < 215; y++) {
-      for (let x = 0; x < 480; x++) if (p.filled(x, y) && this.rnd(x * 7 + y * 131) > 0.93) p.mix(x, y, '#2f5444', 0.6);   // Wald-Tupfen
-    }
+      .forEach(([x, top, base, hw], i) => this.peak(ctx, x, top, base, hw, mid, 300 + i * 23));
 
     // Hügel mit Wiese
     const hill = x => 186 + 7 * Math.sin(x / 41) + 4 * Math.sin(x / 15 + 1);
-    for (let x = 0; x < 480; x++) {
-      const top = Math.round(hill(x));
-      for (let y = top; y < 270; y++) {
-        let col = y - top < 2 ? '#8cc866' : '#5e9c4a';
-        if (y - top >= 2 && y - top < 5 && this.dither(x, y, (5 - (y - top)) / 3)) col = '#73b256';
-        p.set(x, y, col);
-      }
-    }
-    this.swissFlag(p, 352, Math.round(hill(352)) + 1, 16);
+    const pts = [];
+    for (let x = 0; x <= 480; x += 2) pts.push([x, hill(x)]);
+    C.poly(ctx, [[0, 271], ...pts, [480, 271]]);
+    C.cel(ctx, '#6cae52', s => {
+      C.fillRect(s, 0, 170, 480, 22, '#94d06c');
+      C.halftone(s, 0, 190, 480, 80, 'rgba(40,110,60,0.5)', 3.4, (u, v) => v);
+    }, 0.9);
+    this.swissFlag(ctx, 352, Math.round(hill(352)) + 1, 16);
 
+    const fir = (x, base, h, c) => Art.fir(ctx, x, base, h, h * 0.62, c);
     // Ferne Tannenreihe
-    const firFar = { base: '#356a4a', lit: '#478460', shade: '#285640', trunk: '#3a2a1a' };
-    for (let x = -4; x < 490; x += 6) this.fir(p, x + Math.round(this.rnd(x) * 3), Math.round(hill(x)) + 8, 12 + Math.round(this.rnd(x + 9) * 9), firFar);
+    const firFar = { lit: '#50906a', mid: '#3d7a56', dark: '#2c6246', lw: 0.45 };
+    for (let x = -4; x < 490; x += 6) fir(x + this.rnd(x) * 3, hill(x) + 8, 14 + this.rnd(x + 9) * 9, firFar);
 
     // Dichter Tannenwald vorne: an den Rändern hoch, in der Mitte tiefer
-    const firBack = { base: '#2a5a3a', lit: '#3c7a4a', shade: '#1e4630' };
-    const firFront = { base: '#1f4630', lit: '#2f6440', shade: '#15331f' };
+    const firBack = { lit: '#3f7f50', mid: '#2e6a40', dark: '#205232', lw: 0.55 };
+    const firFront = { lit: '#316a44', mid: '#224f32', dark: '#163a24', lw: 0.65 };
     for (let x = -6; x < 490; x += 9) {
       const edge = Math.abs(x - 240) / 240;
-      this.fir(p, x + Math.round(this.rnd(x * 3) * 4), 258, 26 + Math.round(edge * 36 + this.rnd(x + 1) * 10), firBack);
+      fir(x + this.rnd(x * 3) * 4, 258, 30 + edge * 38 + this.rnd(x + 1) * 10, firBack);
     }
     for (let x = -2; x < 490; x += 13) {
       const edge = Math.abs(x - 240) / 240;
       if (edge < 0.35 && this.rnd(x) > 0.4) continue;                   // Mitte etwas lichter (Galerie-Knopf)
-      this.fir(p, x + Math.round(this.rnd(x * 5) * 5), 272, 30 + Math.round(edge * 48 + this.rnd(x + 4) * 12), firFront);
+      fir(x + this.rnd(x * 5) * 5, 272, 34 + edge * 50 + this.rnd(x + 4) * 12, firFront);
     }
     // Waldboden mit Grasbüscheln
-    p.rect(0, 262, 480, 8, '#1a3a24');
-    for (let x = 0; x < 480; x += 3) if (this.rnd(x * 11) > 0.5) p.rect(x, 260 + Math.round(this.rnd(x) * 2), 1, 2, '#2f6440');
+    C.fillRect(ctx, 0, 262, 480, 8, '#1a3a24');
+    ctx.strokeStyle = '#3a7a4a'; ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    for (let x = 0; x < 480; x += 3) if (this.rnd(x * 11) > 0.5) { ctx.moveTo(x, 263); ctx.lineTo(x + this.rnd(x) - 0.5, 260 + this.rnd(x) * 2); }
+    ctx.stroke();
 
     // Wanderweg-Schild, Felsen, Laubbaum
-    this.signpost(p, 104, 264);
-    this.rock(p, 66, 264, 16, 7);
-    this.rock(p, 412, 265, 20, 8);
-    for (let y = 0; y < 22; y++) {
-      for (let x = -12; x <= 12; x++) {
-        if (x * x + (y - 11) * (y - 11) * 1.2 > 130) continue;
-        p.set(448 + x, 236 + y, x < -3 && y < 14 ? '#6ab04a' : x > 4 || y > 15 ? '#2e6a2e' : '#4a8e3a');
-      }
-    }
-    p.rect(447, 257, 3, 7, '#5a3a1e');
+    this.signpost(ctx, 104, 264);
+    this.rock(ctx, 66, 264, 16, 7);
+    this.rock(ctx, 412, 265, 20, 8);
+    C.rr(ctx, 446.6, 254, 3.4, 10, 0.5);
+    C.ink(ctx, '#5a3a1e', 0.55);
+    C.blob(ctx, [[434, 248], [438, 236], [449, 232], [461, 237], [463, 249], [455, 257], [441, 257]]);
+    C.cel(ctx, '#4a8e3a', s => {
+      C.ellipse(s, 442, 240, 10, 8); s.fillStyle = '#6ab04a'; s.fill();
+      C.ellipse(s, 456, 254, 12, 8); s.fillStyle = '#2e6a2e'; s.fill();
+      C.halftone(s, 432, 232, 34, 26, 'rgba(20,70,30,0.4)', 2.4, (u, v) => (u + v) / 2);
+    }, 0.7);
   },
 
   // ---------------------------------------------------------------------
   // Kartenbilder (160×75)
   // ---------------------------------------------------------------------
-  albisCard(p) {
-    this.gradient(p, 0, 0, 160, 75, ['#5a9ee2', '#74b0e8', '#92c4ee', '#b4d8f4', '#d4ebf8'], 0, 58);
-    this.cloud(p, 6, 8, 34, 12, 3);
-    this.cloud(p, 58, 3, 28, 10, 5);
-    const rock = { lit: '#a8b4c8', shade: '#76849c', dark: '#5e6a82', snow: '#ffffff', snowShade: '#c8d6ea' };
-    this.peak(p, 46, 24, 64, 46, rock, 11, 12);
-    this.peak(p, 114, 13, 64, 56, rock, 29, 17);
-    this.swissFlag(p, 114, 14, 12);
-    // Wiese
-    for (let x = 0; x < 160; x++) {
-      const top = Math.round(57 + 2 * Math.sin(x / 13));
-      for (let y = top; y < 75; y++) p.set(x, y, y - top < 2 ? '#8cd064' : (this.dither(x, y, 0.25) ? '#5a9e44' : '#66ac4c'));
-      if (this.rnd(x * 3) > 0.8) p.set(x, top + 6 + Math.round(this.rnd(x) * 8), this.rnd(x * 7) > 0.5 ? '#ffffff' : '#f7d117');   // Blüemli
+  albisCard(ctx) {
+    const C = Comic;
+    C.vgrad(ctx, 0, 0, 160, 60, [[0, '#5a9ee2'], [1, '#d4ebf8']]);
+    C.halftone(ctx, 0, 0, 160, 40, 'rgba(255,255,255,0.3)', 4, (u, v) => 0.2 + v * 0.8);
+    this.cloud(ctx, 6, 6, 34, 13, 3);
+    this.cloud(ctx, 58, 2, 28, 11, 5);
+    const rock = { lit: '#b4c0d4', shade: '#7c8aa2', snow: '#ffffff', snowShade: '#c8d6ea', hatch: 'rgba(40,55,85,0.5)', lw: 0.8 };
+    this.peak(ctx, 46, 24, 64, 46, rock, 11, 12);
+    this.peak(ctx, 114, 13, 64, 56, rock, 29, 17);
+    this.swissFlag(ctx, 114, 14, 12);
+    // Wiese mit Blüemli
+    const pts = [];
+    for (let x = 0; x <= 160; x += 2) pts.push([x, 57 + 2 * Math.sin(x / 13)]);
+    C.poly(ctx, [[-1, 76], ...pts, [161, 76]]);
+    C.cel(ctx, '#68ae4e', s => {
+      C.fillRect(s, 0, 52, 160, 8, '#94d868');
+      C.halftone(s, 0, 60, 160, 15, 'rgba(40,110,50,0.4)', 2.4, (u, v) => v);
+    }, 0.7);
+    for (let x = 2; x < 160; x += 3) {
+      if (this.rnd(x * 3) <= 0.7) continue;
+      C.burst(ctx, x, 62 + this.rnd(x) * 10, 1.1, 0.5, 5);
+      C.ink(ctx, this.rnd(x * 7) > 0.5 ? '#ffffff' : '#f7d117', 0.2);
     }
-    const fir = { base: '#2a6a3a', lit: '#3e8a4c', shade: '#1e4e2a' };
-    [[6, 66, 30], [16, 64, 22], [150, 66, 32], [158, 65, 24]].forEach(([x, b, h]) => this.fir(p, x, b, h, fir));
-    this.signpost(p, 134, 68);
+    const fir = { lit: '#3e8a4c', mid: '#2a6a3a', dark: '#1e4e2a', lw: 0.55 };
+    [[6, 66, 30], [16, 64, 22], [150, 66, 32], [158, 65, 24]].forEach(([x, b, h]) => Art.fir(ctx, x, b, h, h * 0.62, fir));
+    this.signpost(ctx, 134, 68);
   },
 
-  sspCard(p) {
-    this.gradient(p, 0, 0, 160, 75, ['#78bcea', '#98ceef', '#bcdff5', '#dcf0fa'], 0, 30);
-    this.cloud(p, 92, 2, 36, 12, 4);
+  sspCard(ctx) {
+    const C = Comic;
+    C.vgrad(ctx, 0, 0, 160, 30, [[0, '#78bcea'], [1, '#dcf0fa']]);
+    this.cloud(ctx, 92, 1, 36, 13, 4);
     // Ferne Uferhügel mit Bäumchen
-    for (let x = 0; x < 160; x++) {
-      const top = Math.round(24 + 3 * Math.sin(x / 19) + 2 * Math.sin(x / 7));
-      for (let y = top; y < 32; y++) p.set(x, y, y - top < 1 ? '#7ab86a' : '#5a9a5a');
-      if (this.rnd(x * 5) > 0.75) p.rect(x, top - 2, 2, 3, '#3e7a48');
+    const top = x => 24 + 3 * Math.sin(x / 19) + 2 * Math.sin(x / 7);
+    for (let x = 2; x < 160; x += 5) {
+      if (this.rnd(x * 5) > 0.45) { C.ellipse(ctx, x, top(x) - 1, 2.6, 3); C.ink(ctx, '#3e7a48', 0.35); }
     }
+    const hill = [];
+    for (let x = 0; x <= 160; x += 2) hill.push([x, top(x)]);
+    C.poly(ctx, [[-1, 34], ...hill, [161, 34]]);
+    C.ink(ctx, '#6aaa62', 0.55);
     // See mit Wellen
-    this.gradient(p, 0, 31, 160, 28, ['#86d4f0', '#52b8e2', '#2f9ed4', '#1f86bc'], 31, 58);
-    for (let y = 33; y < 58; y += 3) {
-      for (let x = (y * 7) % 11; x < 160; x += 9 + (y % 4)) {
-        const len = 2 + Math.round(this.rnd(x + y * 31) * 3);
-        p.rect(x, y, len, 1, y < 42 ? '#c8f0fc' : '#7ccff0');
-        if (this.rnd(x * y) > 0.7) p.set(x + 1, y - 1, '#ffffff');
+    C.vgrad(ctx, 0, 31, 160, 28, [[0, '#86d4f0'], [1, '#1f86bc']]);
+    C.halftone(ctx, 0, 40, 160, 20, 'rgba(10,90,140,0.4)', 2.6, (u, v) => v);
+    ctx.lineWidth = 0.6;
+    for (let y = 34; y < 58; y += 4) {
+      for (let x = (y * 7) % 11; x < 160; x += 12 + (y % 4)) {
+        const len = 3 + this.rnd(x + y * 31) * 3;
+        C.curve(ctx, [[x, y], [x + len / 2, y - 1], [x + len, y]]);
+        ctx.strokeStyle = y < 44 ? '#e4f8ff' : '#a6e0f6'; ctx.stroke();
       }
     }
     // Ufer: Sandkante und Wiese
-    for (let x = 0; x < 160; x++) {
-      const top = Math.round(57 + 2 * Math.sin(x / 17 + 2) - (x < 60 ? 2 : 0));
-      p.rect(x, top, 1, 2, '#e6cc8e');
-      for (let y = top + 2; y < 75; y++) p.set(x, y, y - top < 4 ? '#7cc25a' : (this.dither(x, y, 0.3) ? '#5a9e44' : '#66ac4c'));
-    }
+    const shore = [];
+    for (let x = 0; x <= 160; x += 2) shore.push([x, 57 + 2 * Math.sin(x / 17 + 2) - (x < 60 ? 2 : 0)]);
+    C.poly(ctx, [[-1, 76], ...shore, [161, 76]]);
+    C.cel(ctx, '#e6cc8e', s => {
+      C.poly(s, [[0, 76], ...shore.map(([x, y]) => [x, y + 2.4]), [160, 76]]);
+      s.fillStyle = '#70b552'; s.fill();
+      C.halftone(s, 0, 62, 160, 14, 'rgba(40,110,50,0.4)', 2.4, (u, v) => v);
+    }, 0.7);
     // Schilf links und rechts
-    [[2, 14], [118, 40]].forEach(([x0, n]) => {
+    [[2, 12], [118, 26]].forEach(([x0, n]) => {
       for (let i = 0; i < n; i++) {
-        const x = x0 + Math.round(this.rnd(i * 17 + x0) * (x0 > 50 ? 40 : 10)), h = 6 + Math.round(this.rnd(i * 3 + x0) * 8);
-        const base = 60 + Math.round(this.rnd(i * 5 + x0) * 4);
-        p.rect(x, base - h, 1, h, this.rnd(i) > 0.5 ? '#4f8a3a' : '#6aa64a');
-        if (this.rnd(i * 9 + x0) > 0.55) p.rect(x, base - h - 2, 1, 3, '#7a4a22');      // Rohrkolben
+        const x = x0 + this.rnd(i * 17 + x0) * (x0 > 50 ? 40 : 10), h = 6 + this.rnd(i * 3 + x0) * 8;
+        const base = 60 + this.rnd(i * 5 + x0) * 4;
+        C.line(ctx, [[x, base], [x + 0.3, base - h]], 0.7, this.rnd(i) > 0.5 ? '#4f8a3a' : '#6aa64a');
+        if (this.rnd(i * 9 + x0) > 0.55) { C.rr(ctx, x - 0.5, base - h - 3, 1.3, 3.4, 0.5); C.ink(ctx, '#7a4a22', 0.2); }
       }
     });
     // Zelt: Vorderseite im Licht, Seite im Schatten, dunkler Eingang, Abspannleinen
-    const apex = [26, 38], back = [44, 35], bl = [8, 66], br = [44, 66], bb = [60, 62];
-    this.poly(p, [apex, back, bb, br], (x, y) => ((x + y) % 6 === 0 ? '#8e5624' : '#a8692c'));
-    this.poly(p, [apex, br, bl], (x, y) => (y > 58 && this.dither(x, y, (y - 58) / 8) ? '#c88a3c' : '#e2aa58'));
-    this.poly(p, [[26, 46], [33, 66], [19, 66]], () => '#2a1a10');
-    this.poly(p, [[26, 54], [29, 66], [23, 66]], () => '#5a3418');                         // warmes Licht im Zelt
-    for (let i = 0; i <= 18; i++) p.set(26 + i, 38 - i / 6, '#6a3e18');                     // Firststange
-    for (let i = 0; i <= 14; i++) p.set(26 - i * 1.28, 38 + i * 2, '#7a4a1e');               // Kante links
-    for (let i = 0; i <= 14; i++) p.set(26 + i * 1.28, 38 + i * 2, '#b87a34');               // Kante vorne rechts
-    for (let i = 0; i <= 8; i++) p.set(7 - i * 0.6, 50 + i * 2, '#d8c8a0');                  // Abspannleine links
-    for (let i = 0; i <= 8; i++) p.set(52 + i * 1.2, 48 + i * 2, '#d8c8a0');                 // Abspannleine rechts
-    [[2, 66], [61, 64]].forEach(([x, y]) => p.rect(x, y, 1, 3, '#5a3418'));                  // Heringe
-    // Lagerfeuer-Stelle: Steinring, Holz, Glut
-    [[66, 66], [69, 67], [73, 67], [76, 66], [65, 64], [77, 64]].forEach(([x, y]) => { p.rect(x, y, 3, 2, '#8e929c'); p.set(x, y, '#c4c8d0'); });
-    p.rect(67, 64, 10, 2, '#6a4220'); p.rect(69, 63, 6, 1, '#8a5a2e');
-    [[68, 63], [71, 62], [74, 63], [72, 64]].forEach(([x, y]) => p.set(x, y, '#ff8a2a'));
+    C.line(ctx, [[8, 46], [1, 66]], 0.35, '#efe0b8');
+    C.line(ctx, [[52, 46], [62, 64]], 0.35, '#efe0b8');
+    C.poly(ctx, [[26, 38], [44, 35], [60, 62], [44, 66]]);
+    C.cel(ctx, '#a8692c', s => C.hatch(s, 26, 35, 34, 31, 2.2, 'rgba(50,25,8,0.45)', 0.35), 0.8);
+    C.poly(ctx, [[26, 38], [44, 66], [8, 66]]);
+    C.cel(ctx, '#e2aa58', s => {
+      C.halftone(s, 8, 50, 36, 16, 'rgba(170,100,30,0.55)', 2.2, (u, v) => v);
+      C.poly(s, [[26, 46], [33, 66], [19, 66]]); s.fillStyle = '#2a1a10'; s.fill();
+      C.poly(s, [[26, 54], [29, 66], [23, 66]]); s.fillStyle = '#7a4a22'; s.fill();
+    }, 0.8);
+    // Lagerfeuer-Stelle: Steinring, Holz
+    [[66, 66], [69, 67], [73, 67], [76, 66], [65, 64], [77, 64]].forEach(([x, y]) => {
+      C.ellipse(ctx, x + 1.4, y + 1, 1.7, 1.1); C.ink(ctx, '#a0a4ae', 0.35);
+    });
+    C.limb(ctx, [[67, 65.4], [76, 64]], 1.2, '#6a4220', 0.3);
+    C.limb(ctx, [[68, 63.6], [76, 65.6]], 1.2, '#8a5a2e', 0.3);
     // Holzsockel für den Pokal
-    p.rect(132, 58, 18, 8, '#8a5a2e'); p.rect(132, 58, 18, 1, '#b07a42'); p.rect(132, 65, 18, 1, '#5a3418');
+    C.rr(ctx, 132, 58, 18, 8, 0.8);
+    C.cel(ctx, '#8a5a2e', s => { C.fillRect(s, 132, 58, 18, 1.2, '#c08a50'); C.fillRect(s, 132, 63, 18, 3, '#5a3418'); }, 0.6);
   },
 
   // ---------------------------------------------------------------------
   // Kleinteile
   // ---------------------------------------------------------------------
-  flame(p, ox, i) {
-    const shapes = [
-      ['...rr...', '..rorr..', '..roor..', '.rooyor.', '.royyor.', 'rooyyoor', 'royyyyor', 'royyyyor', '.ryyyyr.', '..rrrr..'],
-      ['....r...', '...ror..', '..rooor.', '..royor.', '.rooyyr.', '.royyyor', 'rooyyyor', 'royyyyor', '.ryyyyr.', '..rrrr..'],
-      ['..r.....', '..ror...', '.roor...', '.rooyr.r', '.royyorr', 'rooyyyor', 'royyyyor', 'royyyyor', '.ryyyyr.', '..rrrr..']
-    ];
-    const col = { r: '#e8461e', o: '#ffa630', y: '#fff27a' };
-    shapes[i].forEach((row, y) => [...row].forEach((ch, x) => p.set(ox + x, y + 2, col[ch])));
+  flame(ctx, ox, i) {
+    const C = Comic;
+    const lean = [0, 0.8, -0.8][i], tip = [1, 0.4, 0.8][i];
+    const shape = (s, dy) => [[ox + 4 + lean * 1.6 * s, 2 + tip + dy], [ox + 6.6 * 1 - (1 - s) * 2.2, 6.4 + dy * 0.4], [ox + 6 - (1 - s) * 1.5, 10.6], [ox + 2 + (1 - s) * 1.5, 10.6], [ox + 1.4 + (1 - s) * 2.2, 6.4 + dy * 0.4]];
+    C.blob(ctx, shape(1, 0)); C.ink(ctx, '#e8461e', 0.5);
+    C.blob(ctx, shape(0.72, 2)); ctx.fillStyle = '#ffa630'; ctx.fill();
+    C.blob(ctx, shape(0.42, 4)); ctx.fillStyle = '#fff27a'; ctx.fill();
   },
 
-  sparkle(p) {
-    [[3, 0], [3, 1], [3, 5], [3, 6], [0, 3], [1, 3], [5, 3], [6, 3]].forEach(([x, y]) => p.set(x, y, '#fff6c0'));
-    p.rect(2, 2, 3, 3, '#fff6c0');
-    p.set(3, 3, '#ffffff');
+  /** Kleines Gamepad: Körper, Griffe, Steuerkreuz, zwei Knöpfe. */
+  pad(ctx, body, light, dark) {
+    const C = Comic;
+    C.blob(ctx, [[1, 3], [5, 0.8], [13, 0.8], [17, 3], [17.4, 8.4], [14, 9], [11.5, 6.2], [6.5, 6.2], [4, 9], [0.6, 8.4]]);
+    C.cel(ctx, body, s => {
+      C.fillRect(s, 0, 0, 18, 2, light);
+      C.fillRect(s, 0, 6, 18, 4, dark);
+    }, 0.6);
+    C.fillRect(ctx, 4, 2.2, 1.2, 3.6, dark);
+    C.fillRect(ctx, 2.8, 3.4, 3.6, 1.2, dark);
+    [[12.4, 4.4], [14.6, 3.2]].forEach(([x, y]) => { C.ellipse(ctx, x, y, 0.9, 0.9); C.ink(ctx, '#ffffff', 0.25); });
   },
 
-  /** Kleines Gamepad im 8BitDo-Stil: Körper, Steuerkreuz, zwei Knöpfe. */
-  pad(p, body, light, dark) {
-    const rows = [
-      '..oooooooooooooo..',
-      '.obbbbbbbbbbbbbbo.',
-      'oblllbbbbbbbbbblbo',
-      'obbdbbbbbbbbbaabbo',
-      'obdddbbbbbbbaabbbo',
-      'obbdbbbbbbbbbbbbbo',
-      'obbbbbooooooobbbbo',
-      '.obbbo.......obbo.',
-      '..ooo.........oo..',
-      '..................'
-    ];
-    const col = { o: this.OUTLINE, b: body, l: light, d: dark, a: '#ffffff' };
-    rows.forEach((row, y) => [...row].forEach((ch, x) => p.set(x, y, col[ch])));
-  },
-
-  /** Abgerundetes Rechteck (inklusive Ränder), col(x, y, edge) liefert die Farbe. */
-  roundRect(p, x0, y0, x1, y1, r, col) {
-    for (let y = y0; y <= y1; y++) {
-      for (let x = x0; x <= x1; x++) {
-        const dx = Math.max(x0 + r - x, 0, x - (x1 - r)), dy = Math.max(y0 + r - y, 0, y - (y1 - r));
-        if (dx * dx + dy * dy > r * r + r * 0.6) continue;
-        p.set(x, y, col(x, y));
-      }
+  /** Lautsprecher mit Schallwellen bzw. rotem X (Ton aus). */
+  speaker(ctx, muted) {
+    const C = Comic;
+    C.poly(ctx, [[0.8, 3.4], [2.8, 3.4], [5.4, 0.8], [5.4, 9], [2.8, 6.4], [0.8, 6.4]]);
+    C.ink(ctx, '#ffffff', 0.6);
+    ctx.lineWidth = 0.9;
+    if (muted) {
+      ctx.strokeStyle = '#ff4a4a';
+      ctx.beginPath(); ctx.moveTo(7, 3); ctx.lineTo(10.6, 6.8); ctx.moveTo(10.6, 3); ctx.lineTo(7, 6.8); ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(5.4, 4.9, 2.6, -0.7, 0.7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(5.4, 4.9, 5, -0.7, 0.7); ctx.stroke();
     }
   },
 
@@ -431,108 +343,89 @@ const MenuArt = {
    * Modulschacht mit Führungen und Pfeil, Lüftungsschlitze, kursives KES-Logo,
    * sechs farbige Knöpfe, Vorderseite mit Controller-Ports und Strombuchse.
    */
-  kesConsole(p) {
-    const r = (x, y) => this.rnd(x * 31 + y * 17);
+  kesConsole(ctx) {
+    const C = Comic;
     // Scharnier-Leiste hinten
-    p.rect(48, 1, 104, 7, '#cfcfd5');
-    p.rect(48, 1, 104, 1, '#e8e8ec');
-    p.rect(48, 1, 1, 7, '#8a8a92'); p.rect(151, 1, 1, 7, '#8a8a92');
-    // Deckel (Oberseite): oben/links Licht, rechts/unten Schatten, leicht gedithert
-    this.roundRect(p, 6, 6, 193, 63, 7, (x, y) => {
-      if (y <= 7) return '#e2e2e8';
-      if (x <= 7) return '#d6d6dc';
-      if (x >= 192) return '#a4a4ac';
-      return y > 50 && this.dither(x, y, (y - 50) / 14) ? '#b6b6bc' : '#c4c4ca';
-    });
-    // Lüftungsschlitze links und rechts
-    for (let y = 12; y <= 44; y += 3) { p.rect(9, y, 5, 1, '#5e5e68'); p.rect(186, y, 5, 1, '#5e5e68'); p.rect(9, y + 1, 5, 1, '#d4d4da'); p.rect(186, y + 1, 5, 1, '#d4d4da'); }
-    // Eingelassene Mulde für das Modul (Schatten oben/links, Licht unten/rechts)
-    this.roundRect(p, 26, 11, 173, 45, 5, (x, y) => (y <= 12 || x <= 27 ? '#868690' : y >= 44 || x >= 172 ? '#dcdce2' : '#adadb5'));
-    // Modulschacht
-    this.roundRect(p, 42, 17, 157, 37, 3, () => '#8e8e98');
-    this.roundRect(p, 44, 19, 155, 35, 2, (x, y) => (y <= 20 ? '#1c1a22' : y >= 34 ? '#3e3c48' : '#2c2a34'));
-    [62, 136].forEach(x => { p.rect(x, 21, 2, 12, '#6c6c76'); p.rect(x, 21, 1, 12, '#9c9ca6'); });
-    [7, 5, 3, 1].forEach((w, i) => p.rect(100 - (w >> 1), 29 + i, w, 1, '#4e4c58'));    // Pfeil nach unten
-    // KES-Logo: kursiv, dunkel mit heller Kontur und Schatten
-    const glyphs = {
-      K: ['XX....XXX', 'XX...XXX.', 'XX..XXX..', 'XX.XXX...', 'XXXXX....', 'XXXX.....', 'XXXXX....', 'XX.XXX...', 'XX..XXX..', 'XX...XXX.', 'XX....XXX'],
-      E: ['XXXXXXXX', 'XXXXXXXX', 'XX......', 'XX......', 'XXXXXX..', 'XXXXXX..', 'XX......', 'XX......', 'XX......', 'XXXXXXXX', 'XXXXXXXX'],
-      S: ['.XXXXXXX', 'XXXXXXXX', 'XX......', 'XX......', 'XXXXXXX.', '.XXXXXXX', '......XX', '......XX', '......XX', 'XXXXXXXX', 'XXXXXXX.']
-    };
-    const logo = new Set();
-    [['K', 0], ['E', 11], ['S', 21]].forEach(([ch, ox]) => glyphs[ch].forEach((row, y) => [...row].forEach((c, x) => {
-      if (c === 'X') logo.add(`${20 + ox + x + Math.floor((10 - y) / 3)},${48 + y}`);
-    })));
-    const has = (x, y) => logo.has(`${x},${y}`);
-    logo.forEach(k => { const [x, y] = k.split(',').map(Number); p.set(x + 1, y + 1, '#7e7e88'); p.set(x + 2, y + 2, '#9a9aa2'); });
-    logo.forEach(k => {
-      const [x, y] = k.split(',').map(Number);
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!has(x + dx, y + dy) && !(dx > 0 && dy > 0)) p.set(x + dx, y + dy, '#f0f0f4');
-    });
-    logo.forEach(k => { const [x, y] = k.split(',').map(Number); p.set(x, y, has(x, y - 1) ? '#3a3842' : '#5c5a68'); });
-    // Sechs Knöpfe mit LED-Pünktchen
-    const btn = [['#d8322a', '#ff8a7a', '#8a1612'], ['#f0b818', '#fff08a', '#a87410'], ['#38b838', '#9af07a', '#1e6e1e'],
-      ['#2a6ee0', '#8ab8ff', '#183e8a'], ['#5a3a28', '#7a5440', '#3a2418'], ['#5a3a28', '#7a5440', '#3a2418']];
-    this.KES_BUTTONS.forEach((cx, i) => {
-      const [base, light, dark] = btn[i];
-      for (let y = -4; y <= 4; y++) {
-        for (let x = -4; x <= 4; x++) {
-          const d = x * x + y * y;
-          if (d > 18) continue;
-          p.set(cx + x, 54 + y, d > 11 ? dark : (x <= -1 && y <= -1 && d < 6 ? light : base));
-        }
-      }
-      p.set(cx - 2, 52, '#ffffff');
-      p.rect(cx, this.KES_LED_Y, 1, 1, dark);                                              // LED (aus)
-    });
-    // Abnutzung: ein paar Kratzer und Flecken
-    for (let i = 0; i < 40; i++) {
-      const x = 10 + Math.floor(r(i, 1) * 180), y = 8 + Math.floor(r(1, i) * 54);
-      if (x > 24 && x < 176 && y > 9 && y < 47) continue;
-      p.set(x, y, r(i, i) > 0.5 ? '#d8d8de' : '#9e9ea6');
-    }
+    C.rr(ctx, 48, 1, 104, 8, 1);
+    C.cel(ctx, '#cfcfd5', s => C.fillRect(s, 48, 1, 104, 1.4, '#f2f2f6'), 0.9);
     // Vorderseite
-    p.rect(8, 63, 184, 1, '#6a6a72');
-    this.roundRect(p, 8, 64, 191, 81, 3, (x, y) => (y === 64 ? '#cacad0' : y >= 79 ? '#7c7c84' : '#a2a2aa'));
-    p.rect(9, 71, 182, 1, '#8a8a94');
-    p.rect(90, 66, 20, 2, '#5c5c66'); p.rect(90, 68, 20, 1, '#c4c4ca');                  // Mittelschlitz
-    [56, 112].forEach(x => { p.rect(x, 73, 32, 4, '#7a7a84'); p.rect(x + 1, 74, 30, 2, '#24222c'); });   // Controller-Ports
-    for (let x = 14; x <= 50; x += 2) p.rect(x, 77, 1, 4, '#4a4a54');                     // Lüftung unten
-    for (let x = 148; x <= 162; x += 2) p.rect(x, 77, 1, 4, '#4a4a54');
-    p.rect(168, 65, 12, 11, '#5a3a28'); p.rect(168, 65, 12, 1, '#7a5440');                  // Strombuchse
-    p.rect(172, 68, 4, 5, '#140c08'); p.rect(173, 69, 2, 3, '#2a1a10');
-    // Dunkle Kontur rundherum
-    const filled = [];
-    for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if (p.filled(x, y)) filled.push(y * p.w + x);
-    const isFilled = new Set(filled);
-    for (let y = 0; y < p.h; y++) {
-      for (let x = 0; x < p.w; x++) {
-        if (isFilled.has(y * p.w + x)) continue;
-        if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isFilled.has((y + dy) * p.w + x + dx) && x + dx >= 0 && x + dx < p.w)) p.set(x, y, '#14121a');
-      }
+    C.rr(ctx, 8, 56, 184, 26.6, 3);
+    C.cel(ctx, '#a2a2aa', s => {
+      C.fillRect(s, 8, 76, 184, 8, '#7c7c84');
+      C.hatch(s, 8, 76, 184, 8, 2.4, 'rgba(23,18,31,0.4)', 0.4);
+    }, 1.2);
+    C.line(ctx, [[10, 71], [190, 71]], 0.5, '#6c6c76');
+    C.rr(ctx, 90, 65.6, 20, 2.4, 0.6); C.ink(ctx, '#4c4c56', 0.4);
+    [56, 112].forEach(x => { C.rr(ctx, x, 73, 32, 5, 1.2); C.ink(ctx, '#24222c', 0.8, '#6c6c76'); });   // Controller-Ports
+    ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    [[14, 50], [148, 162]].forEach(([a, b]) => { for (let x = a; x <= b; x += 2) { ctx.moveTo(x, 77); ctx.lineTo(x, 81); } });
+    ctx.stroke();
+    C.rr(ctx, 168, 65, 12, 11, 1);                                          // Strombuchse
+    C.cel(ctx, '#5a3a28', s => C.fillRect(s, 168, 65, 12, 1.2, '#7a5440'), 0.7);
+    C.rr(ctx, 172, 68, 4, 5, 0.6); C.ink(ctx, '#140c08', 0.3);
+    // Deckel (Oberseite)
+    C.rr(ctx, 6, 6, 188, 57.6, 7);
+    C.cel(ctx, '#c9c9cf', s => {
+      C.fillRect(s, 6, 6, 188, 2, '#eeeef2');
+      C.fillRect(s, 6, 6, 2, 60, '#dedee4');
+      C.fillRect(s, 192, 6, 2, 60, '#a4a4ac');
+      C.halftone(s, 6, 44, 188, 20, 'rgba(90,90,105,0.32)', 3, (u, v) => v);
+    }, 1.3);
+    // Lüftungsschlitze links und rechts
+    ctx.lineWidth = 0.9;
+    for (let y = 12; y <= 44; y += 3) {
+      [9, 186].forEach(x => {
+        C.line(ctx, [[x, y], [x + 5, y]], 0.9, '#4a4a54');
+        C.line(ctx, [[x, y + 1], [x + 5, y + 1]], 0.4, '#e4e4ea');
+      });
     }
-  },
-
-  /** Lautsprecher mit Schallwellen bzw. rotem X (Ton aus). */
-  speaker(p, muted) {
-    const rows = [
-      '....o.......',
-      '...oo.......',
-      'oooso.......',
-      'osssso......',
-      'osssso......',
-      'osssso......',
-      'oooso.......',
-      '...oo.......',
-      '....o.......',
-      '............'
-    ];
-    rows.forEach((row, y) => [...row].forEach((ch, x) => p.set(x, y, ch === 'o' ? '#ffffff' : ch === 's' ? '#c8ccd8' : '')));
-    if (muted) {
-      [[7, 3], [8, 4], [9, 5], [10, 6], [10, 2], [9, 3], [7, 5], [7, 6]].forEach(([x, y]) => p.set(x, y, '#ff5a5a'));
-      p.set(8, 5, '#ff5a5a'); p.set(8, 3, '#ff5a5a'); p.set(9, 4, '#ff5a5a');
-    } else {
-      [[7, 3], [7, 4], [7, 5], [9, 1], [10, 2], [10, 3], [10, 4], [10, 5], [10, 6], [9, 7]].forEach(([x, y]) => p.set(x, y, '#ffffff'));
+    // Eingelassene Mulde für das Modul
+    C.rr(ctx, 26, 11, 148, 35, 5);
+    C.cel(ctx, '#adadb5', s => {
+      C.fillRect(s, 26, 11, 148, 2, '#7c7c86');
+      C.fillRect(s, 26, 11, 2, 35, '#868690');
+      C.fillRect(s, 172, 11, 2, 35, '#dcdce2');
+      C.fillRect(s, 26, 44, 148, 2, '#dcdce2');
+    }, 0.7);
+    // Modulschacht
+    C.rr(ctx, 43, 18, 114, 19, 3);
+    C.cel(ctx, '#2c2a34', s => {
+      C.fillRect(s, 43, 18, 114, 3, '#14121a');
+      C.fillRect(s, 43, 33, 114, 4, '#3e3c48');
+    }, 1.1, '#8e8e98');
+    [62, 136].forEach(x => { C.rr(ctx, x, 21, 2.4, 12, 0.5); C.ink(ctx, '#7c7c86', 0.25); });
+    C.poly(ctx, [[96.5, 28.5], [103.5, 28.5], [100, 32.6]]);                 // Pfeil nach unten
+    ctx.fillStyle = '#5e5c6a'; ctx.fill();
+    // KES-Logo: kräftige Comic-Lettern, kursiv, mit Schlagschatten
+    ctx.save();
+    ctx.font = `17px ${FONT_TITLE}`;
+    ctx.textBaseline = 'top';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 2;
+    ctx.fillStyle = '#7e7e88'; ctx.fillText('KES', 22, 47.4);
+    ctx.strokeStyle = '#f4f4f8'; ctx.strokeText('KES', 20.4, 46);
+    ctx.fillStyle = '#2a2832'; ctx.fillText('KES', 20.4, 46);
+    ctx.restore();
+    // Sechs Knöpfe
+    const btn = [['#d8322a', '#8a1612'], ['#f0b818', '#a87410'], ['#38b838', '#1e6e1e'], ['#2a6ee0', '#183e8a'], ['#5a3a28', '#3a2418'], ['#5a3a28', '#3a2418']];
+    this.KES_BUTTONS.forEach((cx, i) => {
+      const [base, dark] = btn[i];
+      C.ellipse(ctx, cx + 0.5, 54.5, 4.2, 4.2);
+      C.cel(ctx, base, s => {
+        C.ellipse(s, cx + 1, 56.4, 4.2, 3.2); s.fillStyle = dark; s.fill();
+        C.ellipse(s, cx - 1, 52.8, 1.5, 1); s.fillStyle = '#ffffff'; s.fill();
+      }, 0.65);
+      C.ellipse(ctx, cx + 0.5, this.KES_LED_Y + 0.5, 0.9, 0.9); C.ink(ctx, dark, 0.3);   // LED (aus)
+    });
+    // Abnutzung: ein paar Kratzer
+    ctx.strokeStyle = 'rgba(70,70,80,0.45)'; ctx.lineWidth = 0.3;
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const x = 10 + this.rnd(i * 3.3) * 180, y = 8 + this.rnd(i * 7.7) * 54;
+      if (x > 24 && x < 176 && y > 9 && y < 47) continue;
+      ctx.moveTo(x, y); ctx.lineTo(x + 1 + this.rnd(i) * 3, y + this.rnd(i * 2) * 1.4);
     }
+    ctx.stroke();
   }
 };

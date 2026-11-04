@@ -5,13 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Albishorn Climbers</title>
   <style>
-    /* Retro-Pixel-Schrift, lokal eingebunden (Lizenz: assets/fonts/PRESS-START-2P-LICENSE.txt) */
+    /* Comic-Schriften, lokal eingebunden (Lizenzen: assets/fonts/*-LICENSE.txt, SIL OFL).
+       Comic Neue: nur der fette Schnitt, er gilt im Spiel als normale Schrift. */
     @font-face {
-      font-family: 'Press Start 2P';
+      font-family: 'Bangers';
       font-style: normal;
       font-weight: 400;
       font-display: swap;
-      src: url('assets/fonts/press-start-2p-latin-400-normal.woff2') format('woff2');
+      src: url('assets/fonts/bangers-latin-400-normal.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Comic Neue';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('assets/fonts/comic-neue-latin-700-normal.woff2') format('woff2');
     }
     html, body {
       margin: 0;
@@ -25,9 +33,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    canvas {
-      image-rendering: pixelated;   /* scharfe Pixel beim Hochskalieren */
     }
   </style>
 </head>
@@ -43,6 +48,7 @@
     Reihenfolge ist wichtig: zuerst Konfiguration & Helfer, dann Szenen, dann main.js.
   -->
   <script src="js/config.js"></script>
+  <script src="js/comicKit.js"></script>
   <script src="js/texts.js"></script>
   <script src="js/levels.js"></script>
   <script src="js/input.js"></script>
@@ -50,6 +56,7 @@
   <script src="js/dialog.js"></script>
   <script src="js/art.js"></script>
   <script src="js/menuArt.js"></script>
+  <script src="js/figures.js"></script>
   <script src="js/game/constants.js"></script>
   <script src="js/game/Fx.js"></script>
   <script src="js/game/Hud.js"></script>

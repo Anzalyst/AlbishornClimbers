@@ -304,7 +304,7 @@
     const end = texts.find(o => o.text === TXT.creditsEnd);
     const lastCredit = texts[at(intro) - 1];
     check('Hervorgehoben (gross, golden, Edelweiss) und direkt vor "ÄNDI"',
-      t[1] && t[1].style.fontSize === '22px' && t[1].style.color === '#f7d117' &&
+      t[1] && t[1].style.fontSize === `${Comic.fontSize(22)}px` && t[1].style.color === '#f7d117' &&
       sc.roll.list.filter(o => o.texture && o.texture.key === 'edelweiss').length === 2 &&
       end && t[2].y < end.y && lastCredit && lastCredit.y < t[0].y && t.every(o => o.width < GAME_WIDTH - 60));
     check('Kein Standbild mehr im Abspann', !('memorial' in sc) && !sc.children.list.some(o => o.texture && o.texture.key === 'loading_erinnerung'));
@@ -465,8 +465,8 @@
     const introTex = [];
     const scanTex = o => { if (o.texture) introTex.push(o.texture.key); if (o.list) o.list.forEach(scanTex); };
     intro.children.list.forEach(scanTex);
-    check('Startbildschirm: KES-Konsole als Pixel-Art mit 4 LEDs', introTex.includes('kesConsole') &&
-      game.textures.get('kesConsole').getSourceImage().width === 200 && intro.leds.length === 4 && !introTex.includes('__MISSING'));
+    check('Startbildschirm: KES-Konsole mit 4 LEDs', introTex.includes('kesConsole') &&
+      game.textures.get('kesConsole').source[0].width === 200 && intro.leds.length === 4 && !introTex.includes('__MISSING'));
     const hintAlpha = [], hintColor = new Set();
     for (let k = 0; k < 140; k++) { step(); hintAlpha.push(intro.powerHint.alpha); hintColor.add(intro.powerHint.style.color); }
     check('Startbildschirm: "DRÜCK E TASCHTE ZUM IISCHALTE" pulsiert weich (Alpha 0.2–1, Farbschimmer)',
@@ -933,7 +933,8 @@
       const d = t.getContext('2d').getImageData(0, 0, t.width, t.height).data;
       let px = 0;
       for (let i = 3; i < d.length; i += 4) if (d[i]) px++;
-      return { w: t.width, h: t.height, px, url: t.toDataURL() };
+      const src = game.textures.get(`avatar_${k}`).source[0];
+      return { w: src.width, h: src.height, px, url: t.toDataURL() };
     });
     check('9 Avatare (Edith, Kurt, Sven, Jessica, Simon, Angi, Peter, Hannah, Ginny), sichtbar und verschieden',
       keys.join() === 'edith,kurt,sven,jessica,simon,angi,peter,hannah,ginny' &&
@@ -1095,13 +1096,28 @@
     setInput(0); setInput(1);
   }
 
-  /** Offline-Prüfung: nur lokale Dateien geladen, Pixelschrift aktiv. */
+  /** Offline-Prüfung: nur lokale Dateien geladen, Comic-Schriften aktiv. */
+  /** Comic-Stil: keine Pixel-Einstellung, Texturen behalten ihre logische Grösse. */
+  function checkStyle() {
+    out.style = {};
+    const check = (name, ok) => { out.style[name] = !!ok; if (!ok) out.errors.push(`Stil: ${name}`); };
+    const size = key => { const f = game.textures.get(key).get(); return `${f.realWidth}x${f.realHeight}`; };
+    check('Kein Pixel-Modus, weiche Linien', !game.config.pixelArt && game.config.antialias);
+    check('Figuren behalten ihre Grösse', game.textures.get('hiker1').get(0).realWidth === 24 && game.textures.get('hiker1').get(0).realHeight === 32 &&
+      game.textures.get('person_edith').get(0).realWidth === 32 && game.textures.get('person_sven').get(0).realWidth === 40 &&
+      game.textures.get('cat_ginny').get(0).realWidth === 32 && size('svenDaughter') === '16x26');
+    check('Kacheln und Objekte behalten ihre Grösse', size('grass0') === '32x32' && size('earth0') === '32x32' && size('platform') === '32x12' &&
+      size('boulder') === '64x64' && size('kesConsole') === '200x84' && size('menuBackdrop') === '480x270');
+    const sample = Comic.styleText({ fontFamily: FONT, fontSize: '22px' }), body = Comic.styleText({ fontFamily: FONT, fontSize: '11px' });
+    check('Texte: Titel in Bangers, Rest in Comic Neue', sample.fontFamily === FONT_TITLE && body.fontFamily === FONT);
+  }
+
   function checkOffline() {
     const external = performance.getEntriesByType('resource').map(e => e.name).filter(n => !n.startsWith('file:'));
     external.forEach(n => out.errors.push(`Externe Ressource geladen: ${n}`));
-    const fontOk = document.fonts.check(`16px ${FONT}`) &&
-      [...document.fonts].some(f => f.family.replace(/["']/g, '') === 'Press Start 2P' && f.status === 'loaded');
-    if (!fontOk) out.errors.push('Schrift "Press Start 2P" ist nicht geladen');
+    const loaded = name => [...document.fonts].some(f => f.family.replace(/["']/g, '') === name && f.status === 'loaded');
+    const fontOk = loaded('Comic Neue') && loaded('Bangers');
+    if (!fontOk) out.errors.push('Comic-Schriften sind nicht geladen');
     out.offline = { external: external.length, font: fontOk };
   }
 
@@ -1135,6 +1151,7 @@
       return;
     }
     checkOffline();
+    checkStyle();
     try {
       for (let i = 0; i < LEVELS.length; i++) runLevel(i);
       await runScenes();

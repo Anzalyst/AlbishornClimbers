@@ -111,6 +111,7 @@ if (result.errors.length) {
   result.errors.forEach(e => console.log(`  ${e}`));
 }
 Object.entries(result.scenes).forEach(([key, status]) => console.log(`  Szene ${key.padEnd(18)} ${status}`));
+Object.entries(result.style || {}).forEach(([name, ok]) => console.log(`  Stil    ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 Object.entries(result.input || {}).forEach(([name, ok]) => console.log(`  Eingabe ${ok ? 'ok    ' : 'FEHLER'} ${name}`));
 if (result.family) console.log(`  Familie  Gipfel: ${(result.family.finale || []).length}/8 da, ${result.family.partyHats} Partyhütchen | Abspann: ${(result.family.credits || []).join(', ')}`);
 (result.sspStats || []).forEach(l => console.log(`  SSP-Statistik  ${l}`));

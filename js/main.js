@@ -8,7 +8,8 @@ const gameConfig = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   backgroundColor: '#10131c',
-  pixelArt: true,                       // keine Weichzeichnung → knackige Pixel
+  antialias: true,                      // weiche Comic-Linien (hohe Auflösung: Comic.enableHiRes)
+  callbacks: { postBoot: g => Comic.enableHiRes(g) },
   scale: {
     mode: Phaser.Scale.FIT,             // an Fenstergrösse anpassen, Seitenverhältnis bleibt
     autoCenter: Phaser.Scale.CENTER_BOTH

@@ -8,8 +8,10 @@ const GAME_WIDTH = 960;
 const GAME_HEIGHT = 540;
 const TILE = 32;                 // Kachelgrösse in Pixeln
 
-// Schriftart für alle Texte (wird in index.html von Google Fonts geladen)
-const FONT = '"Press Start 2P", monospace';
+// Comic-Schriften (lokal, siehe index.html). In den Szenen steht überall FONT;
+// grosse Titel stellt Comic.styleText() automatisch auf FONT_TITLE um.
+const FONT = '"Comic Neue", "Comic Sans MS", sans-serif';
+const FONT_TITLE = '"Bangers", "Comic Neue", "Comic Sans MS", sans-serif';
 
 // --- Spielphysik ----------------------------------------------------------
 // Sprunghöhe ≈ JUMP_VELOCITY² / (2 · GRAVITY) ≈ 112 px ≈ 3.5 Kacheln.
