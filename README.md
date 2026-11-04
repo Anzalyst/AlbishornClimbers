@@ -1,11 +1,11 @@
 # Albishorn Climbers
 
-Ein Koop-Plattformer für 2 Spieler im Stil der SNES-Klassiker (Phaser 3): Zwei Geschwister wandern von Ebertswil hinauf aufs Albishorn – ein Geburtstagsgeschenk zum 30.
+Ein Koop-Plattformer für 2 Spieler im Comic-Stil (Phaser 3): Zwei Geschwister wandern von Ebertswil hinauf aufs Albishorn – ein Geburtstagsgeschenk zum 30.
 
 Dazu gibt es die **Super Sempach Party**: Jessica gegen Simon in 5 Camping-Minispielen am Sempachersee (Pedalo-Power, Wasser-Marsch!, Grill-Meister, Camping-Rundkurs, Brennessel-Alarm!) mit Siegerehrung.
 
 ## Starten
-- Einfach `index.html` per Doppelklick im Browser öffnen. Es braucht keinen Build, keinen Server und **kein Internet**: Phaser 3.80.1 (`js/lib/`) und die Schrift „Press Start 2P“ (`assets/fonts/`) liegen lokal im Projekt.
+- Einfach `index.html` per Doppelklick im Browser öffnen. Es braucht keinen Build, keinen Server und **kein Internet**: Phaser 3.80.1 (`js/lib/`) und die Comic-Schriften „Bangers“ und „Comic Neue“ (`assets/fonts/`) liegen lokal im Projekt.
 - Alternativ mit lokalem Server: `python -m http.server` und dann http://localhost:8000 öffnen.
 
 ## Konsolen-Betrieb (Linux-Mini-PC, offline)
@@ -18,19 +18,28 @@ chromium --kiosk --autoplay-policy=no-user-gesture-required --noerrdialogs --dis
 
 - `--autoplay-policy=no-user-gesture-required` ist wichtig: Browser schalten den Ton sonst erst nach einem Tastendruck oder Mausklick frei. Ein Controller-Knopf zählt dafür nicht in jedem Browser.
 - Chromium meldet Xbox- und PlayStation-Pads unter Linux mit Standard-Mapping. Firefox liefert dort je nach Treiber eine abweichende Tastenbelegung. Deshalb empfehle ich Chromium.
-- Die Symbole ▶ ▼ ▲ ✔ enthält die Pixelschrift nicht. Sie kommen aus einer Systemschrift (z. B. `fonts-dejavu`, auf den meisten Distributionen vorinstalliert).
+- Die Symbole ▶ ▼ ▲ ✔ enthalten die Comic-Schriften nicht. Sie kommen aus einer Systemschrift (z. B. `fonts-dejavu`, auf den meisten Distributionen vorinstalliert).
 
 ## Grafiken
-Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` dynamisch per Code erzeugt (Phaser Graphics- und Canvas-API):
-- `js/scenes/BootScene.js`: Figuren und Porträts (als Pixel-Raster im Code), Schalter, Hebel, Fahnen, Edelweiss, Deko (Haus, Tanne, Restaurant, Turm)
-- `js/art.js` (aufgerufen aus der BootScene): Gelände-Kacheln, Wasser, Kisten, Felsbrocken, Mechaniken (Aufzug, Förderband, Zugbrücke, Farbtasten) und der Parallax-Hintergrund
-- `js/menuArt.js` (aufgerufen aus der BootScene): Spielauswahl im 16-Bit-Look – Landschaft mit geditherten Verläufen, Pixelwolken, plastischen Bergen, Tannenwald, Wegweiser und Schweizer Fähnchen; die beiden Kartenbilder; Lagerfeuer, Glitzer, Gamepad- und Lautsprecher-Icons. Gezeichnet in halber Auflösung, angezeigt 2×. Ausserdem die KES-Konsole des Einschalt-Bildschirms (`kesConsole`: Modulschacht, Lüftungsschlitze, KES-Logo, farbige Knöpfe; LEDs und der pulsierende Text „DRÜCK E TASCHTE ZUM IISCHALTE“ kommen aus der IntroScene).
+Alle Sprites und Tile-Texturen werden beim Start in der `BootScene` per Code im **Comic-Stil** gezeichnet (Canvas): Tusche-Konturen, flächige Schatten, Raster (Halftone) und Schraffuren.
+- `js/comicKit.js`: Werkzeugkasten (`Comic`): Formen, Tusche, Raster, Comic-Tafeln (`Comic.panel`), Sprechblasen, hochauflösende Texturen und die Umstellung aller Texte auf die Comic-Schriften
+- `js/figures.js`: die Familie als Vektorzeichnungen auf einem kleinen Skelett (`POSES`, `FIGURE_SPECS`). Dieselbe Zeichnung ergibt Laufbilder, Dialog-Porträts und Passwort-Avatare
+- `js/scenes/BootScene.js`: Schalter, Hebel, Fahnen, Edelweiss, Deko (Haus, Tanne, Restaurant, Turm)
+- `js/art.js`: Gelände-Kacheln, Wasser, Kisten, Felsbrocken, Mechaniken (Aufzug, Förderband, Zugbrücke, Farbtasten) und der Parallax-Hintergrund
+- `js/menuArt.js`: Spielauswahl (Landschaft, die beiden Kartenbilder, Lagerfeuer, Glitzer, Gamepad- und Lautsprecher-Icons) und die KES-Konsole des Einschalt-Bildschirms
+- `js/ssp/sspArt.js`: Grafiken und Flächen (Rasen, See, Asphalt) der Super Sempach Party
+
+**Auflösung:** Die Spiellogik rechnet weiter in 960×540, gezeichnet wird in 1920×1080 (`Comic.enableHiRes`). Texturen haben eine *logische* Grösse für Sprites und Physik und enthalten mehr Pixel (`Comic.tex(scene, key, w, h, draw, { ss })`, `ss` = Pixeldichte). Eine 32×32-Kachel bleibt für Phaser also 32×32 gross, und das Spielgefühl ändert sich nicht. Beim Canvas-Renderer (kein WebGL) läuft alles in normaler Auflösung.
+
+**Schriften:** In den Szenen steht überall `FONT`. `Comic.styleText` macht daraus automatisch Bangers (Titel, ab 16 px) oder Comic Neue (Rest) in passender Grösse.
+
+**Kontrolle:** `node tools/screenshots.js <Ordner>` speichert Bildschirmfotos aller Szenen und Musterblätter aller Texturen (1920×1080).
 
 Neue Grafiken legt man dort als Textur mit einem eindeutigen Schlüssel an und verwendet sie im Spiel über diesen Schlüssel.
 
-**Einzige Ausnahme:** die Bilder in `assets/images/loading/` – das Victory-Bild der `EndScene` (`endscreen.jpg`, 720×540) und die Pixel-Art-Familienbilder. Per Doppelklick (`file://`) darf der Browser Bilddateien weder per XHR laden noch als WebGL-Textur nutzen. Deshalb werden sie mit `node tools/embed-images.js` als Base64 in `js/generated/` eingebettet und in der BootScene mit `textures.addBase64` angelegt. Nach einem Austausch eines Bildes das Script ausführen und die erzeugten Dateien mitcommitten.
+**Einzige Ausnahme:** die Bilder in `assets/images/loading/` – das Victory-Bild der `EndScene` (`endscreen.jpg`, 720×540) und die Familienbilder (Pixel-Art, bewusst unverändert). Per Doppelklick (`file://`) darf der Browser Bilddateien weder per XHR laden noch als WebGL-Textur nutzen. Deshalb werden sie mit `node tools/embed-images.js` als Base64 in `js/generated/` eingebettet und in der BootScene mit `textures.addBase64` angelegt. Nach einem Austausch eines Bildes das Script ausführen und die erzeugten Dateien mitcommitten.
 
-**Ladebildschirme (Dia-Show):** Vor jedem Level (also auch nach jedem bestandenen Level), vor jedem Sempach-Minispiel und nach dem letzten Minispiel vor der Siegerehrung zeigt die `LoadingScene` ein zufälliges Familienbild (512×384 = 4:3, im Dia-Rahmen), darunter die KES-Textbox (schwarz, gelbe Kontur) mit einem Spruch auf Züritüütsch und einen Ladebalken, auf dem Ginny mitläuft („LADET…“). Nach 4 s blendet die Szene weich aus; A / Sprung, START oder ENTER überspringt sofort. Die Bilder werden nie zweimal hintereinander gezeigt: Erst kommen alle einmal dran, dann wird neu gemischt.
+**Ladebildschirme (Dia-Show):** Vor jedem Level (also auch nach jedem bestandenen Level), vor jedem Sempach-Minispiel und nach dem letzten Minispiel vor der Siegerehrung zeigt die `LoadingScene` ein zufälliges Familienbild (512×384 = 4:3, im Dia-Rahmen), darunter die KES-Textbox (gelbe Comic-Bildunterschrift) mit einem Spruch auf Züritüütsch und einen Ladebalken, auf dem Ginny mitläuft („LADET…“). Nach 4 s blendet die Szene weich aus; A / Sprung, START oder ENTER überspringt sofort. Die Bilder werden nie zweimal hintereinander gezeigt: Erst kommen alle einmal dran, dann wird neu gemischt.
 
 **Bildergalerie:** Im Hauptmenü (Spielauswahl) führt „BILDERGALLERIE“ (Runter, dann A / ENTER) zur `GalleryScene`: dieselben Bilder gross, darunter der Spruch, als letztes, ehrendes Bild das Gedenkbild für Kurt & Peter; Links/Rechts blättert, B / ESC führt zurück.
 
@@ -56,7 +65,7 @@ Alle Namen und Texte stehen zentral:
 - `js/texts.js`: alle Menüs, Anzeigen, Meldungen und Hinweise (`TXT`)
 - `js/levels.js`: Levelnamen, Infotafeln, Anekdoten
 
-Auf dem Gipfel und im Abspann ist die ganze Familie dabei: Jessica, Simon, Tante Edith, Onkel Kurt, Sven mit Hannah in der Kraxe, Angi und Katze Ginny. Die Figuren sind Pixel-Raster in `js/scenes/BootScene.js` (`PEOPLE`, `GINNY`). Jessica und Simon (`HIKER_STYLES`) sind in voller Auflösung 24×32 gezeichnet; Kontur sowie Schatten und Glanzlichter (Licht von oben rechts) rechnet `hikerFrame()` automatisch dazu. Albishorn Climbers und die Super Sempach Party nutzen dieselben Texturen. Die übrige Familie (Edith, Kurt, Sven mit Hannah, Angi, Peter, Ginny) bekommt denselben Look über `familyPixels()`: Das Raster wird auf volle Auflösung hochgerechnet, dazu kommen dieselbe 1-px-Kontur, Schatten und Glanzlichter, und die Augen werden schmale Striche.
+Auf dem Gipfel und im Abspann ist die ganze Familie dabei: Jessica, Simon, Tante Edith, Onkel Kurt, Sven mit Hannah in der Kraxe, Angi und Katze Ginny. Die Figuren sind Vektorzeichnungen in `js/figures.js`; das Aussehen jeder Person steht in `FIGURE_SPECS`. Albishorn Climbers und die Super Sempach Party nutzen dieselben Texturen.
 
 In Infotafeln und Dialogen werden Platzhalter wie `{P1}`, `{P2}`, `{COUSIN}`, `{AUNT}`, `{UNCLE}`, `{PARENTS}`, `{PARTNER}`, `{DAUGHTER}` und `{CAT}` automatisch durch die Namen ersetzt.
 
@@ -109,14 +118,16 @@ Geheim-Code **3030** springt direkt zur Geburtstagsfeier.
 ```
 index.html                 Einstieg, lädt Phaser + Scripts (alles lokal)
 js/lib/                    Phaser 3.80.1 (phaser.min.js) + Lizenz
-assets/fonts/              Schrift Press Start 2P (woff2) + Lizenz
+assets/fonts/              Schriften Bangers und Comic Neue (woff2) + Lizenzen
 js/config.js               Physik, Steuerung, Namen, Dialoge, Abspann
 js/texts.js                Alle Bildschirmtexte von Albishorn Climbers (Züritüütsch)
 js/levels.js               Alle Level als ASCII-Karten (Legende im Dateikopf)
 js/input.js                Tastatur + Gamepad API → einheitliche Spieler-Eingabe
 js/sfx.js                  Retro-Sounds & Melodien per Web Audio
 js/dialog.js               Dialogbox mit Porträt & Schreibmaschinen-Text
-js/art.js                  Gelände, Mechaniken, Parallax-Hintergrund & Licht ("Modern Pixel")
+js/comicKit.js             Comic-Werkzeugkasten: Tusche, Raster, Tafeln, Hochauflösung, Schriften
+js/figures.js              Die Familie: Skelett, Posen, Aussehen, Porträts, Avatare
+js/art.js                  Gelände, Mechaniken, Parallax-Hintergrund
 js/menuArt.js              Grafiken der Spielauswahl (Landschaft, Kartenbilder, Icons)
 js/scenes/BootScene.js     Erzeugt alle Texturen zur Laufzeit (Figuren, Objekte, ruft art.js auf)
 js/scenes/IntroScene.js    KES-Startlogo und Story-Intro in Ebertswil
