@@ -28,12 +28,12 @@ class BrennesselScene extends MinigameScene {
 
   setup() {
     this.addSkyAndMountains(330, [0x9fd8f4, 0xeefaff]);
-    const g = this.add.graphics();
-    g.fillStyle(0x5aa046).fillRect(0, 330, GAME_WIDTH, GAME_HEIGHT - 330);
+    this.add.tileSprite(0, 330, GAME_WIDTH, GAME_HEIGHT - 330, 'ssp_lawn').setOrigin(0);
     this.add.image(110, 330, 'ssp_tent').setOrigin(0.5, 1).setScale(0.7);
     this.add.image(850, 330, 'ssp_tent').setOrigin(0.5, 1).setScale(0.7).setFlipX(true);
-    g.fillStyle(0x478c37).fillRect(0, NETTLE.groundY, GAME_WIDTH, GAME_HEIGHT - NETTLE.groundY);
-    g.fillStyle(0x6cc052).fillRect(0, NETTLE.groundY, GAME_WIDTH, 4);
+    this.add.tileSprite(0, NETTLE.groundY, GAME_WIDTH, GAME_HEIGHT - NETTLE.groundY, 'ssp_lawnDark').setOrigin(0);
+    const g = this.add.graphics();
+    g.fillStyle(0x17121f).fillRect(0, 329, GAME_WIDTH, 2.5).fillRect(0, NETTLE.groundY - 1, GAME_WIDTH, 3);
 
     // Boden und Holzplattformen (von unten durchspringbar)
     this.solids = [];
@@ -41,8 +41,12 @@ class BrennesselScene extends MinigameScene {
     this.physics.add.existing(ground, true);
     this.solids.push(ground);
     NETTLE.platforms.forEach(([x, y, w]) => {
-      g.fillStyle(0x6b4220).fillRect(x - w / 2, y, w, 14).fillStyle(0xb07a3a).fillRect(x - w / 2, y, w, 9).fillStyle(0xd09a55).fillRect(x - w / 2, y, w, 2);
-      g.fillStyle(0x6b4220).fillRect(x - w / 2 + 10, y + 14, 6, NETTLE.groundY - y - 14).fillRect(x + w / 2 - 16, y + 14, 6, NETTLE.groundY - y - 14);
+      [x - w / 2 + 13, x + w / 2 - 13].forEach(px => {
+        g.fillStyle(0x17121f).fillRect(px - 4.5, y + 14, 9, NETTLE.groundY - y - 14);
+        g.fillStyle(0x7a4c26).fillRect(px - 3, y + 14, 6, NETTLE.groundY - y - 14);
+      });
+      this.add.tileSprite(x - w / 2, y, w, 14, 'ssp_plank').setOrigin(0);
+      g.lineStyle(2, 0x17121f).strokeRect(x - w / 2, y, w, 14);
       const p = this.add.rectangle(x, y + 7, w, 14).setVisible(false);
       this.physics.add.existing(p, true);
       Object.assign(p.body.checkCollision, { down: false, left: false, right: false });

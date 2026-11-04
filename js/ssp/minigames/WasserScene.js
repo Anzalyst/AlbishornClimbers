@@ -33,11 +33,16 @@ class WasserScene extends MinigameScene {
   setup() {
     // Übungsplatz: Himmel, Hügel, Rasen, Zaun in der Mitte
     this.addSkyAndMountains(300, [0x8fd0f4, 0xf2f9ff]);
+    this.add.tileSprite(0, 300, GAME_WIDTH, GAME_HEIGHT - 300, 'ssp_lawn').setOrigin(0);
+    this.add.tileSprite(0, WASSER.groundY, GAME_WIDTH, GAME_HEIGHT - WASSER.groundY, 'ssp_lawnDark').setOrigin(0);
     const g = this.add.graphics();
-    g.fillStyle(0x5aa046).fillRect(0, 300, GAME_WIDTH, GAME_HEIGHT - 300);
-    g.fillStyle(0x478c37).fillRect(0, WASSER.groundY, GAME_WIDTH, GAME_HEIGHT - WASSER.groundY);
+    g.fillStyle(0x17121f).fillRect(0, 299, GAME_WIDTH, 2.5).fillRect(0, WASSER.groundY - 1, GAME_WIDTH, 2.5);
+    for (let y = 110; y < GAME_HEIGHT; y += 40) {
+      g.fillStyle(0x17121f).fillRect(GAME_WIDTH / 2 - 21.5, y - 1.5, 43, 8);
+      g.fillStyle(0xa0703a).fillRect(GAME_WIDTH / 2 - 20, y, 40, 5);
+    }
+    g.fillStyle(0x17121f).fillRect(GAME_WIDTH / 2 - 5.5, 90, 11, GAME_HEIGHT - 90);
     g.fillStyle(0x8a5a2b).fillRect(GAME_WIDTH / 2 - 4, 90, 8, GAME_HEIGHT - 90);
-    for (let y = 110; y < GAME_HEIGHT; y += 40) g.fillRect(GAME_WIDTH / 2 - 20, y, 40, 5);
 
     this.jets = this.add.graphics().setDepth(20);
     this.marks = this.add.graphics().setDepth(19);
@@ -139,7 +144,7 @@ class WasserScene extends MinigameScene {
       }
       // Druckanzeige neben dem Hydranten
       const gx = s.nozzleX + 60, gy = WASSER.groundY - 130;
-      s.gauge.clear().fillStyle(0x10131c, 0.8).fillRect(gx - 2, gy - 2, 14, 124)
+      s.gauge.clear().fillStyle(0x17121f).fillRoundedRect(gx - 3, gy - 3, 16, 126, 3).fillStyle(0xfff6dc).fillRect(gx, gy, 10, 120)
         .fillStyle(s.pressure > 70 ? 0xd7263d : s.pressure > 35 ? 0xf2c230 : 0x3fd06a).fillRect(gx, gy + 120 - s.pressure * 1.2, 10, s.pressure * 1.2);
     });
   }

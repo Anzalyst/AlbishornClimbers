@@ -55,7 +55,7 @@ class IntroScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#05060a');
     const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
 
-    // KES-Konsole als 16-Bit-Pixel-Art (js/menuArt.js), 2× gross; schwebt ganz leicht
+    // KES-Konsole (js/menuArt.js), 2× gross; schwebt ganz leicht
     const consoleBox = this.add.container(cx, cy - 40);
     const W = 200 * 2, H = 84 * 2;
     consoleBox.add(this.add.ellipse(0, H / 2 + 6, W * 0.9, 18, 0x000000, 0.6));       // Schatten auf dem "Tisch"
@@ -65,7 +65,7 @@ class IntroScene extends Phaser.Scene {
     this.leds = [0xff2a2a, 0xffd23a, 0x4af05a, 0x4aa0ff].map((color, i) => {
       const [x, y] = ledAt(i);
       const glow = this.add.circle(x, y, 10, color, 0).setBlendMode(Phaser.BlendModes.ADD);
-      const dot = this.add.rectangle(x, y, 4, 4, color).setAlpha(0);
+      const dot = this.add.circle(x, y, 2.4, color).setAlpha(0);
       consoleBox.add([glow, dot]);
       return { glow, dot };
     });
@@ -120,6 +120,8 @@ class IntroScene extends Phaser.Scene {
     this.skippableAt = this.time.now + 600;
     this.cameras.main.setBackgroundColor('#10131c');
     const cx = GAME_WIDTH / 2;
+    this.add.image(cx, 200, Comic.burstTexture(this, 'kesBurst', 760, 400, '#f7d117', '#e0701a')).setAlpha(0.95);
+    this.add.image(cx, 200, Comic.burstTexture(this, 'kesBurst', 760, 400, '#f7d117', '#e0701a')).setAlpha(0.95);
 
     // Kurz warten, bis der Browser den Ton freigegeben hat
     this.time.delayedCall(120, () => Sfx.play(this, 'kesBoot'));
@@ -127,22 +129,22 @@ class IntroScene extends Phaser.Scene {
     // "K E S" – Buchstaben fallen nacheinander herein
     const colors = ['#ff5a6e', '#f7d117', '#5aa2ff'];
     CONSOLE.name.split('').forEach((letter, i) => {
-      const t = this.add.text(cx + (i - 1) * 120, -80, letter, {
+      const t = this.add.text(cx + (i - 1) * 110, -80, letter, {
         fontFamily: FONT, fontSize: '110px', color: colors[i % colors.length],
-        stroke: '#ffffff', strokeThickness: 6
+        stroke: '#17121f', strokeThickness: 10
       }).setOrigin(0.5);
-      t.setShadow(8, 8, '#000000', 0, false, true);
+      t.setShadow(7, 7, '#17121f', 0, true, true);
       this.tweens.add({ targets: t, y: 200, duration: 600, delay: 120 + i * 140, ease: 'Bounce.out' });
     });
 
     // Vier farbige Knöpfe, wie auf einem Controller
     [0xd52b1e, 0xf7d117, 0x3fd06a, 0x1b6ee8].forEach((c, i) => {
-      const dot = this.add.circle(cx - 75 + i * 50, 300, 14, c).setScale(0);
+      const dot = this.add.circle(cx - 75 + i * 50, 300, 14, c).setStrokeStyle(3, 0x17121f).setScale(0);
       this.tweens.add({ targets: dot, scale: 1, duration: 250, delay: 800 + i * 110, ease: 'Back.out' });
     });
 
     const full = this.add.text(cx, 350, CONSOLE.fullName.toUpperCase(), {
-      fontFamily: FONT, fontSize: '14px', color: '#ffffff'
+      fontFamily: FONT, fontSize: '16px', color: '#ffffff', stroke: '#17121f', strokeThickness: 5
     }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: full, alpha: 1, duration: 500, delay: 1300 });
 

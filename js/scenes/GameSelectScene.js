@@ -28,7 +28,7 @@ class GameSelectScene extends Phaser.Scene {
     this.cameras.main.fadeIn(300, 0, 0, 0);
     const cx = GAME_WIDTH / 2;
 
-    // Landschaft (menuArt.js, halbe Auflösung → 2×) und ziehende Pixelwolken
+    // Landschaft (menuArt.js, logisch halbe Grösse → 2×) und ziehende Wolken
     this.add.image(0, 0, 'menuBackdrop').setOrigin(0).setScale(2).setDepth(-100);
     this.clouds = [[60, 30, 0, 0.12], [330, 62, 1, 0.08], [610, 22, 2, 0.1], [860, 70, 0, 0.06], [470, 112, 2, 0.05]]
       .map(([x, y, k, speed]) => Object.assign(this.add.image(x, y, `menuCloud${k}`).setScale(2).setDepth(-90), { speed }));
@@ -40,9 +40,9 @@ class GameSelectScene extends Phaser.Scene {
       { title: 'SUPER SEMPACH\nPARTY', sub: '5 Camping-Minispiele', scene: 'SspMenuScene', art: 'cardSsp', draw: c => this.drawSspIcon(c) }
     ].map((card, i) => {
       const c = this.add.container(cx + (i ? 210 : -210), 266);
-      const frame = this.add.rectangle(0, 0, 364, 292, 0x10131c, 0.92);
+      const frame = Comic.panel(this, 0, 0, 364, 292);
       const pic = this.add.image(0, 4, card.art).setScale(2);
-      const picFrame = this.add.rectangle(0, 4, 324, 154).setStrokeStyle(2, 0x2c3248);
+      const picFrame = this.add.rectangle(0, 4, 320, 150).setStrokeStyle(3, 0x17121f);
       c.add([frame, pic, picFrame]);
       card.draw(c);
       c.add(this.add.text(0, -114, card.title, {
@@ -54,7 +54,7 @@ class GameSelectScene extends Phaser.Scene {
 
     // Dritter Menüpunkt unter den Karten: Bildergalerie – Ginny sitzt daneben und schaut zu
     this.gallery = this.add.container(cx, 462);
-    this.galleryFrame = this.add.rectangle(0, 0, 300, 40, 0x10131c, 0.92);
+    this.galleryFrame = Comic.panel(this, 0, 0, 300, 40);
     this.gallery.add([this.galleryFrame,
       this.add.text(0, 1, TXT.galleryMenu, { fontFamily: FONT, fontSize: '12px', color: '#f7d117', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5)]);
     this.ginny = addGinny(this, cx + 186, 484, 2).setFlipX(true);
@@ -71,15 +71,15 @@ class GameSelectScene extends Phaser.Scene {
     this.refresh();
   }
 
-  /** "KES – SPIELAUSWAHL" als plastischer Retro-Schriftzug: Tiefe, Verlauf, gelb-orange Kontur. */
+  /** "KES – SPIELAUSWAHL" als Comic-Titel: Tiefe, Verlauf, dicke Tusche-Kontur. */
   createTitle(cx) {
     const label = `${CONSOLE.name} – SPIELAUSWAHL`;
     const style = extra => Object.assign({ fontFamily: FONT, fontSize: '30px', align: 'center' }, extra);
     for (let d = 7; d >= 1; d--) {                      // Extrusion nach unten
-      this.add.text(cx, 46 + d, label, style({ color: d > 4 ? '#3a1606' : '#7a320c', stroke: d > 4 ? '#3a1606' : '#7a320c', strokeThickness: 10 }))
+      this.add.text(cx, 46 + d, label, style({ color: '#17121f', stroke: '#17121f', strokeThickness: 10 }))
         .setOrigin(0.5);
     }
-    const title = this.add.text(cx, 46, label, style({ color: '#f7d117', stroke: '#e0701a', strokeThickness: 8 })).setOrigin(0.5);
+    const title = this.add.text(cx, 46, label, style({ color: '#f7d117', stroke: '#17121f', strokeThickness: 8 })).setOrigin(0.5);
     const grad = title.context.createLinearGradient(0, 0, 0, title.height);
     [[0.2, '#fff6a8'], [0.5, '#f7d117'], [0.85, '#f0961a']].forEach(([at, c]) => grad.addColorStop(at, c));
     title.setFill(grad);
@@ -94,7 +94,7 @@ class GameSelectScene extends Phaser.Scene {
 
   /** Untere Leiste: Controller als kleine Gamepads, Ton-Status mit Lautsprecher-Symbol. */
   createFooter(cx) {
-    const style = { fontFamily: FONT, fontSize: '9px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 };
+    const style = { fontFamily: FONT, fontSize: '9px', color: '#ffffff', stroke: '#17121f', strokeThickness: 4 };
     const y = GAME_HEIGHT - 16;
     this.padIcons = [0, 1].map(i => {
       const x = cx - 230 + i * 240;
@@ -154,9 +154,6 @@ class GameSelectScene extends Phaser.Scene {
   /** Kartenbild Sempach: Lagerfeuer mit Funken, schaukelndes Pedalo, Ente, glitzernder Pokal. */
   drawSspIcon(c) {
     const flame = this.add.sprite(-16, 56, 'menuFlame', 0).setOrigin(0.5, 1).setScale(2);
-    if (!this.anims.exists('menuFlame')) {
-      this.anims.create({ key: 'menuFlame', frames: this.anims.generateFrameNumbers('menuFlame', { frames: [0, 1, 2, 1] }), frameRate: 8, repeat: -1 });
-    }
     flame.play('menuFlame');
     const glow = this.add.circle(-16, 52, 16, 0xff9a3a, 0.18);
     this.tweens.add({ targets: glow, alpha: 0.08, scale: 1.2, duration: 380, yoyo: true, repeat: -1 });
@@ -188,12 +185,12 @@ class GameSelectScene extends Phaser.Scene {
   refresh() {
     this.cards.forEach((card, i) => {
       const on = i === this.selected;
-      card.frame.setStrokeStyle(on ? 5 : 2, on ? 0xf7d117 : 0x5a6480);
+      card.frame.setSelected(on);
       this.tweens.killTweensOf(card.container);
       this.tweens.add({ targets: card.container, scale: on ? 1.05 : 0.95, duration: 150 });
     });
     const on = this.selected === 2;
-    this.galleryFrame.setStrokeStyle(on ? 4 : 2, on ? 0xf7d117 : 0x5a6480);
+    this.galleryFrame.setSelected(on);
     this.tweens.killTweensOf(this.gallery);
     this.tweens.add({ targets: this.gallery, scale: on ? 1.05 : 0.95, duration: 150 });
   }

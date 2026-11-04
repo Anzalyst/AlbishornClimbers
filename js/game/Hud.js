@@ -20,10 +20,9 @@ class Hud {
     });
     const hud = obj => obj.setScrollFactor(0).setDepth(DEPTH.HUD);
 
-    // halbtransparente Panels hinter den Texten
-    const panels = hud(scene.add.graphics());
-    panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(8, 8, 470, 70, 10);
-    panels.fillStyle(0x0b1020, 0.38).fillRoundedRect(GAME_WIDTH - 178, 32, 170, 30, 10);
+    // Comic-Tafeln hinter den Texten
+    hud(Comic.panel(scene, 243, 43, 470, 70).setAlpha(0.86));
+    hud(Comic.panel(scene, GAME_WIDTH - 93, 47, 170, 30).setAlpha(0.86));
 
     hud(scene.add.text(18, 16, `${levelLabel(levelIndex)}  ${level.name}`, style(12)));
     hud(scene.add.text(GAME_WIDTH - 16, 12, TXT.hudKeys, style(8, '#dddddd')).setOrigin(1, 0));
@@ -37,10 +36,9 @@ class Hud {
       hud(scene.add.text(18, 38 + i * 18, '', style(10, def.colorCss))));
 
     // Hinweisbox unten (Infotafeln – nur in Level 1)
-    this.hintBox = hud(scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 44, GAME_WIDTH - 80, 56, 0x10131c, 0.85)
-      .setStrokeStyle(2, 0xf7d117)).setVisible(false);
+    this.hintBox = hud(Comic.panel(scene, GAME_WIDTH / 2, GAME_HEIGHT - 44, GAME_WIDTH - 80, 56, 'caption')).setVisible(false);
     this.hintText = hud(scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 44, '', {
-      fontFamily: FONT, fontSize: '10px', color: '#ffffff', align: 'center',
+      fontFamily: FONT, fontSize: '10px', color: '#17121f', align: 'center',
       wordWrap: { width: GAME_WIDTH - 120 }, lineSpacing: 6
     }).setOrigin(0.5)).setVisible(false);
 
@@ -74,10 +72,7 @@ class Hud {
     const banner = scene.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40).setScrollFactor(0).setDepth(DEPTH.HUD + 1);
     const anecdote = this.level.anecdote ? fillNames(this.level.anecdote) : '';
     const h = anecdote ? 176 : 130;
-    const bg = scene.add.graphics();
-    bg.fillStyle(0x0b1020, 0.82).fillRoundedRect(-320, -h / 2, 640, h, 16);
-    bg.lineStyle(2, 0xf7d117, 0.9).strokeRoundedRect(-320, -h / 2, 640, h, 16);
-    banner.add(bg);
+    banner.add(Comic.panel(scene, 0, 0, 640, h));
     const top = -h / 2;
     banner.add(scene.add.text(0, top + 32, levelLabel(this.levelIndex), {
       fontFamily: FONT, fontSize: '22px', color: '#f7d117'
@@ -112,7 +107,7 @@ class Hud {
       // Box an die Textlänge anpassen; Unterkante bleibt am Bildschirmrand
       const h = this.hintText.height + 28;
       const cy = GAME_HEIGHT - 16 - h / 2;
-      this.hintBox.setSize(GAME_WIDTH - 80, h).setPosition(GAME_WIDTH / 2, cy);
+      this.hintBox.setPanelSize(GAME_WIDTH - 80, h).setPosition(GAME_WIDTH / 2, cy);
       this.hintText.setY(cy);
     }
   }

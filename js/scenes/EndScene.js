@@ -1,7 +1,7 @@
 /* =====================================================================
  * EndScene – Victory-Bildschirm „Danke fürs Spielen!“ (nach dem Abspann)
  *
- * Hintergrund ist das Pixel-Art-Bild assets/images/endscreen.jpg (die
+ * Hintergrund ist das Bild assets/images/endscreen.jpg (die
  * einzige Bilddatei im Spiel, eingebettet über js/generated/endscreen-image.js,
  * damit es auch per Doppelklick / offline lädt). Darüber per Code: fallendes
  * Konfetti, funkelnde Sterne und der Hinweis zum Weitermachen.
@@ -52,8 +52,7 @@ class EndScene extends Phaser.Scene {
 
     // Goldene Kanten links und rechts
     const frame = this.add.graphics();
-    frame.fillStyle(0xf7d117).fillRect(left - 4, 0, 4, GAME_HEIGHT).fillRect(left + ENDSCREEN.width, 0, 4, GAME_HEIGHT);
-    frame.fillStyle(0x5b2d1a).fillRect(left - 6, 0, 2, GAME_HEIGHT).fillRect(left + ENDSCREEN.width + 4, 0, 2, GAME_HEIGHT);
+    frame.fillStyle(0x17121f).fillRect(left - 5, 0, 5, GAME_HEIGHT).fillRect(left + ENDSCREEN.width, 0, 5, GAME_HEIGHT);
 
     this.createConfetti();
     this.time.delayedCall(900, () => this.createSparkles(left));
@@ -62,8 +61,7 @@ class EndScene extends Phaser.Scene {
     this.time.delayedCall(700, () => Sfx.play(this, 'collect'));
 
     // Hinweis zum Weitermachen (auf dunkler Plakette), erst nach einer kurzen Pause
-    const plate = this.add.graphics().setDepth(29).setVisible(false);
-    plate.fillStyle(0x0b1020, 0.75).fillRoundedRect(cx - 120, GAME_HEIGHT - 38, 240, 28, 8);
+    const plate = Comic.panel(this, cx, GAME_HEIGHT - 24, 240, 30).setDepth(29).setVisible(false);
     this.prompt = this.add.text(cx, GAME_HEIGHT - 24, TXT.endPrompt, {
       fontFamily: FONT, fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5).setDepth(30).setVisible(false);

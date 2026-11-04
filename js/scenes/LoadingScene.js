@@ -3,9 +3,9 @@
  *
  * Erscheint vor jedem Level von Albishorn Climbers (also auch nach jedem
  * bestandenen Level), vor jedem Minispiel der Super Sempach Party und nach
- * dem letzten Minispiel vor der Siegerehrung: ein zufälliges Pixel-Art-
- * Familienbild (4:3, im Dia-Rahmen), darunter die KES-Textbox (schwarz mit
- * gelber Kontur) mit dem Spruch und ein Ladebalken, auf dem Ginny die Katze
+ * dem letzten Minispiel vor der Siegerehrung: ein zufälliges
+ * Familienbild (4:3, im Dia-Rahmen), darunter die KES-Textbox (gelbe
+ * Comic-Bildunterschrift) mit dem Spruch und ein Ladebalken, auf dem Ginny die Katze
  * mitläuft ("LADET..."). Nach LOADING.duration blendet die Szene aus und
  * das Spiel geht weiter; A / Sprung / START / ENTER überspringt sofort.
  *
@@ -37,13 +37,9 @@ function wantsLoading(key) {
     (key === 'GameScene' || key === 'SspAwardScene' || (typeof SSP !== 'undefined' && !!SSP.byKey(key)));
 }
 
-/** KES-Textbox: schwarz mit gelber Kontur (Ladebildschirm und Bildergalerie). */
+/** KES-Textbox: gelbe Comic-Bildunterschrift (Ladebildschirm und Bildergalerie). */
 function drawKesTextBox(scene, x, y, w, h) {
-  const g = scene.add.graphics();
-  g.fillStyle(0x000000).fillRect(x, y, w, h);
-  g.lineStyle(4, 0xf7d117).strokeRect(x + 2, y + 2, w - 4, h - 4);
-  g.lineStyle(2, 0x8a6a10).strokeRect(x + 8, y + 8, w - 16, h - 16);
-  return g;
+  return Comic.panel(scene, x + w / 2, y + h / 2, w, h, 'caption');
 }
 
 /** Szenenwechsel, bei Bedarf über den Ladebildschirm. */
@@ -92,12 +88,8 @@ class LoadingScene extends Phaser.Scene {
     this.slideBox = this.add.container(cx, top + border + ph / 2);
     const frame = this.add.graphics();
     const fw = pw + border * 2, fh = ph + border * 2;
-    frame.fillStyle(0x000000, 0.45).fillRect(-fw / 2 + 6, -fh / 2 + 6, fw, fh);              // Schatten
-    frame.fillStyle(0xe9e4d4).fillRect(-fw / 2, -fh / 2, fw, fh);                            // Rahmen
-    frame.fillStyle(0xfffcf0).fillRect(-fw / 2, -fh / 2, fw, 3).fillRect(-fw / 2, -fh / 2, 3, fh);
-    frame.fillStyle(0xb8b2a0).fillRect(-fw / 2, fh / 2 - 3, fw, 3).fillRect(fw / 2 - 3, -fh / 2, 3, fh);
-    frame.fillStyle(0x8a8474).fillRect(-pw / 2 - 2, -ph / 2 - 2, pw + 4, ph + 4);             // Fenster-Kante
-    frame.fillStyle(0x10131c).fillRect(-pw / 2, -ph / 2, pw, ph);
+    frame.fillStyle(0x17121f).fillRect(-pw / 2 - 2, -ph / 2 - 2, pw + 4, ph + 4);             // Fenster-Kante
+    this.slideBox.add(Comic.panel(this, 0, 0, fw, fh, 'paper'));                             // Rahmen
     this.slideBox.add(frame);
     const texKey = `loading_${this.slide}`;
     if (this.textures.exists(texKey)) {
@@ -118,7 +110,7 @@ class LoadingScene extends Phaser.Scene {
     drawKesTextBox(this, 40, boxY, GAME_WIDTH - 80, boxH);
     this.fullText = TXT.loadingSlides[this.slide];
     this.caption = this.add.text(cx, boxY + boxH / 2, '', {
-      fontFamily: FONT, fontSize: '12px', color: '#ffffff', align: 'center', lineSpacing: 10,
+      fontFamily: FONT, fontSize: '12px', color: '#17121f', align: 'center', lineSpacing: 10,
       wordWrap: { width: GAME_WIDTH - 140 }
     }).setOrigin(0.5);
     // Endgültigen Umbruch vorab berechnen, damit die Zeilen beim Tippen nicht springen
@@ -142,14 +134,10 @@ class LoadingScene extends Phaser.Scene {
     this.refresh();
   }
 
-  /** Dunkler "Vorführraum" mit feinem Pixel-Raster. */
+  /** Dunkler "Vorführraum" mit Comic-Raster. */
   drawBackground() {
-    const g = this.add.graphics();
-    g.fillStyle(0x10131c).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    g.fillStyle(0x1a2032);
-    for (let y = 4; y < GAME_HEIGHT; y += 16) {
-      for (let x = (y / 16) % 2 ? 12 : 4; x < GAME_WIDTH; x += 16) g.fillRect(x, y, 2, 2);
-    }
+    this.add.graphics().fillStyle(0x1d2b5c).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    Comic.addHalftoneSky(this, 0, 0, GAME_HEIGHT, 0.1);
   }
 
   update(time, delta) {
@@ -175,14 +163,16 @@ class LoadingScene extends Phaser.Scene {
     // "LADET..." und "CHILL MAL EN MOMENT..." im Wechsel, Pünktchen laufen
     const dots = '.'.repeat(1 + Math.floor(t / 300) % 3);
     this.label.setText((Math.floor(t / 1500) % 2 ? TXT.loadingChill : TXT.loading) + dots);
-    // Balken aus Pixel-Blöcken, Ginny läuft vorne mit
+    // Balken mit Tusche-Rand, Ginny läuft vorne mit
     const p = Phaser.Math.Clamp(t / LOADING.duration, 0, 1);
     const { x, y, w, h } = this.bar;
     const g = this.barGfx.clear();
-    g.fillStyle(0xffffff).fillRect(x - 4, y - 4, w + 8, h + 8);
-    g.fillStyle(0x000000).fillRect(x - 2, y - 2, w + 4, h + 4);
-    const blocks = Math.floor(p * w / 10);
-    for (let i = 0; i < blocks; i++) g.fillStyle(i % 2 ? 0x6ad04a : 0x4fb236).fillRect(x + i * 10, y, 8, h);
+    g.fillStyle(0x17121f).fillRoundedRect(x - 4, y - 4, w + 8, h + 8, 8);
+    g.fillStyle(0xfff6dc).fillRoundedRect(x - 2, y - 2, w + 4, h + 4, 6);
+    if (p > 0.02) {
+      g.fillStyle(0x4fb236).fillRoundedRect(x - 1, y - 1, (w + 2) * p, h + 2, 5);
+      g.fillStyle(0x8ae268).fillRoundedRect(x + 1, y, Math.max(0, (w - 2) * p), 3, 1.5);
+    }
     if (this.ginny) this.ginny.x = x + Math.max(16, p * w);
     this.skipHint.setVisible(t >= LOADING.skipAfter && Math.floor(t / 400) % 2 === 0);
     this.flicker.setAlpha(0.03 + 0.03 * Math.sin(t / 37) * Math.sin(t / 91));

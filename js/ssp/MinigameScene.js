@@ -90,7 +90,7 @@ class MinigameScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
     const c = this.add.container(0, 0).setDepth(200);
     c.add(this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x05060a, 0.55));
-    c.add(this.add.rectangle(cx, cy, 760, 290, 0x10131c, 0.95).setStrokeStyle(3, 0xf7d117));
+    c.add(Comic.panel(this, cx, cy, 760, 290));
     c.add(this.add.text(cx, cy - 112, this.info.name, { fontFamily: FONT, fontSize: '24px', color: '#f7d117', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5));
     c.add(this.add.text(cx, cy - 50, this.info.desc, {
       fontFamily: FONT, fontSize: '11px', color: '#ffffff', align: 'center', wordWrap: { width: 680 }, lineSpacing: 8
@@ -168,8 +168,8 @@ class MinigameScene extends Phaser.Scene {
   // ---------------------------------------------------------------------
   createHud() {
     const style = (size, color) => ({ fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#000000', strokeThickness: 4 });
-    const g = this.add.graphics().setDepth(100);
-    g.fillStyle(0x0b1020, 0.55).fillRoundedRect(8, 8, 300, 34, 10).fillRoundedRect(GAME_WIDTH - 308, 8, 300, 34, 10);
+    Comic.panel(this, 158, 25, 300, 34).setDepth(100).setAlpha(0.9);
+    Comic.panel(this, GAME_WIDTH - 158, 25, 300, 34).setDepth(100).setAlpha(0.9);
     const [p1, p2] = this.players;
     this.hudLeft = this.add.text(20, 17, '', style(12, p1.css)).setDepth(101);
     this.hudRight = this.add.text(GAME_WIDTH - 20, 17, '', style(12, p2.css)).setOrigin(1, 0).setDepth(101);
@@ -216,6 +216,8 @@ class MinigameScene extends Phaser.Scene {
   addSkyAndMountains(horizonY, sky = [0x8ccbf0, 0xe4f3fb]) {
     const g = this.add.graphics();
     g.fillGradientStyle(sky[0], sky[0], sky[1], sky[1], 1).fillRect(0, 0, GAME_WIDTH, horizonY);
+    Comic.addHalftoneSky(this, 0, 0, horizonY);
+    Comic.addHalftoneSky(this, 0, 0, horizonY);
     this.add.tileSprite(0, horizonY - 150, GAME_WIDTH, 260, 'mountainsFar').setOrigin(0).setScale(1, 0.6);
     this.add.tileSprite(0, horizonY - 110, GAME_WIDTH, 220, 'hills').setOrigin(0).setScale(1, 0.5);
   }

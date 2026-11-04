@@ -1,5 +1,5 @@
 /* =====================================================================
- * dialog.js – RPG-artige Dialogbox (wie bei SNES-Spielen)
+ * dialog.js – Dialogbox im Comic-Stil: weisse Sprechblasen-Tafel mit Porträt
  *
  *   const box = new DialogBox(scene);
  *   box.play(STORY.intro).then(() => …);     // Zeilen nacheinander zeigen
@@ -22,23 +22,25 @@ class DialogBox {
     this.h = h;
     this.container = scene.add.container(GAME_WIDTH / 2, y).setScrollFactor(0).setDepth(depth).setVisible(false);
 
-    const frame = scene.add.rectangle(0, 0, w, h, 0x10131c, 0.92).setStrokeStyle(4, 0xf7d117);
-    const inner = scene.add.rectangle(0, 0, w - 12, h - 12).setStrokeStyle(2, 0x5a6480);
-    this.portraitFrame = scene.add.rectangle(-w / 2 + 58, 0, 80, 80, 0x2a3350).setStrokeStyle(3, 0xffffff);
+    const frame = Comic.panel(scene, 0, 0, w, h, 'bubble');
+    this.narratorFrame = Comic.panel(scene, 0, 0, w, h, 'caption').setVisible(false);   // Erzähler: gelbe Comic-Bildunterschrift
+    this.portraitFrame = scene.add.rectangle(-w / 2 + 58, 0, 80, 80, 0xffffff).setStrokeStyle(3, 0x17121f);
     this.portrait = scene.add.image(-w / 2 + 58, 0, 'pixel');
-    this.nameText = scene.add.text(-w / 2 + 112, -h / 2 + 18, '', {
+    // Name auf einem dunklen Etikett, damit jede Sprecherfarbe lesbar bleibt
+    this.nameTag = scene.add.rectangle(0, -h / 2 + 24, 10, 26, 0x17121f).setOrigin(0, 0.5).setVisible(false);
+    this.nameText = scene.add.text(-w / 2 + 112, -h / 2 + 24, '', {
       fontFamily: FONT, fontSize: '12px', color: '#f7d117'
-    });
+    }).setOrigin(0, 0.5);
     this.bodyText = scene.add.text(-w / 2 + 112, -h / 2 + 44, '', {
-      fontFamily: FONT, fontSize: '11px', color: '#ffffff', lineSpacing: 10,
+      fontFamily: FONT, fontSize: '11px', color: '#17121f', lineSpacing: 10,
       wordWrap: { width: w - 150 }
     });
     this.arrow = scene.add.text(w / 2 - 24, h / 2 - 22, '▼', {
-      fontFamily: FONT, fontSize: '10px', color: '#f7d117'
+      fontFamily: FONT, fontSize: '10px', color: '#d7263d'
     }).setOrigin(0.5);
     scene.tweens.add({ targets: this.arrow, y: this.arrow.y + 4, duration: 350, yoyo: true, repeat: -1 });
 
-    this.container.add([frame, inner, this.portraitFrame, this.portrait, this.nameText, this.bodyText, this.arrow]);
+    this.container.add([frame, this.narratorFrame, this.portraitFrame, this.portrait, this.nameTag, this.nameText, this.bodyText, this.arrow]);
   }
 
   /** Spielt eine Liste von Zeilen ab. Liefert ein Promise, das am Ende erfüllt wird. */
@@ -65,10 +67,11 @@ class DialogBox {
     this.portrait.setVisible(hasPortrait);
     this.portraitFrame.setVisible(hasPortrait);
     if (hasPortrait) this.portrait.setTexture(speaker.portrait);
-    this.nameText.setText(speaker.name).setColor(speaker.color).setX(textX);
-    this.bodyText.setX(textX).setY(-this.h / 2 + (speaker.name ? 44 : 30));
+    this.nameText.setText(speaker.name).setColor(speaker.color).setX(textX + 8);
+    this.nameTag.setVisible(!!speaker.name).setX(textX).setSize(this.nameText.width + 16, 26);
+    this.narratorFrame.setVisible(line.who === 'narrator');
+    this.bodyText.setX(textX).setY(-this.h / 2 + (speaker.name ? 42 : 26));
     this.bodyText.setWordWrapWidth(this.w - (hasPortrait ? 150 : 60));
-    this.bodyText.setColor(line.who === 'narrator' ? '#f7d117' : '#ffffff');
 
     this.fullText = fillNames(line.text);
     this.shown = 0;

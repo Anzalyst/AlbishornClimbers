@@ -59,7 +59,7 @@ class VictoryScene extends Phaser.Scene {
     this.time.delayedCall(800, () => { this.ready = true; });
   }
 
-  /** Passwort für das nächste Level: vier SNES-artige Kästchen mit den Avatar-Köpfen. */
+  /** Passwort für das nächste Level: vier Comic-Kästchen mit den Avatar-Köpfen. */
   showPassword(cx) {
     const code = Passwords.forLevel(this.levelIndex + 1);
     this.add.text(cx, 245, tx(TXT.victoryPassword, { label: levelLabel(this.levelIndex + 1) }), {
@@ -67,7 +67,7 @@ class VictoryScene extends Phaser.Scene {
     }).setOrigin(0.5);
     code.forEach((key, i) => {
       const x = cx + (i - 1.5) * 84;
-      this.add.rectangle(x, 300, 70, 70, 0x7f93c0).setStrokeStyle(3, 0xf7d117);
+      this.add.rectangle(x, 300, 70, 70, 0xbfd0ea).setStrokeStyle(4, 0x17121f);
       this.add.image(x, 300, `avatar_${key}`);
       this.add.text(x, 344, Passwords.avatar(key).name, {
         fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3

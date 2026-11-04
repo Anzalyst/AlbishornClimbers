@@ -14,7 +14,7 @@
 
 const FINALE_COLORS = [0xd52b1e, 0xffffff, 0xf7d117, 0x3fd06a, 0x5aa2ff, 0xff7ad9];
 
-// Pixel-Ziffern (3×5) für die "30" am Himmel
+// Ziffern-Raster (3×5) für die "30" am Himmel
 const SKY_DIGITS = {
   3: ['111', '001', '111', '001', '111'],
   0: ['111', '101', '101', '101', '111']
@@ -68,10 +68,10 @@ class FinaleScene extends Phaser.Scene {
     this.add.tileSprite(0, 150, GAME_WIDTH, 300, 'mountains').setOrigin(0).setTint(0xd8a8c8).setDepth(-90);
 
     // Zürichsee mit Glitzern
-    this.add.rectangle(GAME_WIDTH / 2, 392, GAME_WIDTH, 40, 0x3a6fb0).setDepth(-85);
+    this.add.tileSprite(0, 372, GAME_WIDTH, 40, 'ssp_lake').setOrigin(0).setTint(0xd8b0c8).setDepth(-85);
     for (let i = 0; i < 18; i++) {
-      const glint = this.add.rectangle(Phaser.Math.Between(0, GAME_WIDTH), Phaser.Math.Between(378, 406),
-        Phaser.Math.Between(8, 24), 2, 0xffd9a0).setDepth(-84);
+      const glint = this.add.ellipse(Phaser.Math.Between(0, GAME_WIDTH), Phaser.Math.Between(378, 406),
+        Phaser.Math.Between(8, 24), 2.4, 0xffd9a0).setDepth(-84);
       this.tweens.add({ targets: glint, alpha: { from: 0.9, to: 0.1 }, duration: Phaser.Math.Between(500, 1200), yoyo: true, repeat: -1 });
     }
 
@@ -80,12 +80,11 @@ class FinaleScene extends Phaser.Scene {
 
     // Gipfelwiese im Vordergrund
     const hill = this.add.graphics().setDepth(-10);
-    hill.fillStyle(0x3b8f2c);
-    hill.fillPoints([
-      { x: 0, y: 480 }, { x: 200, y: 466 }, { x: 420, y: 470 }, { x: 640, y: 462 },
-      { x: 960, y: 478 }, { x: 960, y: 540 }, { x: 0, y: 540 }
-    ], true);
-    hill.fillStyle(0x4caf3a).fillRect(0, 486, GAME_WIDTH, 4);
+    const crest = [{ x: 0, y: 480 }, { x: 200, y: 466 }, { x: 420, y: 470 }, { x: 640, y: 462 }, { x: 960, y: 478 }];
+    hill.fillStyle(0x3b8f2c).fillPoints(crest.concat([{ x: 960, y: 540 }, { x: 0, y: 540 }]), true);
+    hill.lineStyle(3, 0x17121f).strokePoints(crest, false);
+    hill.fillStyle(0x2c7a24);
+    for (let i = 0; i < 90; i++) hill.fillEllipse((i * 151) % GAME_WIDTH, 492 + (i * 37) % 46, 7, 2.4);
 
     // Restaurant Albishorn + Aussichtsturm (Turm steht rechts davon)
     addRestaurant(this, 170, 474, 0, 1);
@@ -117,8 +116,8 @@ class FinaleScene extends Phaser.Scene {
     // Den Weg herauf: Jessica & Simon mit Tante Edith & Onkel Kurt
     this.jessica = this.add.sprite(GAME_WIDTH + 40, ground, 'hiker1', 0).setOrigin(0.5, 1).setScale(2).setFlipX(true).setDepth(5);
     this.simon = this.add.sprite(GAME_WIDTH + 110, ground, 'hiker2', 0).setOrigin(0.5, 1).setScale(2).setFlipX(true).setDepth(5);
-    this.edith = addPerson(this, 'edith', GAME_WIDTH + 190, ground, 2).setDepth(4);
-    this.kurt = addPerson(this, 'kurt', GAME_WIDTH + 260, ground, 2).setDepth(4);
+    this.edith = addPerson(this, 'edith', GAME_WIDTH + 190, ground, 2).setFlipX(true).setDepth(4);
+    this.kurt = addPerson(this, 'kurt', GAME_WIDTH + 260, ground, 2).setFlipX(true).setDepth(4);
     this.celebrants = [];
   }
 
@@ -202,7 +201,7 @@ class FinaleScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
 
     this.title = this.add.text(cx, 46, TXT.finaleTitle, {
-      fontFamily: FONT, fontSize: '36px', color: '#f7d117', stroke: '#2a1040', strokeThickness: 8
+      fontFamily: FONT, fontSize: '36px', color: '#f7d117', stroke: '#17121f', strokeThickness: 9
     }).setOrigin(0.5).setDepth(40);
     this.tweens.add({ targets: this.title, scale: 1.08, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     // Regenbogen-Farbwechsel
@@ -215,13 +214,13 @@ class FinaleScene extends Phaser.Scene {
       }
     });
 
-    this.add.text(cx, 96, this.greetingLine(), {
+    this.add.text(cx, 104, this.greetingLine(), {
       fontFamily: FONT, fontSize: '13px', color: '#ffffff', stroke: '#000000', strokeThickness: 4, align: 'center'
     }).setOrigin(0.5).setDepth(40);
 
     // Riesige "30" – wandert danach als Plakette nach oben rechts
     const age = this.add.text(640, 250, String(BIRTHDAY.age), {
-      fontFamily: FONT, fontSize: '120px', color: '#f7d117', stroke: '#5b2d1a', strokeThickness: 12
+      fontFamily: FONT, fontSize: '120px', color: '#f7d117', stroke: '#17121f', strokeThickness: 12
     }).setOrigin(0.5).setDepth(41).setScale(0);
     this.tweens.add({ targets: age, scale: 1, duration: 900, ease: 'Back.out', delay: 400 });
     this.tweens.add({
@@ -230,7 +229,7 @@ class FinaleScene extends Phaser.Scene {
     });
 
     // Nachricht in einer Tafel
-    this.panel = this.add.rectangle(650, 258, 570, 196, 0x10131c, 0.8).setStrokeStyle(3, 0xf7d117).setDepth(39).setAlpha(0);
+    this.panel = Comic.panel(this, 650, 258, 570, 196).setDepth(39).setAlpha(0);
     this.message = this.add.text(650, 258, '', {
       fontFamily: FONT, fontSize: '10px', color: '#ffffff', align: 'center', lineSpacing: 8
     }).setOrigin(0.5).setDepth(40);

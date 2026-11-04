@@ -38,8 +38,8 @@ class PauseScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2, cy = GAME_HEIGHT / 2;
 
     this.add.rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x05060a, 0.6);
-    this.add.rectangle(cx, cy, 420, 280, 0x10131c, 0.95).setStrokeStyle(3, 0xf7d117);
-    this.add.text(cx, cy - 100, this.labels.title, { fontFamily: FONT, fontSize: '22px', color: '#f7d117' }).setOrigin(0.5);
+    Comic.panel(this, cx, cy, 420, 280);
+    this.add.text(cx, cy - 100, this.labels.title, { fontFamily: FONT, fontSize: '22px', color: '#f7d117', stroke: '#17121f', strokeThickness: 6 }).setOrigin(0.5);
 
     this.items = [
       { label: () => this.labels.resume, action: () => this.resume() },

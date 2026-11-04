@@ -19,7 +19,8 @@ class SspScoreScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2, s = SspParty.state;
 
     const g = this.add.graphics();
-    g.fillGradientStyle(0x14506c, 0x14506c, 0x0b1020, 0x0b1020, 1).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    g.fillGradientStyle(0x2a5a9a, 0x2a5a9a, 0x1d2b5c, 0x1d2b5c, 1).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    Comic.addHalftoneSky(this, 0, 0, GAME_HEIGHT, 0.1);
     this.add.text(cx, 40, 'ZWISCHENSTAND', { fontFamily: FONT, fontSize: '24px', color: '#f7d117', stroke: '#000000', strokeThickness: 6 }).setOrigin(0.5);
 
     // Sterne pro Spieler

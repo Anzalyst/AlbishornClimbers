@@ -44,12 +44,11 @@ class RundkursScene extends MinigameScene {
     this.lanes = [1, 2].map(id => {
       const gy = RUNDKURS.groundY[id - 1];
       const top = gy - 150;
-      const g = this.add.graphics();
-      g.fillStyle(0x5aa046).fillRect(0, top, GAME_WIDTH, 150);
-      g.fillStyle(0x9aa0a8).fillRect(0, gy, GAME_WIDTH, 18);                 // Asphaltweg
+      this.add.tileSprite(0, top, GAME_WIDTH, 150, 'ssp_lawn').setOrigin(0);
+      this.add.tileSprite(0, gy, GAME_WIDTH, 18, 'ssp_road').setOrigin(0);    // Asphaltweg
       // Wiese bis zur nächsten Bahn bzw. bis zum Bildrand
       const below = id === 1 ? RUNDKURS.groundY[1] - 150 : GAME_HEIGHT;
-      g.fillStyle(0x478c37).fillRect(0, gy + 18, GAME_WIDTH, below - gy - 18);
+      this.add.tileSprite(0, gy + 18, GAME_WIDTH, below - gy - 18, 'ssp_lawnDark').setOrigin(0);
       // Zelte im Hintergrund gedämpft, damit die Hindernisse hervorstechen
       const deco = this.add.tileSprite(0, gy - 4, GAME_WIDTH, 60, 'ssp_tent').setOrigin(0, 1).setAlpha(0.45).setTint(0xb8c8b8);
       const stripe = this.add.graphics();
@@ -169,17 +168,21 @@ class RundkursScene extends MinigameScene {
       const since = this.elapsed - l.lastPushAt;
       const frac = Math.min(1, since / RUNDKURS.rhythm[1]);
       const inWindow = since >= RUNDKURS.rhythm[0];
-      l.rhythmBar.clear().fillStyle(0x10131c, 0.7).fillRect(RUNDKURS.skaterX - 26, l.gy + 22, 52, 8)
+      l.rhythmBar.clear().fillStyle(0x17121f).fillRoundedRect(RUNDKURS.skaterX - 27, l.gy + 21, 54, 10, 3)
         .fillStyle(inWindow ? 0x3fd06a : 0xf2c230).fillRect(RUNDKURS.skaterX - 25, l.gy + 23, 50 * frac, 6);
     });
 
     // Karte
     const cx = GAME_WIDTH / 2, cy = 76, rx = 70, ry = 22;
-    this.map.clear().fillStyle(0x0b1020, 0.6).fillRoundedRect(cx - 90, cy - 34, 180, 68, 10)
-      .lineStyle(6, 0x9aa0a8).strokeEllipse(cx, cy, rx * 2, ry * 2)
+    this.map.clear().fillStyle(0x17121f).fillRoundedRect(cx - 92, cy - 36, 184, 72, 10)
+      .fillStyle(0x1d2b5c).fillRoundedRect(cx - 89, cy - 33, 178, 66, 8)
+      .lineStyle(9, 0x17121f).strokeEllipse(cx, cy, rx * 2, ry * 2)
+      .lineStyle(6, 0xc4cad4).strokeEllipse(cx, cy, rx * 2, ry * 2)
       .fillStyle(0xffffff).fillRect(cx - 2, cy + ry - 5, 4, 10);
     this.lanes.forEach(l => {
       const a = Math.PI / 2 + (l.pos % RUNDKURS.lap) / RUNDKURS.lap * Math.PI * 2;
+      this.map.fillStyle(0x17121f).fillCircle(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, 7.5);
+      this.map.fillStyle(0x17121f).fillCircle(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, 7.5);
       this.map.fillStyle(this.players[l.id - 1].color).fillCircle(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, 6);
     });
   }

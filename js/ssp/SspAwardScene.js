@@ -24,10 +24,12 @@ class SspAwardScene extends Phaser.Scene {
     // Abendhimmel über dem See, Lichterkette
     const g = this.add.graphics();
     g.fillGradientStyle(0x1a2350, 0x1a2350, 0xf5a96b, 0xf5a96b, 1).fillRect(0, 0, GAME_WIDTH, 380);
-    g.fillGradientStyle(0x14708c, 0x14708c, 0x0b3a4c, 0x0b3a4c, 1).fillRect(0, 380, GAME_WIDTH, GAME_HEIGHT - 380);
+    this.add.tileSprite(0, 380, GAME_WIDTH, GAME_HEIGHT - 380, 'ssp_lake').setOrigin(0).setTint(0x6a7a9a);
+    Comic.addHalftoneSky(this, 0, 0, 380);
+    const podiums = this.add.graphics();
     for (let i = 0; i < 24; i++) {
       const x = 20 + i * 40, y = 30 + Math.sin(i / 23 * Math.PI) * 30;
-      const bulb = this.add.circle(x, y, 4, [0xff5a6e, 0xf7d117, 0x7dff9a, 0x5aa2ff][i % 4]);
+      const bulb = this.add.circle(x, y, 4.5, [0xff5a6e, 0xf7d117, 0x7dff9a, 0x5aa2ff][i % 4]).setStrokeStyle(1.5, 0x17121f);
       this.tweens.add({ targets: bulb, alpha: 0.3, duration: 500 + (i % 3) * 200, yoyo: true, repeat: -1, delay: i * 60 });
     }
 
@@ -40,7 +42,8 @@ class SspAwardScene extends Phaser.Scene {
 
     // Podest: 1. Platz in der Mitte, 2. Platz links (bei Gleichstand beide gleich hoch)
     const podium = (x, h, place) => {
-      g.fillStyle(0xd8dce4).fillRect(x - 70, 470 - h, 140, h).fillStyle(0xb0b6c0).fillRect(x - 70, 470 - h, 140, 6);
+      podiums.fillStyle(0xe4e8f0).fillRect(x - 70, 470 - h, 140, h).fillStyle(0xb0b6c0).fillRect(x, 470 - h, 70, h);
+      podiums.lineStyle(3.5, 0x17121f).strokeRect(x - 70, 470 - h, 140, h);
       this.add.text(x, 470 - h / 2, String(place), { fontFamily: FONT, fontSize: '28px', color: '#5a606c' }).setOrigin(0.5);
     };
     let spots;

@@ -24,7 +24,8 @@ class GalleryScene extends Phaser.Scene {
     this.inputs = createPlayerInputs(this);
     this.keys = GalleryScene.slides();
     const cx = GAME_WIDTH / 2;
-    this.add.graphics().fillStyle(0x10131c).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    this.add.graphics().fillStyle(0x1d2b5c).fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    Comic.addHalftoneSky(this, 0, 0, GAME_HEIGHT, 0.1);
 
     this.add.text(cx, 18, TXT.galleryMenu, { fontFamily: FONT, fontSize: '14px', color: '#f7d117', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5);
 
@@ -32,10 +33,9 @@ class GalleryScene extends Phaser.Scene {
     const pw = LOADING.photoW, ph = LOADING.photoH, border = 8;
     const fw = pw + border * 2, fh = ph + border * 2, top = 34;
     const frame = this.add.graphics();
-    frame.fillStyle(0xe9e4d4).fillRect(cx - fw / 2, top, fw, fh);
-    frame.fillStyle(0x8a8474).fillRect(cx - pw / 2 - 2, top + border - 2, pw + 4, ph + 4);
-    frame.fillStyle(0x10131c).fillRect(cx - pw / 2, top + border, pw, ph);
-    this.photo = this.add.image(cx, top + border + ph / 2, '__DEFAULT');
+    frame.setDepth(1).fillStyle(0x17121f).fillRect(cx - pw / 2 - 2, top + border - 2, pw + 4, ph + 4);
+    Comic.panel(this, cx, top + fh / 2, fw, fh, 'paper');
+    this.photo = this.add.image(cx, top + border + ph / 2, '__DEFAULT').setDepth(2);
 
     // Blätter-Pfeile links und rechts vom Bild
     const arrowStyle = { fontFamily: FONT, fontSize: '28px', color: '#f7d117', stroke: '#000000', strokeThickness: 5 };
@@ -50,7 +50,7 @@ class GalleryScene extends Phaser.Scene {
     const boxY = top + fh + 6, boxH = 58;
     drawKesTextBox(this, 40, boxY, GAME_WIDTH - 80, boxH);
     this.caption = this.add.text(cx, boxY + boxH / 2, '', {
-      fontFamily: FONT, fontSize: '12px', color: '#ffffff', align: 'center', lineSpacing: 10,
+      fontFamily: FONT, fontSize: '12px', color: '#17121f', align: 'center', lineSpacing: 10,
       wordWrap: { width: GAME_WIDTH - 140 }
     }).setOrigin(0.5);
 

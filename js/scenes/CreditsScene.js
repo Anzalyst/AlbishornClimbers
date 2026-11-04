@@ -40,7 +40,7 @@ class CreditsScene extends Phaser.Scene {
     this.add.tileSprite(0, GAME_HEIGHT - 260, GAME_WIDTH, 300, 'mountains').setOrigin(0).setTint(0x3a3f6a);
     // Hügel & Wiese liegen VOR dem Abspann-Text: Er taucht hinter den Hügeln auf
     this.add.tileSprite(0, GAME_HEIGHT - 150, GAME_WIDTH, 220, 'hills').setOrigin(0).setTint(0x1f3a2a).setDepth(22);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 30, GAME_WIDTH, 60, 0x1a2e1f).setDepth(23);
+    this.add.tileSprite(0, GAME_HEIGHT - 60, GAME_WIDTH, 60, 'ssp_lawn').setOrigin(0).setTint(0x3a5a44).setDepth(23);
   }
 
   /** Jessica, Simon, Sven, Tante Edith & Onkel Kurt wandern vorbei. */
@@ -73,7 +73,7 @@ class CreditsScene extends Phaser.Scene {
 
     const logo = this.add.text(cx, y, 'ALBISHORN\nCLIMBERS', {
       fontFamily: FONT, fontSize: '32px', color: '#f7d117', align: 'center', lineSpacing: 8,
-      stroke: '#5b2d1a', strokeThickness: 6
+      stroke: '#17121f', strokeThickness: 8
     }).setOrigin(0.5, 0);
     this.roll.add(logo);
     y += logo.height + 90;
@@ -125,7 +125,7 @@ class CreditsScene extends Phaser.Scene {
     const parts = [
       this.add.text(cx, y, intro, { fontFamily: FONT, fontSize: '12px', color: '#c8d0e8', align: 'center' }).setOrigin(0.5, 0),
       this.add.text(cx, y + 34, names, {
-        fontFamily: FONT, fontSize: '22px', color: '#f7d117', align: 'center', stroke: '#5b2d1a', strokeThickness: 5
+        fontFamily: FONT, fontSize: '22px', color: '#f7d117', align: 'center', stroke: '#17121f', strokeThickness: 6
       }).setOrigin(0.5, 0),
       this.add.text(cx, y + 84, outro, { fontFamily: FONT, fontSize: '12px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 0)
     ];

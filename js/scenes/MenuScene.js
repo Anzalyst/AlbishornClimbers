@@ -46,16 +46,14 @@ class MenuScene extends Phaser.Scene {
   // ---------------------------------------------------------------------
   createTitle() {
     const cx = GAME_WIDTH / 2;
-    this.add.text(cx + 4, 74, 'ALBISHORN\nCLIMBERS', {
-      fontFamily: FONT, fontSize: '44px', color: '#000000', align: 'center', lineSpacing: 10
-    }).setOrigin(0.5).setAlpha(0.35);
     const title = this.add.text(cx, 70, 'ALBISHORN\nCLIMBERS', {
       fontFamily: FONT, fontSize: '44px', color: '#f7d117', align: 'center', lineSpacing: 10,
-      stroke: '#5b2d1a', strokeThickness: 8
+      stroke: '#17121f', strokeThickness: 10
     }).setOrigin(0.5);
-    this.tweens.add({ targets: title, y: 76, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    title.setShadow(6, 6, '#17121f', 0, true, true);
+    this.tweens.add({ targets: title, y: 69, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
-    this.add.text(cx, 150, TXT.menuSubtitle, {
+    this.add.text(cx, 158, TXT.menuSubtitle, {
       fontFamily: FONT, fontSize: '12px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
 
@@ -79,7 +77,7 @@ class MenuScene extends Phaser.Scene {
   createPasswordPanel() {
     const cx = GAME_WIDTH / 2;
     this.pwPanel = this.add.container(cx, 310);
-    this.pwPanel.add(this.add.rectangle(0, 0, 480, 250, 0x10131c, 0.9).setStrokeStyle(3, 0xf7d117));
+    this.pwPanel.add(Comic.panel(this, 0, 0, 480, 250));
     this.pwPanel.add(this.add.text(0, -102, TXT.passwordTitle, {
       fontFamily: FONT, fontSize: '14px', color: '#f7d117'
     }).setOrigin(0.5));
@@ -89,7 +87,7 @@ class MenuScene extends Phaser.Scene {
     this.avatarNames = [];
     for (let i = 0; i < 4; i++) {
       const x = (i - 1.5) * 100;
-      const box = this.add.rectangle(x, -16, 76, 76, 0x7f93c0).setStrokeStyle(3, 0x5a6480);
+      const box = this.add.rectangle(x, -16, 76, 76, 0xbfd0ea).setStrokeStyle(3, 0x17121f);
       const img = this.add.image(x, -16, `avatar_${AVATARS[0].key}`);
       const name = this.add.text(x, 32, '', { fontFamily: FONT, fontSize: '8px', color: '#ffffff' }).setOrigin(0.5);
       this.pwPanel.add([box, img, name]);
@@ -137,7 +135,7 @@ class MenuScene extends Phaser.Scene {
       this.avatarImages[i].setTexture(`avatar_${AVATARS[a].key}`);
       this.avatarNames[i].setText(AVATARS[a].name).setColor(i === this.cursor ? '#f7d117' : '#ffffff');
     });
-    this.avatarBoxes.forEach((b, i) => b.setStrokeStyle(3, i === this.cursor ? 0xf7d117 : 0x5a6480));
+    this.avatarBoxes.forEach((b, i) => b.setStrokeStyle(i === this.cursor ? 5 : 3, i === this.cursor ? 0xf7d117 : 0x17121f));
     this.pwArrows.forEach(a => a.setX((this.cursor - 1.5) * 100));
   }
 

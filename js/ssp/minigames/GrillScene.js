@@ -51,7 +51,8 @@ class GrillScene extends MinigameScene {
     // Abendstimmung am Campingplatz
     this.addSkyAndMountains(250, [0x2a3a6a, 0xf5a96b]);
     const g = this.add.graphics();
-    g.fillStyle(0x3f7d4a).fillRect(0, 250, GAME_WIDTH, GAME_HEIGHT - 250);
+    this.add.tileSprite(0, 250, GAME_WIDTH, GAME_HEIGHT - 250, 'ssp_lawnDark').setOrigin(0).setTint(0xb8c8c0);
+    g.setDepth(1).fillStyle(0x17121f).fillRect(0, 249, GAME_WIDTH, 2.5);
     this.add.image(80, 270, 'ssp_tent').setOrigin(0.5, 1).setScale(0.8);
     this.add.image(880, 275, 'ssp_tent').setOrigin(0.5, 1).setScale(0.9).setFlipX(true);
 
@@ -69,11 +70,23 @@ class GrillScene extends MinigameScene {
       const cx = id === 1 ? 240 : 720;
       const gg = this.add.graphics();
       // Feuerschale, Glut, Rost
-      gg.fillStyle(0x2c3038).fillRoundedRect(cx - 160, GRILL.y - 4, 320, 70, 14);
-      gg.fillStyle(0x4b515c).fillRect(cx - 150, GRILL.y + 66, 8, 70).fillRect(cx + 142, GRILL.y + 66, 8, 70);
+      [cx - 146, cx + 146].forEach(lx => {
+        gg.fillStyle(0x17121f).fillRect(lx - 6, GRILL.y + 60, 12, 76);
+        gg.fillStyle(0x5a606c).fillRect(lx - 4, GRILL.y + 60, 8, 76);
+      });
+      gg.fillStyle(0x3a3f4a).fillRoundedRect(cx - 160, GRILL.y - 4, 320, 70, 14);
+      gg.fillStyle(0x24272e).fillRoundedRect(cx - 160, GRILL.y + 30, 320, 36, 14);
+      gg.lineStyle(3.5, 0x17121f).strokeRoundedRect(cx - 160, GRILL.y - 4, 320, 70, 14);
       const glow = this.add.graphics();
-      for (let x = cx - 145; x <= cx + 145; x += 10) gg.lineStyle(2, 0x9aa0aa).lineBetween(x, GRILL.y - 6, x, GRILL.y + 18);
-      gg.lineStyle(3, 0xb8bec8).strokeRect(cx - 150, GRILL.y - 8, 300, 28);
+      // Flammen unter dem Rost
+      for (let i = 0; i < 6; i++) {
+        const flame = this.add.sprite(cx - 130 + i * 52, GRILL.y + 58, 'menuFlame', i % 3).setOrigin(0.5, 1).setScale(2.4);
+        flame.play({ key: 'menuFlame', startFrame: i % 3 });
+      }
+      const rost = this.add.graphics();
+      for (let x = cx - 145; x <= cx + 145; x += 10) rost.lineStyle(2, 0xc4cad4).lineBetween(x, GRILL.y - 6, x, GRILL.y + 18);
+      rost.lineStyle(5, 0x17121f).strokeRect(cx - 150, GRILL.y - 8, 300, 28);
+      rost.lineStyle(2.5, 0xc4cad4).strokeRect(cx - 150, GRILL.y - 8, 300, 28);
       this.addFigure(id, id === 1 ? cx - 190 : cx + 190, GRILL.y + 120, 2.4).setFlipX(id === 2);
       const grill = {
         id, cx, cursor: id === 1 ? 0 : 3, glow,
@@ -90,11 +103,12 @@ class GrillScene extends MinigameScene {
     const x = GAME_WIDTH / 2, ground = GRILL.y + 120;
     this.peter = addPerson(this, 'peter', x, ground, 2).setDepth(25);
     const tongs = this.add.graphics().setDepth(26);
-    tongs.lineStyle(3, 0x9aa0aa).lineBetween(x + 26, ground - 46, x + 46, ground - 70).lineBetween(x + 30, ground - 44, x + 50, ground - 66);
+    tongs.lineStyle(5, 0x17121f).lineBetween(x + 26, ground - 46, x + 46, ground - 70).lineBetween(x + 30, ground - 44, x + 50, ground - 66);
+    tongs.lineStyle(2.4, 0xc4cad4).lineBetween(x + 26, ground - 46, x + 46, ground - 70).lineBetween(x + 30, ground - 44, x + 50, ground - 66);
     this.add.text(x, ground + 6, 'PETER KAMMER', { fontFamily: FONT, fontSize: '7px', color: '#ffe9a8', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 0).setDepth(25);
 
     this.bubble = this.add.container(x, 168).setDepth(60).setVisible(false);
-    this.bubbleBg = this.add.graphics();
+    this.bubbleBg = this.add.image(0, 0, Comic.bubbleTexture(this, 200, 80));
     this.bubbleText = this.add.text(0, 0, '', {
       fontFamily: FONT, fontSize: '9px', color: '#111111', align: 'center', wordWrap: { width: 280 }, lineSpacing: 5
     }).setOrigin(0.5);
@@ -111,11 +125,9 @@ class GrillScene extends MinigameScene {
     const list = PETER_SAYS[kind];
     const text = list[Math.floor(Math.random() * list.length)];
     this.bubbleText.setText(text);
-    const w = Math.max(120, this.bubbleText.width + 28), h = this.bubbleText.height + 22;
-    this.bubbleBg.clear().fillStyle(0x000000).fillRoundedRect(-w / 2 - 2, -h / 2 - 2, w + 4, h + 4, 12)
-      .fillStyle(0xffffff).fillRoundedRect(-w / 2, -h / 2, w, h, 10)
-      .fillStyle(0x000000).fillTriangle(-10, h / 2, 10, h / 2, 0, h / 2 + 16)
-      .fillStyle(0xffffff).fillTriangle(-7, h / 2 - 1, 7, h / 2 - 1, 0, h / 2 + 11);
+    // Ovale Sprechblase: gross genug, dass der Text ganz in die Rundung passt
+    const w = Math.max(150, Math.ceil(this.bubbleText.width * 1.38)), h = Math.ceil(this.bubbleText.height * 1.7 + 12);
+    this.bubbleBg.setTexture(Comic.bubbleTexture(this, w, h));
     this.bubble.setVisible(true).setScale(0.6);
     this.tweens.killTweensOf(this.bubble);
     this.tweens.add({ targets: this.bubble, scale: 1, duration: 180, ease: 'Back.out' });
@@ -208,8 +220,8 @@ class GrillScene extends MinigameScene {
     this.grills.forEach(gr => {
       gr.glow.clear();
       for (let i = 0; i < 6; i++) {
-        const x = gr.cx - 130 + i * 52 + Math.sin(time / 200 + i) * 4;
-        gr.glow.fillStyle(0xff6a1a, 0.35 + 0.15 * Math.sin(time / 150 + i * 2)).fillCircle(x, GRILL.y + 40, 18);
+        const x = gr.cx - 130 + i * 52;
+        gr.glow.fillStyle(0xff6a1a, 0.5 + 0.2 * Math.sin(time / 150 + i * 2)).fillEllipse(x, GRILL.y + 56, 44, 10);
       }
       gr.cursorArrow.setPosition(gr.cx + GRILL.slots[gr.cursor], GRILL.y - 70 + Math.sin(time / 150) * 3);
       gr.sausages.forEach(s => {
@@ -217,7 +229,7 @@ class GrillScene extends MinigameScene {
         s.sprite.setTint(this.cookColor(s.cook[1 - s.down]));   // sichtbar ist die Oberseite
         const c = s.cook[s.down];
         const bx = s.x - 16, by = GRILL.y - 44, w = 32;
-        s.meter.clear().fillStyle(0x10131c, 0.85).fillRect(bx - 2, by - 2, w + 4, 10)
+        s.meter.clear().fillStyle(0x17121f).fillRoundedRect(bx - 3, by - 3, w + 6, 12, 3).fillStyle(0xfff6dc).fillRect(bx, by, w, 6)
           .fillStyle(0x3fd06a, 0.45).fillRect(bx + w * GRILL.perfect[0] / GRILL.burnAt, by, w * (GRILL.perfect[1] - GRILL.perfect[0]) / GRILL.burnAt, 6)
           .fillStyle(0xd7263d, 0.45).fillRect(bx + w * GRILL.perfect[1] / GRILL.burnAt, by, w * (1 - GRILL.perfect[1] / GRILL.burnAt), 6)
           .fillStyle(c > GRILL.perfect[1] ? 0xff4040 : c >= GRILL.perfect[0] ? 0x7dff9a : 0xffffff)

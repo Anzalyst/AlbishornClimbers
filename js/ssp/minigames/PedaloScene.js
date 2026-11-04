@@ -35,11 +35,15 @@ class PedaloScene extends MinigameScene {
     this.addSkyAndMountains(110, [0x9fd8f4, 0xeefaff]);
 
     // See
+    this.add.tileSprite(0, 110, GAME_WIDTH, GAME_HEIGHT - 110, 'ssp_lake').setOrigin(0);
     const g = this.add.graphics();
-    g.fillGradientStyle(0x2ab0c8, 0x2ab0c8, 0x14708c, 0x14708c, 1).fillRect(0, 110, GAME_WIDTH, GAME_HEIGHT - 110);
+    g.fillStyle(0x17121f).fillRect(0, 109, GAME_WIDTH, 2.5);
     this.waves = this.add.graphics();
     // Bojenleine zwischen den Bahnen, Start- und Ziellinie
-    for (let x = 20; x < GAME_WIDTH; x += 28) g.fillStyle(x % 56 ? 0xf2c230 : 0xd7263d).fillCircle(x, 300, 4);
+    for (let x = 20; x < GAME_WIDTH; x += 28) {
+      g.fillStyle(0x17121f).fillCircle(x, 300, 5.5);
+      g.fillStyle(x % 56 ? 0xf2c230 : 0xd7263d).fillCircle(x, 300, 4);
+    }
     g.fillStyle(0xffffff, 0.5).fillRect(PEDALO.startX + 74, 130, 3, GAME_HEIGHT - 150);   // Startlinie vor den Booten
     for (let y = 130; y < GAME_HEIGHT - 20; y += 16) {
       g.fillStyle(((y - 130) / 16) % 2 ? 0x111111 : 0xffffff).fillRect(PEDALO.finishX + 36, y, 8, 8)
@@ -121,10 +125,11 @@ class PedaloScene extends MinigameScene {
   }
 
   visuals(dt, time) {
-    this.waves.clear().fillStyle(0xffffff, 0.25);
-    for (let i = 0; i < 40; i++) {
+    this.waves.clear().lineStyle(1.8, 0xffffff, 0.55);
+    for (let i = 0; i < 24; i++) {
       const x = (i * 97 + time * 0.02 * (1 + (i % 3))) % GAME_WIDTH, y = 130 + (i * 53) % (GAME_HEIGHT - 150);
-      this.waves.fillRect(x, y, 10, 2);
+      this.waves.lineBetween(x, y, x + 6, y - 2);
+      this.waves.lineBetween(x + 6, y - 2, x + 12, y);
     }
     this.boats.forEach(b => {
       const targetY = this.trackY(b.id, b.track);

@@ -23,14 +23,19 @@ class SspMenuScene extends Phaser.Scene {
     // See-Kulisse
     const g = this.add.graphics();
     g.fillGradientStyle(0x8fd0f4, 0x8fd0f4, 0xf2f9ff, 0xf2f9ff, 1).fillRect(0, 0, GAME_WIDTH, 260);
+    Comic.addHalftoneSky(this, 0, 0, 260);
     this.add.tileSprite(0, 110, GAME_WIDTH, 260, 'mountainsFar').setOrigin(0).setScale(1, 0.6);
-    g.fillGradientStyle(0x2ab0c8, 0x2ab0c8, 0x14708c, 0x14708c, 1).fillRect(0, 260, GAME_WIDTH, GAME_HEIGHT - 260);
+    this.add.tileSprite(0, 260, GAME_WIDTH, GAME_HEIGHT - 260, 'ssp_lake').setOrigin(0);
+    const shore = this.add.graphics();
+    [[0, 170], [790, 170]].forEach(([x, w]) => {
+      shore.fillStyle(0x5aa046).fillRoundedRect(x - 8, 290, w + 16, 16, 7);
+      shore.lineStyle(2.5, 0x17121f).strokeRoundedRect(x - 8, 290, w + 16, 16, 7);
+    });
     this.add.image(90, 300, 'ssp_tent').setOrigin(0.5, 1);
     this.add.image(870, 300, 'ssp_tent').setOrigin(0.5, 1).setFlipX(true);
-    g.fillStyle(0x5aa046).fillRect(0, 290, 170, 14).fillRect(790, 290, 170, 14);
 
     const title = this.add.text(cx, 64, 'SUPER SEMPACH\nPARTY', {
-      fontFamily: FONT, fontSize: '36px', color: '#f7d117', align: 'center', stroke: '#14506c', strokeThickness: 8, lineSpacing: 8
+      fontFamily: FONT, fontSize: '36px', color: '#f7d117', align: 'center', stroke: '#17121f', strokeThickness: 9, lineSpacing: 8
     }).setOrigin(0.5);
     this.tweens.add({ targets: title, y: 70, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.add.text(cx, 134, SSP.subtitle, { fontFamily: FONT, fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5);
@@ -43,7 +48,7 @@ class SspMenuScene extends Phaser.Scene {
     });
     this.add.text(cx, 500, 'VS', { fontFamily: FONT, fontSize: '20px', color: '#ffffff', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setAlpha(0.8);
 
-    this.panel = this.add.rectangle(cx, 300, 460, 220, 0x10131c, 0.85).setStrokeStyle(3, 0xf7d117);
+    this.panel = Comic.panel(this, cx, 300, 460, 220);
     this.itemTexts = [];
     this.arrow = this.add.text(0, 0, '▶', { fontFamily: FONT, fontSize: '14px', color: '#f7d117' }).setOrigin(0.5);
     this.descText = this.add.text(cx, 425, '', {
